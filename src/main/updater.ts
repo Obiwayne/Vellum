@@ -31,7 +31,7 @@ function run(cmd: string, args: string[], cwd = root(), timeout = 120_000): Prom
       cmd,
       args,
       { cwd, timeout, windowsHide: true, maxBuffer: 8 * 1024 * 1024, env: { ...process.env, GIT_TERMINAL_PROMPT: '0' } },
-      (err, stdout, stderr) => (err ? reject(new Error((stderr || err.message).trim())) : resolve(stdout.trim()))
+      (err, stdout, stderr) => (err ? reject(new Error((stderr || err.message).trim())) : resolve(stdout.trimEnd()))
     )
   })
 }

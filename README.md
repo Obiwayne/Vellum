@@ -130,6 +130,18 @@ powershell -ExecutionPolicy Bypass -File scripts\make-shortcuts.ps1
 | `npm start` | Run the built app |
 | `npm run typecheck` | TypeScript checks only |
 
+## Updates
+
+Vellum checks GitHub for new versions when it starts and every four hours after that. When one is out, an
+**Update** badge appears in the title bar and a card lists what changed. **Update and restart** downloads it,
+installs any new packages, rebuilds and reopens Vellum. Your files are not touched. **Later** hides the card
+for a day. You can also check at any time with **Help → Check for Updates…**.
+
+This works for copies installed with `git clone`. If you edited Vellum's own files, commit or undo those edits
+first. Otherwise the update is refused so nothing is overwritten. A copy downloaded as a ZIP can't update
+itself: download the new version from GitHub instead. Set `VELLUM_NO_UPDATE_CHECK=1` to turn the automatic
+check off.
+
 Your data lives in `%APPDATA%\Vellum`: `profiles.json` lists the profiles, and each profile's files are in
 `profiles\<id>\` (plain JSON, or encrypted when the profile has a password).
 
