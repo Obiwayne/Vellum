@@ -144,7 +144,7 @@ function flowInsertion(
 }
 
 type Gesture =
-  | { kind: 'pan'; start: Pt; cam: { x: number; y: number } }
+  | { kind: 'pan'; start: Pt; cam: { x: number; y: number }; /** e.buttons bit holding the pan (4 = middle) */ button: number }
   | { kind: 'marquee'; start: Pt; base: string[]; additive: boolean }
   | {
       kind: 'move'
@@ -301,6 +301,34 @@ export function CanvasView({ docId }: { docId: string }): JSX.Element | null {
     else if (useCommentUi.getState().draft) useCommentUi.setState({ draft: null })
   }, [tool, docId])
 
+  // ---------------------------------------------------------------- middle-button pan
+  // Taken in the capture phase so no child (labels, pins, handles, the text editor) can swallow it,
+  // and the browser's own middle-click behaviour (autoscroll, paste) is blocked.
+  useEffect(() => {
+    const el = viewport.current
+    if (!el) return
+    const down = (e: PointerEvent): void => {
+      if (e.button !== 1) return
+      e.preventDefault()
+      e.stopPropagation()
+      if (gesture.current) return
+      if (getStore().editors[docId]?.editingTextId) A.commitTextEditing()
+      startPan(e.clientX, e.clientY, 4)
+    }
+    const block = (e: MouseEvent): void => {
+      if (e.button === 1) e.preventDefault()
+    }
+    el.addEventListener('pointerdown', down, true)
+    el.addEventListener('mousedown', block, true)
+    el.addEventListener('auxclick', block, true)
+    return () => {
+      el.removeEventListener('pointerdown', down, true)
+      el.removeEventListener('mousedown', block, true)
+      el.removeEventListener('auxclick', block, true)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [docId])
+
   // ---------------------------------------------------------------- keyboard (space, pen) + shortcuts
   useEffect(() => {
     const isText = (el: EventTarget | null): boolean =>
@@ -434,6 +462,14 @@ export function CanvasView({ docId }: { docId: string }): JSX.Element | null {
     setTransient({})
   }
 
+  function startPan(x: number, y: number, button: number): void {
+    const cam = getStore().editors[docId]?.camera
+    if (!cam) return
+    gesture.current = { kind: 'pan', start: { x, y }, cam: { x: cam.x, y: cam.y }, button }
+    setPanning(true)
+    beginListeners()
+  }
+
   // ---------------------------------------------------------------- pointer: down
   function onPointerDown(e: React.PointerEvent): void {
     const s = getStore()
@@ -445,11 +481,9 @@ export function CanvasView({ docId }: { docId: string }): JSX.Element | null {
     const active = document.activeElement as HTMLElement | null
     if (active && active !== document.body && typeof active.blur === 'function') active.blur()
 
-    if (e.button === 1 || (e.button === 0 && (spaceRef.current || ed.tool === 'pan'))) {
+    if (e.button === 0 && (spaceRef.current || ed.tool === 'pan')) {
       e.preventDefault()
-      gesture.current = { kind: 'pan', start: { x: e.clientX, y: e.clientY }, cam: { x: ed.camera.x, y: ed.camera.y } }
-      setPanning(true)
-      beginListeners()
+      startPan(e.clientX, e.clientY, 1)
       return
     }
     const world0 = clientToWorld(e.clientX, e.clientY, docId)
@@ -639,6 +673,11 @@ export function CanvasView({ docId }: { docId: string }): JSX.Element | null {
     const p = clientToWorld(e.clientX, e.clientY, docId)
 
     if (g.kind === 'pan') {
+      // the release was missed (e.g. outside the window): end the pan instead of sticking to the pointer
+      if (!(e.buttons & g.button)) {
+        onUp(e)
+        return
+      }
       s.setCamera(docId, { x: g.cam.x + e.clientX - g.start.x, y: g.cam.y + e.clientY - g.start.y })
       return
     }

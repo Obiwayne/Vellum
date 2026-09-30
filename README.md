@@ -113,10 +113,11 @@ npm run dev
 ```
 
 Or just double-click **`Vellum.cmd`**: the first time it installs and builds everything, then it opens the app
-and closes its console.
+and closes its console. It rebuilds by itself whenever the code is newer than the last build (after a `git pull`
+or an edit), so restarting Vellum is enough to get changes.
 
 For a launcher with no console at all, run this once — it creates a **Vellum** shortcut with the app icon in the
-project folder and on your Desktop:
+project folder and on your Desktop (it runs `Vellum.cmd` hidden, so it rebuilds too):
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File scripts\make-shortcuts.ps1
