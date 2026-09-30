@@ -1,0 +1,559 @@
+/* Right inspector (280px). Prefix: .insp- */
+.insp {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+.insp-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+.insp-top {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  height: 48px;
+  padding: 0 12px;
+  border-bottom: 1px solid var(--hairline);
+  flex-shrink: 0;
+}
+.insp-avatar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: #4A5A6A;
+  color: #fff;
+  font-weight: 500;
+  font-size: 11px;
+  flex-shrink: 0;
+}
+.insp-zoom {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  height: 24px;
+  padding: 0 6px;
+  margin-left: auto;
+  border-radius: var(--radius);
+  color: var(--text-2);
+  font-weight: 465;
+}
+.insp-zoom:hover,
+.insp-zoom--open {
+  background: var(--control-hover);
+  color: var(--text);
+}
+
+/* grid helpers: three equal columns / two columns + icon strip */
+.insp-g3 {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+.insp-g2 {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+.insp-g2i {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 24px;
+  gap: 8px;
+  align-items: center;
+}
+.insp-g4 {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 6px;
+}
+.insp-btnstrip {
+  display: flex;
+  align-items: center;
+  height: 28px;
+  border-radius: var(--radius);
+  background: var(--control-bg);
+  overflow: hidden;
+}
+.insp-btnstrip > * {
+  flex: 1;
+  height: 28px !important;
+  width: auto !important;
+  border-radius: 0 !important;
+}
+.insp-btnstrip > * + * {
+  border-left: 1px solid rgba(0, 0, 0, 0.18);
+}
+.insp-flex1 {
+  flex: 1;
+  min-width: 0;
+}
+.insp-muted {
+  color: var(--text-3);
+}
+.insp-mixed {
+  display: flex;
+  align-items: center;
+  height: 24px;
+  color: var(--text-3);
+}
+.insp-field-trail {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 20px;
+  border-radius: 4px;
+  color: var(--text-3);
+}
+.insp-field-trail:hover {
+  color: var(--text);
+  background: var(--control-hover);
+}
+
+/* ---------------------------------------------------------------- Flex */
+.insp-flex {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 24px;
+  grid-template-rows: 24px 24px 24px;
+  gap: 8px;
+}
+.insp-aligngrid {
+  grid-row: 1 / span 3;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  grid-template-rows: repeat(3, 1fr);
+  height: 88px;
+  padding: 4px;
+  border-radius: var(--radius);
+  background: var(--control-bg);
+}
+.insp-aligngrid button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  color: var(--text-4);
+}
+.insp-aligngrid button:hover {
+  color: var(--text);
+}
+.insp-aligngrid button .dot {
+  width: 2px;
+  height: 2px;
+  border-radius: 1px;
+  background: currentColor;
+}
+.insp-aligngrid button.on {
+  color: var(--accent);
+}
+.insp-bars {
+  display: flex;
+  gap: 2px;
+}
+.insp-bars--col {
+  flex-direction: column;
+}
+.insp-bars span {
+  background: currentColor;
+  border-radius: 1px;
+}
+.insp-bars--col span {
+  height: 2px;
+}
+.insp-bars--row span {
+  width: 2px;
+}
+
+/* ---------------------------------------------------------------- Fill */
+.insp-filltabs {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.insp-fillkind {
+  display: flex;
+  height: 24px;
+  padding: 0;
+  border-radius: var(--radius);
+  background: var(--control-bg);
+}
+.insp-fillkind button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 24px;
+  border-radius: var(--radius);
+  color: var(--text-3);
+}
+.insp-fillkind button:hover {
+  color: var(--text);
+}
+.insp-fillkind button.on {
+  background: var(--segment-active);
+  color: var(--text);
+  box-shadow: var(--raised-shadow);
+}
+.insp-fillkind .ico {
+  width: 16px;
+  height: 11px;
+  border-radius: 2px;
+  box-shadow: inset 0 0 0 1px currentColor;
+}
+.insp-fillkind .ico--solid {
+  background: currentColor;
+  opacity: 0.8;
+}
+.insp-fillkind .ico--grad {
+  background: linear-gradient(90deg, transparent, currentColor);
+}
+.insp-fillblock + .insp-fillblock {
+  padding-top: 8px;
+  border-top: 1px dashed var(--hairline);
+}
+.insp-fillblock {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.insp-gradbar {
+  position: relative;
+  height: 24px;
+  margin: 6px 7px 2px;
+  border-radius: 4px;
+  cursor: copy;
+  background-image: conic-gradient(#ccc 25%, #fff 0 50%, #ccc 0 75%, #fff 0);
+  background-size: 8px 8px;
+}
+.insp-gradbar > .fill {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.1);
+}
+.insp-gradstop {
+  position: absolute;
+  top: -5px;
+  width: 14px;
+  height: 34px;
+  margin-left: -7px;
+  border-radius: 4px;
+  border: 2px solid #fff;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.4), 0 1px 3px rgba(0, 0, 0, 0.5);
+  cursor: grab;
+}
+.insp-gradstop.on {
+  border-color: var(--accent);
+}
+.insp-imgfill {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.insp-imgthumb {
+  width: 48px;
+  height: 48px;
+  border-radius: 4px;
+  background-size: cover;
+  background-position: center;
+  background-color: var(--control-bg);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.1);
+  flex-shrink: 0;
+}
+
+/* ---------------------------------------------------------------- token picker / lists */
+.insp-pop {
+  display: flex;
+  flex-direction: column;
+  width: 240px;
+  max-height: 360px;
+  padding: 4px;
+}
+.insp-pop__head {
+  display: flex;
+  align-items: center;
+  height: 32px;
+  padding: 0 4px 0 8px;
+  font-weight: 500;
+  border-bottom: 1px solid var(--hairline);
+  margin: -4px -4px 4px;
+}
+.insp-pop__list {
+  flex: 1;
+  overflow-y: auto;
+}
+.insp-listitem {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  height: 28px;
+  padding: 0 8px;
+  border-radius: 5px;
+  color: var(--text);
+  text-align: left;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.insp-listitem:hover,
+.insp-listitem.on {
+  background: var(--control-hover);
+}
+
+/* ---------------------------------------------------------------- fonts */
+.insp-fonts {
+  display: flex;
+  flex-direction: column;
+  width: 290px;
+  height: 460px;
+}
+.insp-fonts__search {
+  padding: 8px;
+}
+.insp-fonts__list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0 4px 4px;
+}
+.insp-fontitem {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  height: 35px;
+  padding: 0 8px;
+  border-radius: 5px;
+  font-size: 16px;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-align: left;
+}
+.insp-fontitem:hover {
+  background: var(--control-hover);
+}
+.insp-fontitem.on {
+  background: var(--row-selected-strong);
+}
+.insp-fonts__note {
+  padding: 6px 12px 8px;
+  color: var(--text-3);
+  font-size: 11px;
+}
+
+/* ---------------------------------------------------------------- formatting popover */
+.insp-fmt {
+  width: 290px;
+  display: flex;
+  flex-direction: column;
+}
+.insp-fmt__preview {
+  height: 116px;
+  margin: 8px;
+  display: flex;
+  align-items: center;
+  border-radius: var(--radius);
+  background: var(--control-bg);
+  color: var(--text-3);
+  font-size: 18px;
+  padding: 0 12px;
+  overflow: hidden;
+}
+.insp-fmt__row {
+  display: flex;
+  align-items: center;
+  height: 31px;
+  padding: 0 8px;
+}
+.insp-fmt__row > span:first-child {
+  flex: 1;
+  color: var(--text-2);
+}
+.insp-fmt__row .c-seg,
+.insp-fmt__row .c-select {
+  width: 154px;
+}
+.insp-fmt__row .c-seg__item {
+  flex: 1;
+}
+
+/* ---------------------------------------------------------------- export */
+.insp-exportrow {
+  display: grid;
+  grid-template-columns: 72px minmax(0, 1fr) 24px;
+  gap: 8px;
+  align-items: center;
+}
+
+/* ---------------------------------------------------------------- share */
+.insp-share {
+  display: flex;
+  flex-direction: column;
+  width: 240px;
+  padding: 12px;
+  gap: 8px;
+}
+.insp-share p {
+  color: var(--text-3);
+  line-height: 16px;
+}
+
+/* ---------------------------------------------------------------- Connect agent modal */
+.insp-agent {
+  display: flex;
+  min-height: 420px;
+}
+.insp-agent__list {
+  width: 134px;
+  padding: 6px;
+  border-right: 1px solid var(--hairline);
+  flex-shrink: 0;
+}
+.insp-agent__item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  height: 32px;
+  padding: 0 8px;
+  border-radius: 6px;
+  color: var(--text-2);
+  font-weight: 500;
+}
+.insp-agent__item:hover {
+  color: var(--text);
+}
+.insp-agent__item.on {
+  background: var(--row-selected-strong);
+  color: var(--text);
+}
+.insp-agent__main {
+  flex: 1;
+  min-width: 0;
+  padding: 20px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  overflow-y: auto;
+}
+.insp-step {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.insp-step__title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+  font-weight: 500;
+}
+.insp-step__check {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: #fff;
+  flex-shrink: 0;
+}
+.insp-step__check--todo {
+  background: transparent;
+  box-shadow: inset 0 0 0 1.5px var(--text-4);
+}
+.insp-step__body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-left: 30px;
+}
+.insp-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 14px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.04);
+  box-shadow: inset 0 0 0 1px var(--hairline);
+}
+.insp-code {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  padding: 8px 6px 8px 10px;
+  border-radius: 6px;
+  background: rgba(0, 0, 0, 0.25);
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  line-height: 16px;
+  color: var(--text);
+}
+.insp-code pre {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  white-space: pre-wrap;
+  word-break: break-all;
+  font: inherit;
+  user-select: text;
+}
+.insp-prompt {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  align-self: flex-start;
+  height: 30px;
+  padding: 0 12px;
+  border-radius: 8px;
+  box-shadow: inset 0 0 0 1px var(--hairline-strong);
+  color: var(--text);
+  font-weight: 500;
+}
+.insp-prompt:hover {
+  background: var(--control-hover);
+}
+.insp-status {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-3);
+}
+.insp-status i {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--agent-teal);
+}
+
+/* ---------------------------------------------------------------- panel metrics
+   fields/buttons 24px, rows 8px apart, section head 24px with 4px padding, body starts 7px below head. */
+.insp .c-section__head {
+  margin: 0;
+}
+.insp .c-section__body {
+  margin-top: 7px;
+}
+.insp .c-field,
+.insp .c-select,
+.insp .c-colorrow__field,
+.insp .c-btn,
+.insp .c-seg--md,
+.insp .insp-btnstrip,
+.insp .insp-btnstrip > * {
+  height: 24px !important;
+}
+.insp .c-check {
+  height: 24px;
+}
+.insp-span2 {
+  grid-column: span 2;
+}

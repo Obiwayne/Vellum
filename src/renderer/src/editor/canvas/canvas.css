@@ -1,0 +1,216 @@
+/* Canvas viewport + overlay (prefix cv-). */
+.cv-viewport {
+  position: relative;
+  flex: 1;
+  overflow: hidden;
+  outline: none;
+  touch-action: none;
+  user-select: none;
+}
+
+.cv-overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+  font-family: var(--font-ui);
+}
+
+.cv-outline {
+  position: absolute;
+  box-sizing: border-box;
+  border: 1px solid var(--accent);
+  pointer-events: none;
+}
+
+.cv-label {
+  position: absolute;
+  height: 16px;
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--text-3);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  pointer-events: auto;
+  cursor: default;
+  user-select: none;
+}
+.cv-label--active {
+  color: var(--accent);
+}
+.cv-label-input {
+  position: absolute;
+  height: 20px;
+  padding: 0 4px;
+  margin-left: -5px;
+  font: inherit;
+  font-size: 12px;
+  color: var(--text);
+  background: var(--bg-panel);
+  border: 1px solid var(--accent);
+  border-radius: 4px;
+  outline: none;
+  pointer-events: auto;
+}
+
+.cv-handle {
+  position: absolute;
+  width: 7px;
+  height: 7px;
+  box-sizing: border-box;
+  background: #fff;
+  border: 1px solid var(--accent);
+  pointer-events: auto;
+}
+.cv-edge {
+  position: absolute;
+  pointer-events: auto;
+}
+
+.cv-badge {
+  position: absolute;
+  transform: translateX(-50%);
+  padding: 1px 4px;
+  border-radius: 3px;
+  background: var(--accent);
+  color: #fff;
+  font-size: 11px;
+  line-height: 15px;
+  font-weight: 500;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+  pointer-events: none;
+}
+
+.cv-working {
+  position: absolute;
+  box-sizing: border-box;
+  border: 1px solid var(--agent-teal);
+  pointer-events: none;
+}
+.cv-working__tag {
+  position: absolute;
+  right: -1px;
+  top: -18px;
+  height: 16px;
+  padding: 0 5px;
+  border-radius: 3px 3px 0 3px;
+  background: var(--agent-teal);
+  color: #10231F;
+  font-size: 11px;
+  line-height: 16px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.cv-glow {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  box-shadow: var(--agent-glow);
+  z-index: 5;
+}
+
+.cv-guide {
+  position: absolute;
+  background: #FF3E6C;
+  pointer-events: none;
+}
+
+.cv-insert {
+  position: absolute;
+  background: var(--accent);
+  border-radius: 1px;
+  pointer-events: none;
+}
+
+.cv-ghost {
+  position: absolute;
+  box-sizing: border-box;
+  border: 1px dashed var(--accent);
+  background: oklch(0.6 0.15 258 / 0.12);
+  pointer-events: none;
+}
+
+.cv-draw {
+  position: absolute;
+  box-sizing: border-box;
+  outline: 1px solid var(--accent);
+  pointer-events: none;
+}
+
+.cv-marquee {
+  position: absolute;
+  box-sizing: border-box;
+  border: 1px solid var(--accent);
+  background: oklch(0.6 0.15 258 / 0.1);
+  pointer-events: none;
+}
+
+.cv-pen {
+  position: absolute;
+  inset: 0;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.cv-pixel-grid {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image: linear-gradient(to right, rgba(128, 128, 128, 0.25) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(128, 128, 128, 0.25) 1px, transparent 1px);
+}
+
+.cv-toast {
+  position: fixed;
+  left: 50%;
+  bottom: 24px;
+  transform: translate(-50%, 8px);
+  padding: 6px 12px;
+  border-radius: var(--radius-menu);
+  background: var(--bg-menu);
+  box-shadow: var(--menu-shadow);
+  color: var(--text);
+  font: 12px/16px var(--font-ui);
+  opacity: 0;
+  transition: opacity 0.15s, transform 0.15s;
+  pointer-events: none;
+  z-index: 1000;
+}
+.cv-toast--show {
+  opacity: 1;
+  transform: translate(-50%, 0);
+}
+
+/* Hide UI (".") — only the canvas remains */
+body.cv-hide-ui .ed {
+  display: flex;
+}
+body.cv-hide-ui .ed-left,
+body.cv-hide-ui .ed-toolbar,
+body.cv-hide-ui .ed-inspector {
+  display: none;
+}
+body.cv-hide-ui .ed-canvas {
+  flex: 1;
+}
+
+/* SVG dialog */
+.cv-svg-textarea {
+  width: 100%;
+  height: 220px;
+  resize: none;
+  box-sizing: border-box;
+  padding: 8px;
+  border: none;
+  border-radius: var(--radius);
+  background: var(--control-bg);
+  color: var(--text);
+  font: 12px/16px var(--font-mono);
+  outline: none;
+}
+.cv-svg-textarea:focus {
+  box-shadow: 0 0 0 1px var(--accent);
+}

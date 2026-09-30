@@ -1,0 +1,31 @@
+.ed {
+  flex: 1;
+  display: grid;
+  grid-template-columns: calc(var(--left-w) + 1px) calc(var(--toolbar-w) + 1px) minmax(0, 1fr) calc(var(--inspector-w) + 1px);
+  min-width: 0;
+  min-height: 0;
+  background: var(--bg-panel);
+}
+.ed-left,
+.ed-toolbar,
+.ed-inspector {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  background: var(--bg-panel);
+  overflow: hidden;
+}
+.ed-left,
+.ed-toolbar {
+  border-right: 1px solid var(--hairline);
+}
+.ed-inspector {
+  border-left: 1px solid var(--hairline);
+}
+.ed-canvas {
+  position: relative;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+}
