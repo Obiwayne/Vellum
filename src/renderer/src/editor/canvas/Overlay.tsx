@@ -4,7 +4,7 @@
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from 'react'
 import { activePage, useStore } from '../../model/store'
 import type { Camera, CNode, WorldRect } from '../../model/types'
-import { LAYOUT_EVENT, measure, toScreen, union } from './geometry'
+import { LAYOUT_EVENT, measure, nodeEl, toScreen, union } from './geometry'
 import { isFlowLayout } from '../../model/ops'
 import { readFills } from '../inspector/fills'
 import { useGradientEdit } from './gradientEdit'
@@ -85,7 +85,17 @@ const HANDLE_CURSOR: Record<Handle, string> = {
 }
 
 /** Rotated or flipped nodes get no padding/gap/gradient handles (the overlay is axis-aligned). */
-const untransformed = (n: CNode): boolean => !parseFloat(String(n.style.rotate ?? 0)) && !n.style.scale && !n.style.transform
+/** No rotation/scale/skew in effect (identity or translate-only transforms, e.g. `rotate(0deg)`, are fine). */
+function untransformed(n: CNode): boolean {
+  if (parseFloat(String(n.style.rotate ?? 0))) return false
+  if (n.style.scale !== undefined && String(n.style.scale).trim() !== '1' && String(n.style.scale).trim() !== 'none') return false
+  if (!n.style.transform || n.style.transform === 'none') return true
+  const el = nodeEl(n.id)
+  const m = el ? getComputedStyle(el).transform : 'unknown'
+  if (m === 'none') return true
+  const v = /^matrix\(([^)]+)\)$/.exec(m)?.[1].split(',').map(Number)
+  return Boolean(v && v.length === 6 && Math.abs(v[0] - 1) < 1e-6 && Math.abs(v[1]) < 1e-6 && Math.abs(v[2]) < 1e-6 && Math.abs(v[3] - 1) < 1e-6)
+}
 
 export function Overlay({
   docId,
