@@ -31,6 +31,18 @@ The canvas code lives in `src/renderer/src/editor/canvas/`. The toolbar is in `e
 - **Image crop** (`crop.ts`): with one image selected, Ctrl+drag a handle to crop: the box changes, the picture stays put, and the box can't grow past the image. CSS: `objectViewBox: inset(t% r% b% l%)` (visible part, in % of the natural size) + `objectFit: cover` (or `fill` for a distorted image) + `objectPosition` at the crop's spot, a fallback for browsers without `object-view-box` (Chromium has it; others show the image cover-fitted around that spot). A normal resize afterwards scales the cropped picture. Inspector: Image → Reset crop. One drag is one undo step.
 - **Constraints** (`ops.ts` "constraints", inspector `ConstraintsSection.tsx`): positioned children of a frame get Left / Right / Left & right / Center / Scale (and Top / Bottom / …). Plain CSS: Right = `left:auto; right`, Left & right = `left + right; width:auto`, Center = `left: calc(50% + Npx)`, Scale = `left` and `width` in %. Choosing one converts from the measured box, so nothing moves. Move, nudge, resize and the X/Y/W/H fields detach the node to a px box (`detachAnchors`), edit it and write the constraint back (`restoreConstraints`, or `editPlain` for one-shot edits). Measurements use bounding rects, so rotated children convert approximately.
 - **Layers under the pointer**: Ctrl+right-click lists every layer under the pointer (covered ones too), deepest first, indented by depth with the parent's name on the right; choosing one selects it (`menus.ts` `layersMenu`).
+- **Padding and gap handles** (`SpacingHandles.tsx`)
+  - Shown for one selected flex/grid frame with the Move tool, while the pointer is over the frame. Hovering a padding band hatches the padding; hovering a gap tints the gaps. Each side and each gap has a small pink handle.
+  - Drag a padding handle to change that side (whole px, min 0). Shift sets all sides, Alt sets the opposite side too. It writes the `padding` shorthand through `writeBox`.
+  - Drag a gap handle to change the gap (min 0). Flex changes the main-axis gap (`gap`, or the `columnGap`/`rowGap` longhand when the frame already uses one); dragging an "Auto" (space-between) gap starts from its measured size and switches back to packed. Grid: gaps between columns change `columnGap`, gaps between rows change `rowGap`, and `gap` is kept when they are equal (as the Grid section does); Shift sets both.
+  - Double-click a flex gap handle to toggle the "Auto" gap (`justifyContent: space-between`).
+  - Values are read from the rendered DOM (computed padding, gaps and grid tracks), so tokens and fit sizes work. A pink badge shows the value while dragging.
+- **Gradient handles** (`GradientHandles.tsx`, target in `gradientEdit.ts`)
+  - Turned on from the Fill section: the crosshair button on a gradient fill ("Edit on canvas"), or pressing one of its stops in the gradient bar. They stay on until the selection changes or the button is toggled off.
+  - Linear: the CSS gradient line through the centre, with a knob beyond each end. Drag a knob to rotate (Shift snaps to 15°). Drag a stop dot along the line to move it (0–100%). Click the line to add a stop there (and keep dragging it).
+  - Radial: drag the centre to set `at X% Y%` (Shift snaps to 5%). The dashed shape is the ending shape; drag the right knob (and the bottom knob for ellipses) to set the radius, which writes `circle Rpx` or `ellipse RXpx RYpx` (Shift keeps it a circle). Stops sit along the horizontal radius.
+  - Everything is read and written with `fills.ts`, which now keeps a radial gradient's shape/size and `at` position.
+- Padding, gap and gradient handles are hidden during other gestures, while editing text, for locked, rotated or flipped nodes, and when the node is under 24px on screen. Each handle drag is one undo step, and Esc cancels it.
 - **Tools**
   - Frame (F), Rectangle (R) and Shaders (S) are drag-to-create; S makes a gradient "Shader" frame. A click without a drag creates a 100×100 node. The new node becomes a child of the frame under the pointer, and is appended when that frame is flex.
   - Text (T): click, then type. Esc or clicking away commits, and an empty new text node is removed.
@@ -87,7 +99,9 @@ Clipboard behaviour:
 - Insert: `createImageFromFile`, `insertImage(docId, src, name)`, `insertSvgMarkup(docId, markup)`
 - UI: `toggleHideUI()`
 
-`editor/canvas/geometry.ts`: `measure(id)` returns the DOM-measured world rect, `clientToWorld(x, y)`, `nodeEl(id)`, and `notifyLayout()`, which tells the overlay to re-measure.
+`editor/canvas/geometry.ts`: `measure(id)` returns the DOM-measured world rect, `clientToWorld(x, y)`, `toScreen(rect, camera)`, `nodeEl(id)`, and `notifyLayout()`, which tells the overlay to re-measure.
+
+`editor/canvas/gradientEdit.ts`: `useGradientEdit` / `setGradientTarget({docId, nodeId, index} | null)` picks the gradient fill shown with on-canvas handles.
 
 `editor/toolbar/Toolbar.tsx`: `TOOL_GROUPS`.
 
@@ -99,7 +113,8 @@ The zoom menu can toggle these through `setPref`.
 
 ## Known gaps
 - Rotation isn't editable, and the overlay uses axis-aligned bounds.
-- Edge midpoints have no padding or gap handles.
+- Grid gap handles assume the tracks start at the content edge (`justifyContent` normal/start). Flex gap handles only cover the main axis; wrapped lines have no cross-axis gap handle.
+- Gradient handles: stop positions are limited to 0–100%, stops written in px (not %) aren't understood, radial positions other than 1–2 simple values (e.g. `calc()`, 4-value offsets) show no handles, and `repeating-` gradients lose their prefix when edited (as in the Fill section).
 - Snapping only uses the siblings and parent box, so it doesn't snap to spacing or distances.
 - Marquee selection starting inside an artboard behaves like a drag on the artboard.
 - The pen makes straight segments only; there are no béziers or point editing.

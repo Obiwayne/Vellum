@@ -1,5 +1,6 @@
 // Infinite canvas: renders the active page as real DOM inside a camera-transformed world, and
-// handles pointer interaction (select, marquee, move/reorder, resize, draw, text, pen, pan/zoom).
+// handles pointer interaction (select, marquee, move/reorder, resize, draw, text, pen, pan/zoom,
+// padding/gap and gradient handles).
 import { useCallback, useEffect, useRef, useState, type CSSProperties } from 'react'
 import { activePage, getStore, useStore } from '../../model/store'
 import { history } from '../../model/history'
@@ -23,6 +24,9 @@ import { CommentsLayer } from '../comments/CommentsLayer'
 import { openThread, useCommentUi } from '../comments/state'
 import { LEFT_TAB_EVENT } from '../left/LeftPanel'
 import { CANVAS_CONTENT_DEFAULTS } from './contentDefaults'
+import { spacingGeometry, spacingKey, spacingPatch, type SpacingGeo, type SpacingTarget } from './SpacingHandles'
+import { addStopAt, dragGradient, gradientBox, type Grad, type GradPart } from './GradientHandles'
+import { readFills, writeFills, type Fill } from '../inspector/fills'
 
 /** Inherited defaults for canvas content (see contentDefaults.ts). */
 export { CANVAS_CONTENT_DEFAULTS }
@@ -174,6 +178,31 @@ type Gesture =
       crop: CropStart | null
     }
   | { kind: 'draw'; tool: 'frame' | 'rect' | 'shader'; startClient: Pt; start: Pt; parent: string; rect: WorldRect | null }
+  | {
+      kind: 'spacing'
+      id: string
+      target: SpacingTarget
+      geo: SpacingGeo
+      style: Record<string, unknown>
+      startWorld: Pt
+      changed: boolean
+    }
+  | {
+      kind: 'gradient'
+      id: string
+      index: number
+      part: GradPart
+      /** all fill layers at drag start; `fill` (layer `index`) is the one being edited */
+      fills: Fill[]
+      fill: Grad
+      box: WorldRect
+      startWorld: Pt
+      changed: boolean
+    }
+
+/** Gestures that hold an open history transaction. */
+const inHistory = (g: Gesture | null): boolean =>
+  Boolean(g && (g.kind === 'resize' || g.kind === 'spacing' || g.kind === 'gradient' || (g.kind === 'move' && g.started)))
 
 export function CanvasView({ docId }: { docId: string }): JSX.Element | null {
   const doc = useStore((s) => s.docs[docId])
@@ -213,8 +242,7 @@ export function CanvasView({ docId }: { docId: string }): JSX.Element | null {
       window.removeEventListener('pointermove', l.move)
       window.removeEventListener('pointerup', l.up)
       window.removeEventListener('pointercancel', l.cancel)
-      const g = gesture.current
-      if (g && (g.kind === 'resize' || (g.kind === 'move' && g.started))) history.end(docId)
+      if (inHistory(gesture.current)) history.end(docId)
       gesture.current = null
       ops.setWorldRectResolver(null)
       registerWorld(docId, null)
@@ -395,9 +423,10 @@ export function CanvasView({ docId }: { docId: string }): JSX.Element | null {
     gesture.current = null
     endListeners()
     setPanning(false)
-    if (g && (g.kind === 'move' || g.kind === 'resize') && (g.kind === 'resize' || g.started)) {
+    if (inHistory(g)) {
       history.end(docId)
-      getStore().undo(docId)
+      // handle drags that changed nothing have no step of their own to undo
+      if (!g || !(g.kind === 'spacing' || g.kind === 'gradient') || g.changed) getStore().undo(docId)
     }
     setTransient({})
   }
@@ -734,7 +763,30 @@ export function CanvasView({ docId }: { docId: string }): JSX.Element | null {
 
     if (g.kind === 'resize') {
       doResize(g, p, e)
+      return
     }
+
+    if (g.kind === 'spacing') {
+      const d = { x: p.x - g.startWorld.x, y: p.y - g.startWorld.y }
+      const { patch, value } = spacingPatch(g.geo, g.target, d, { shift: e.shiftKey, alt: e.altKey }, g.style)
+      s.updateStyles(docId, [g.id], patch)
+      g.changed = true
+      setTransient({ gesturing: true, handleDrag: { kind: 'spacing', key: spacingKey(g.target), label: String(value), at: p } })
+      return
+    }
+
+    if (g.kind === 'gradient') {
+      const r = dragGradient(g.fill, g.part, g.box, p, g.startWorld, e.shiftKey)
+      writeGradient(g, r.fill)
+      setTransient({ gesturing: true, handleDrag: { kind: 'gradient', key: g.part.kind, label: r.label, at: p } })
+    }
+  }
+
+  function writeGradient(g: Extract<Gesture, { kind: 'gradient' }>, fill: Grad): void {
+    const next = [...g.fills]
+    next[g.index] = fill
+    getStore().updateStyles(docId, [g.id], writeFills(next))
+    g.changed = true
   }
 
   function doResize(g: Extract<Gesture, { kind: 'resize' }>, p: Pt, e: PointerEvent): void {
@@ -922,9 +974,10 @@ export function CanvasView({ docId }: { docId: string }): JSX.Element | null {
       return
     }
 
-    if (g.kind === 'resize') {
+    if (g.kind === 'resize' || g.kind === 'spacing' || g.kind === 'gradient') {
       try {
-        if (g.constraints.size) s.mutate(docId, 'Resize', (dd) => g.constraints.forEach((c, id) => ops.restoreConstraints(dd, id, c)))
+        if (g.kind === 'resize' && g.constraints.size)
+          s.mutate(docId, 'Resize', (dd) => g.constraints.forEach((c, id) => ops.restoreConstraints(dd, id, c)))
       } finally {
         history.end(docId)
       }
@@ -1007,6 +1060,61 @@ export function CanvasView({ docId }: { docId: string }): JSX.Element | null {
       constraints,
       crop
     }
+    beginListeners()
+  }
+
+  function onSpacingDown(e: React.PointerEvent, id: string, target: SpacingTarget): void {
+    if (e.button !== 0 || gesture.current) return
+    e.stopPropagation()
+    e.preventDefault()
+    const s = getStore()
+    const d = s.docs[docId]
+    const n = d?.nodes[id]
+    const geo = d ? spacingGeometry(d, docId, id) : null
+    if (!n || n.locked || !geo) return
+    const startWorld = clientToWorld(e.clientX, e.clientY, docId)
+    const { value } = spacingPatch(geo, target, { x: 0, y: 0 }, { shift: false, alt: false }, n.style)
+    history.begin(docId, target.kind === 'pad' ? 'Padding' : 'Gap')
+    gesture.current = { kind: 'spacing', id, target, geo, style: { ...n.style }, startWorld, changed: false }
+    setTransient({ gesturing: true, handleDrag: { kind: 'spacing', key: spacingKey(target), label: String(value), at: startWorld } })
+    beginListeners()
+  }
+
+  /** Double-click a flex gap handle: toggle the "Auto" gap (space-between), as in the Flex section. */
+  function onSpacingDouble(id: string, target: SpacingTarget): void {
+    const s = getStore()
+    const n = s.docs[docId]?.nodes[id]
+    if (!n || n.locked || target.kind !== 'gap' || ops.isGrid(n)) return
+    s.updateStyles(docId, [id], { justifyContent: n.style.justifyContent === 'space-between' ? 'start' : 'space-between' })
+  }
+
+  function onGradientDown(e: React.PointerEvent, id: string, index: number, part: GradPart): void {
+    if (e.button !== 0 || gesture.current) return
+    e.stopPropagation()
+    e.preventDefault()
+    const s = getStore()
+    const n = s.docs[docId]?.nodes[id]
+    const box = gradientBox(docId, id)
+    if (!n || n.locked || !box) return
+    const fills = readFills(n.style)
+    const f = fills[index]
+    if (!f || f.kind !== 'gradient') return
+    const startWorld = clientToWorld(e.clientX, e.clientY, docId)
+    history.begin(docId, 'Edit gradient')
+    const g: Extract<Gesture, { kind: 'gradient' }> = { kind: 'gradient', id, index, part, fills, fill: f, box, startWorld, changed: false }
+    if (part.kind === 'line') {
+      // clicking the line adds a stop there, and keeps dragging it
+      const added = addStopAt(f, box, startWorld)
+      if (!added) {
+        history.end(docId)
+        return
+      }
+      g.fill = added.fill
+      g.part = { kind: 'stop', i: added.i }
+      writeGradient(g, added.fill)
+    }
+    gesture.current = g
+    setTransient({ gesturing: true, handleDrag: { kind: 'gradient', key: g.part.kind, label: '', at: startWorld } })
     beginListeners()
   }
 
@@ -1163,7 +1271,15 @@ export function CanvasView({ docId }: { docId: string }): JSX.Element | null {
           }}
         />
       )}
-      <Overlay docId={docId} transient={transient} onHandleDown={onHandleDown} onLabelDown={onLabelDown} />
+      <Overlay
+        docId={docId}
+        transient={transient}
+        onHandleDown={onHandleDown}
+        onLabelDown={onLabelDown}
+        onSpacingDown={onSpacingDown}
+        onSpacingDouble={onSpacingDouble}
+        onGradientDown={onGradientDown}
+      />
       <CommentsLayer docId={docId} />
       {ctx.element}
     </div>

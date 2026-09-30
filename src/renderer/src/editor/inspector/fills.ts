@@ -10,7 +10,16 @@ export interface Stop {
 }
 export type Fill =
   | { kind: 'solid'; color: string }
-  | { kind: 'gradient'; type: 'linear' | 'radial'; angle: number; stops: Stop[] }
+  | {
+      kind: 'gradient'
+      type: 'linear' | 'radial'
+      angle: number
+      stops: Stop[]
+      /** radial only: ending shape + size as written ('' = CSS default ellipse; unset = 'circle') */
+      shape?: string
+      /** radial only: the text after `at` ('20% 25%', 'center') */
+      at?: string
+    }
   | { kind: 'image'; url: string; size: string }
 
 function parseStops(parts: string[]): Stop[] {
@@ -34,6 +43,8 @@ export function parseLayer(layer: string, size = 'auto'): Fill | null {
   if (m) {
     const args = splitTop(m[3])
     let angle = 180
+    let shape: string | undefined
+    let at: string | undefined
     if (m[2] === 'linear' && args.length) {
       const a = args[0]
       const deg = /^(-?\d*\.?\d+)deg$/.exec(a)
@@ -54,14 +65,20 @@ export function parseLayer(layer: string, size = 'auto'): Fill | null {
         angle = TO[a]
         args.shift()
       }
-    } else if (m[2] === 'radial' && args.length && /(circle|ellipse|at |closest|farthest)/.test(args[0])) {
-      args.shift()
+    } else if (m[2] === 'radial' && args.length && /(circle|ellipse|(^|\s)at\s|closest|farthest)/.test(args[0])) {
+      const a = args.shift() ?? ''
+      const i = a.search(/(^|\s)at\s/)
+      shape = (i < 0 ? a : a.slice(0, i)).trim()
+      if (i >= 0) at = a.slice(i).trim().replace(/^at\s+/, '')
     }
     const stops = parseStops(args)
     // a flat 2-stop gradient of the same colour is a stacked solid fill
     if (m[2] === 'linear' && stops.length === 2 && stops[0].color === stops[1].color)
       return { kind: 'solid', color: stops[0].color }
-    return { kind: 'gradient', type: m[2] as 'linear' | 'radial', angle, stops }
+    const g: Extract<Fill, { kind: 'gradient' }> = { kind: 'gradient', type: m[2] as 'linear' | 'radial', angle, stops }
+    if (shape !== undefined) g.shape = shape
+    if (at !== undefined) g.at = at
+    return g
   }
   const u = /^url\((.*)\)$/s.exec(l)
   if (u) return { kind: 'image', url: u[1].replace(/^["']|["']$/g, ''), size }
@@ -95,7 +112,9 @@ export function readFills(style: Style, text = false): Fill[] {
 
 export function gradientCss(f: Extract<Fill, { kind: 'gradient' }>): string {
   const stops = [...f.stops].sort((a, b) => a.pos - b.pos).map((s) => `${s.color} ${Math.round(s.pos * 10) / 10}%`)
-  return f.type === 'linear' ? `linear-gradient(${f.angle}deg, ${stops.join(', ')})` : `radial-gradient(circle, ${stops.join(', ')})`
+  if (f.type === 'linear') return `linear-gradient(${f.angle}deg, ${stops.join(', ')})`
+  const head = [f.shape ?? 'circle', f.at ? `at ${f.at}` : ''].filter(Boolean).join(' ')
+  return `radial-gradient(${head ? head + ', ' : ''}${stops.join(', ')})`
 }
 
 export function layerCss(f: Fill): string {

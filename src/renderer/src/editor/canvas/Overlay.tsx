@@ -1,9 +1,15 @@
 // Screen-space overlay above the world: frame labels, hover/selection outlines, handles, size
-// badge, agent working outlines + tag, snapping guides, marquee, drawing previews.
+// badge, agent working outlines + tag, snapping guides, marquee, drawing previews, padding/gap and
+// gradient handles.
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from 'react'
 import { activePage, useStore } from '../../model/store'
 import type { Camera, CNode, WorldRect } from '../../model/types'
-import { LAYOUT_EVENT, measure, union } from './geometry'
+import { LAYOUT_EVENT, measure, toScreen, union } from './geometry'
+import { isFlowLayout } from '../../model/ops'
+import { readFills } from '../inspector/fills'
+import { useGradientEdit } from './gradientEdit'
+import { GradientHandles, gradientBox, type Grad, type GradPart } from './GradientHandles'
+import { MIN_HANDLE_FRAME, SpacingHandles, type SpacingTarget } from './SpacingHandles'
 
 export type Handle = 'nw' | 'n' | 'ne' | 'e' | 'se' | 's' | 'sw' | 'w'
 
@@ -23,6 +29,8 @@ export interface Transient {
   pen?: { points: Array<{ x: number; y: number }>; cursor?: { x: number; y: number } }
   dropTarget?: string
   gesturing?: boolean
+  /** padding/gap or gradient handle being dragged: which one, and the value badge at the pointer (world) */
+  handleDrag?: { kind: 'spacing' | 'gradient'; key: string; label: string; at: { x: number; y: number } }
 }
 
 interface Props {
@@ -30,19 +38,15 @@ interface Props {
   transient: Transient
   onHandleDown: (e: React.PointerEvent, handle: Handle) => void
   onLabelDown: (e: React.PointerEvent, id: string) => void
+  onSpacingDown: (e: React.PointerEvent, id: string, target: SpacingTarget) => void
+  onSpacingDouble: (id: string, target: SpacingTarget) => void
+  onGradientDown: (e: React.PointerEvent, id: string, index: number, part: GradPart) => void
 }
 
 export const SHADER_COLOR = '#1E1B4B'
 export const SHADER_IMAGE =
   'radial-gradient(at 20% 25%, #FF7A59 0px, transparent 55%), radial-gradient(at 80% 20%, #7B61FF 0px, transparent 55%), radial-gradient(at 70% 85%, #00C2A8 0px, transparent 55%), radial-gradient(at 15% 90%, #FFC53D 0px, transparent 50%)'
 const SHADER_BACKGROUND = `${SHADER_IMAGE}, ${SHADER_COLOR}`
-
-const toScreen = (r: WorldRect, cam: Camera): WorldRect => ({
-  x: r.x * cam.zoom + cam.x,
-  y: r.y * cam.zoom + cam.y,
-  width: r.width * cam.zoom,
-  height: r.height * cam.zoom
-})
 
 const box = (r: WorldRect, extra: CSSProperties = {}): CSSProperties => ({
   position: 'absolute',
@@ -80,7 +84,18 @@ const HANDLE_CURSOR: Record<Handle, string> = {
   w: 'ew-resize'
 }
 
-export function Overlay({ docId, transient, onHandleDown, onLabelDown }: Props): JSX.Element | null {
+/** Rotated or flipped nodes get no padding/gap/gradient handles (the overlay is axis-aligned). */
+const untransformed = (n: CNode): boolean => !parseFloat(String(n.style.rotate ?? 0)) && !n.style.scale && !n.style.transform
+
+export function Overlay({
+  docId,
+  transient,
+  onHandleDown,
+  onLabelDown,
+  onSpacingDown,
+  onSpacingDouble,
+  onGradientDown
+}: Props): JSX.Element | null {
   const doc = useStore((s) => s.docs[docId])
   const ed = useStore((s) => s.editors[docId])
   const page = useStore((s) => activePage(s, docId))
@@ -88,6 +103,8 @@ export function Overlay({ docId, transient, onHandleDown, onLabelDown }: Props):
   const [tick, setTick] = useState(0)
   const [rects, setRects] = useState<Map<string, WorldRect>>(new Map())
   const [renaming, setRenaming] = useState<string | null>(null)
+  const root = useRef<HTMLDivElement | null>(null)
+  const gradTarget = useGradientEdit((s) => s.target)
 
   useEffect(() => {
     const on = (): void => setTick((t) => t + 1)
@@ -136,8 +153,25 @@ export function Overlay({ docId, transient, onHandleDown, onLabelDown }: Props):
     selScreen && !editing && ed.tool === 'move' && !transient.gesturing && selNodes.every((n) => !n.locked)
   const hoverScreen = hovered && !selection.includes(hovered) && !transient.gesturing ? sr(hovered) : null
 
+  // padding/gap and gradient handles: one unlocked, untransformed node, Move tool, no other gesture
+  const drag = transient.handleDrag
+  const single = selNodes.length === 1 ? selNodes[0] : null
+  const handleNode =
+    single && !editing && ed.tool === 'move' && !single.locked && untransformed(single) && (!transient.gesturing || drag) ? single : null
+  let grad: { fill: Grad; box: WorldRect; index: number } | null = null
+  if (handleNode && gradTarget && gradTarget.docId === docId && gradTarget.nodeId === handleNode.id && drag?.kind !== 'spacing') {
+    const f = handleNode.type === 'text' ? undefined : readFills(handleNode.style)[gradTarget.index]
+    const b = f?.kind === 'gradient' ? gradientBox(docId, handleNode.id) : null
+    if (f?.kind === 'gradient' && b && b.width * cam.zoom >= MIN_HANDLE_FRAME && b.height * cam.zoom >= MIN_HANDLE_FRAME)
+      grad = { fill: f, box: b, index: gradTarget.index }
+  }
+  const spacingId =
+    handleNode && !grad && handleNode.type === 'frame' && isFlowLayout(handleNode.style) && drag?.kind !== 'gradient'
+      ? handleNode.id
+      : null
+
   return (
-    <div className="cv-overlay">
+    <div ref={root} className="cv-overlay">
       {/* frame labels */}
       {topLevel.map((id) => {
         const n = doc.nodes[id]
@@ -217,6 +251,40 @@ export function Overlay({ docId, transient, onHandleDown, onLabelDown }: Props):
       {selScreen && !editing && selWorld && (
         <div className="cv-badge" style={{ left: selScreen.x + selScreen.width / 2, top: selScreen.y + selScreen.height + 8 }}>
           {sizeBadgeText(selNodes, selWorld)}
+        </div>
+      )}
+
+      {/* padding + gap handles */}
+      {spacingId && (
+        <SpacingHandles
+          doc={doc}
+          docId={docId}
+          id={spacingId}
+          cam={cam}
+          root={root.current}
+          active={drag?.kind === 'spacing' ? drag.key : undefined}
+          onDown={(e, t) => onSpacingDown(e, spacingId, t)}
+          onDouble={(t) => onSpacingDouble(spacingId, t)}
+        />
+      )}
+
+      {/* gradient handles */}
+      {grad && handleNode && (
+        <GradientHandles
+          fill={grad.fill}
+          box={grad.box}
+          cam={cam}
+          onDown={(e, part) => grad && onGradientDown(e, handleNode.id, grad.index, part)}
+        />
+      )}
+
+      {/* value badge while dragging a padding/gap/gradient handle */}
+      {drag && drag.label && (
+        <div
+          className={'cv-badge' + (drag.kind === 'spacing' ? ' cv-badge--spacing' : '')}
+          style={{ left: drag.at.x * cam.zoom + cam.x, top: drag.at.y * cam.zoom + cam.y + 16 }}
+        >
+          {drag.label}
         </div>
       )}
 
