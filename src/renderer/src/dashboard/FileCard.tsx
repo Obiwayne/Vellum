@@ -61,6 +61,22 @@ export function fileMenu(doc: Doc, actions: { rename: () => void; askDelete: () 
   ]
 }
 
+/** Menu for a multi-selection. The Scratchpad is skipped by Move, Archive and Delete. */
+export function filesMenu(docs: Doc[], actions: { askDelete: (docs: Doc[]) => void }): MenuEntry[] {
+  const s = getStore()
+  const safe = docs.filter((d) => !d.scratchpad)
+  const allArchived = safe.length > 0 && safe.every((d) => d.archived)
+  return [
+    { label: `Open ${docs.length} files`, onSelect: () => docs.forEach((d) => s.openDoc(d.id)) },
+    { type: 'separator' },
+    { label: 'Duplicate', onSelect: () => docs.forEach((d) => duplicateDoc(d.id)) },
+    moveToFolderMenu(docs),
+    { label: allArchived ? 'Unarchive' : 'Archive', disabled: !safe.length, onSelect: () => safe.forEach((d) => s.archiveDoc(d.id, !allArchived)) },
+    { type: 'separator' },
+    { label: `Delete ${safe.length} file${safe.length === 1 ? '' : 's'}…`, danger: true, disabled: !safe.length, onSelect: () => actions.askDelete(safe) }
+  ]
+}
+
 /** Copy a doc (all pages, nodes, tokens) into a new file without opening it. */
 export function duplicateDoc(id: string): string | null {
   const s = getStore()
@@ -85,9 +101,9 @@ export function duplicateDoc(id: string): string | null {
   return newId
 }
 
-/** Start dragging a file onto a folder. */
-function dragFile(e: React.DragEvent, doc: Doc): void {
-  e.dataTransfer.setData(DND_FILE, doc.id)
+/** Start dragging a file (or every selected file) onto a folder. */
+function dragFile(e: React.DragEvent, ids: string[]): void {
+  e.dataTransfer.setData(DND_FILE, ids.join('\n'))
   e.dataTransfer.effectAllowed = 'move'
 }
 
@@ -95,20 +111,39 @@ interface CardProps {
   doc: Doc
   now: number
   onMenu: (e: React.MouseEvent, doc: Doc, rename: () => void) => void
+  selected?: boolean
+  /** Ctrl/Shift-click: returns true when the click was taken as a selection change */
+  onPick?: (e: React.MouseEvent, doc: Doc) => boolean
+  /** ids to drag when this file is dragged (the selection when it includes this file) */
+  dragIds?: (doc: Doc) => string[]
 }
 
-export function FileCard({ doc, now, onMenu }: CardProps): JSX.Element {
+/** Shared click / drag / key handlers for cards and rows (the context menu stays per component). */
+function itemProps(p: CardProps, renaming: boolean): React.HTMLAttributes<HTMLDivElement> & { draggable: boolean } {
+  const { doc } = p
+  return {
+    tabIndex: 0,
+    draggable: !renaming && !doc.scratchpad,
+    onDragStart: (e) => dragFile(e, p.dragIds?.(doc) ?? [doc.id]),
+    onClick: (e) => {
+      if (renaming || p.onPick?.(e, doc)) return
+      getStore().openDoc(doc.id)
+    },
+    onKeyDown: (e) => {
+      if (e.key === 'Enter' && !renaming) getStore().openDoc(doc.id)
+    }
+  }
+}
+
+export function FileCard(props: CardProps): JSX.Element {
+  const { doc, now, onMenu } = props
   const [renaming, setRenaming] = useState(false)
   const profile = useCurrentProfile()
   const rename = (): void => setRenaming(true)
   return (
     <div
-      className="db-card"
-      tabIndex={0}
-      draggable={!renaming && !doc.scratchpad}
-      onDragStart={(e) => dragFile(e, doc)}
-      onClick={() => !renaming && getStore().openDoc(doc.id)}
-      onKeyDown={(e) => e.key === 'Enter' && !renaming && getStore().openDoc(doc.id)}
+      className={['db-card', props.selected && 'db-card--selected'].filter(Boolean).join(' ')}
+      {...itemProps(props, renaming)}
       onContextMenu={(e) => onMenu(e, doc, rename)}
     >
       <div className="db-card__head">
@@ -169,17 +204,14 @@ export function FileCard({ doc, now, onMenu }: CardProps): JSX.Element {
   )
 }
 
-export function FileRow({ doc, now, onMenu }: CardProps): JSX.Element {
+export function FileRow(props: CardProps): JSX.Element {
+  const { doc, now, onMenu } = props
   const [renaming, setRenaming] = useState(false)
   const rename = (): void => setRenaming(true)
   return (
     <div
-      className="db-row"
-      tabIndex={0}
-      draggable={!renaming && !doc.scratchpad}
-      onDragStart={(e) => dragFile(e, doc)}
-      onClick={() => !renaming && getStore().openDoc(doc.id)}
-      onKeyDown={(e) => e.key === 'Enter' && !renaming && getStore().openDoc(doc.id)}
+      className={['db-row', props.selected && 'db-row--selected'].filter(Boolean).join(' ')}
+      {...itemProps(props, renaming)}
       onContextMenu={(e) => onMenu(e, doc, rename)}
     >
       <File size={14} className="db-row__icon" />

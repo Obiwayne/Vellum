@@ -721,3 +721,74 @@ button.db-account__btn:hover {
 .db-crumbs > .db-crumb:first-child {
   padding-left: 0;
 }
+
+/* ---------------------------------------------------------------- multi-select */
+.db-card--selected,
+.db-card--selected:hover,
+.db-card--selected:focus-visible {
+  box-shadow: 0 0 0 2px var(--accent);
+}
+.db-row--selected,
+.db-row--selected:hover,
+.db-row--selected:focus-visible {
+  background: var(--accent-soft);
+}
+.db-empty__cta {
+  display: flex;
+  justify-content: center;
+  margin-top: 16px;
+}
+/* action bar floating at the bottom of the main area (right of the sidebar) */
+.db-selbar-wrap {
+  position: fixed;
+  left: var(--left-w);
+  right: 0;
+  bottom: 24px;
+  display: flex;
+  justify-content: center;
+  pointer-events: none;
+  z-index: 5;
+}
+.db-selbar {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  height: 36px;
+  padding: 0 4px 0 12px;
+  border-radius: var(--radius-menu);
+  background: var(--bg-menu);
+  box-shadow: var(--menu-shadow);
+  pointer-events: auto;
+}
+.db-selbar__count {
+  margin-right: 8px;
+  font-weight: var(--weight-medium);
+  color: var(--text);
+}
+.db-selbar__btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 28px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: var(--radius);
+  background: none;
+  color: var(--text-2);
+  font: inherit;
+}
+.db-selbar__btn:hover:not(:disabled) {
+  background: var(--row-selected);
+  color: var(--text);
+}
+.db-selbar__btn:disabled {
+  opacity: 0.4;
+}
+.db-selbar__btn--danger:hover:not(:disabled) {
+  color: var(--danger);
+}
+.db-selbar__close {
+  width: 28px;
+  padding: 0;
+  justify-content: center;
+}

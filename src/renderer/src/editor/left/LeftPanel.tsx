@@ -23,6 +23,36 @@ function FileGlyph(): JSX.Element {
   )
 }
 
+/** Sidebar width bounds (pref `leftWidth`); double-clicking the edge resets to the default. */
+export const LEFT_W_DEFAULT = 240
+const LEFT_W_MIN = 200
+const LEFT_W_MAX = 480
+export const leftWidth = (v: unknown): number =>
+  typeof v === 'number' && Number.isFinite(v) ? Math.round(Math.min(LEFT_W_MAX, Math.max(LEFT_W_MIN, v))) : LEFT_W_DEFAULT
+
+/** Min height of the Pages list and of the Layers tree below it (pref `pagesHeight`). */
+const PAGES_H_MIN = 56
+const LAYERS_H_MIN = 80
+
+/** Pointer drag helper: calls `onMove` with the delta from the press point until release. */
+function dragFrom(e: React.PointerEvent, cursor: string, onMove: (dx: number, dy: number) => void): void {
+  if (e.button !== 0) return
+  e.preventDefault()
+  const x0 = e.clientX
+  const y0 = e.clientY
+  document.body.style.cursor = cursor
+  document.body.classList.add('lp-resizing')
+  const move = (ev: PointerEvent): void => onMove(ev.clientX - x0, ev.clientY - y0)
+  const up = (): void => {
+    window.removeEventListener('pointermove', move)
+    window.removeEventListener('pointerup', up)
+    document.body.style.cursor = ''
+    document.body.classList.remove('lp-resizing')
+  }
+  window.addEventListener('pointermove', move)
+  window.addEventListener('pointerup', up)
+}
+
 type LeftTab = 'design' | 'theme' | 'comments'
 const tabByDoc = new Map<string, LeftTab>()
 
@@ -39,6 +69,21 @@ export function LeftPanel({ docId }: { docId: string }): JSX.Element {
     setTabState(t)
   }
   const setCollapsed = (v: boolean): void => getStore().setPref('leftCollapsed', v)
+
+  const onEdgeDown = (e: React.PointerEvent): void => {
+    const w0 = leftWidth(getStore().prefs.leftWidth)
+    dragFrom(e, 'col-resize', (dx) => getStore().setPref('leftWidth', leftWidth(w0 + dx)))
+  }
+
+  const onSplitDown = (e: React.PointerEvent): void => {
+    const split = e.currentTarget as HTMLElement
+    const pagesEl = split.previousElementSibling as HTMLElement | null
+    const designEl = split.parentElement
+    if (!pagesEl || !designEl) return
+    const h0 = pagesEl.getBoundingClientRect().height
+    const max = designEl.getBoundingClientRect().height - split.offsetHeight - LAYERS_H_MIN
+    dragFrom(e, 'row-resize', (_dx, dy) => getStore().setPref('pagesHeight', Math.round(Math.max(PAGES_H_MIN, Math.min(max, h0 + dy)))))
+  }
 
   useEffect(() => {
     const on = (e: Event): void => {
@@ -113,7 +158,12 @@ export function LeftPanel({ docId }: { docId: string }): JSX.Element {
       {tab === 'design' ? (
         <div className="lp-design">
           <PagesSection docId={docId} />
-          <div className="lp-hairline" />
+          <div
+            className="lp-split"
+            title="Drag to resize, double-click to reset"
+            onPointerDown={onSplitDown}
+            onDoubleClick={() => getStore().setPref('pagesHeight', undefined)}
+          />
           <LayersTree docId={docId} />
         </div>
       ) : tab === 'theme' ? (
@@ -122,6 +172,12 @@ export function LeftPanel({ docId }: { docId: string }): JSX.Element {
         <CommentsPanel docId={docId} />
       )}
       <FooterLinks />
+      <div
+        className="lp-resize"
+        title="Drag to resize, double-click to reset"
+        onPointerDown={onEdgeDown}
+        onDoubleClick={() => getStore().setPref('leftWidth', LEFT_W_DEFAULT)}
+      />
     </div>
   )
 }

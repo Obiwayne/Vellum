@@ -19,6 +19,7 @@
 }
 
 .lp {
+  position: relative;
   display: flex;
   flex-direction: column;
   height: 100%;
@@ -120,6 +121,9 @@
   overflow-y: auto;
   padding-bottom: 4px;
 }
+.lp-pages__list {
+  position: relative;
+}
 .lp-page {
   display: flex;
   align-items: center;
@@ -146,6 +150,43 @@
   background: var(--hairline);
   margin: 4px 0;
   flex-shrink: 0;
+}
+
+/* Pages | Layers divider (drag = pref pagesHeight) and sidebar right edge (drag = pref leftWidth) */
+.lp-split {
+  position: relative;
+  height: 9px;
+  flex-shrink: 0;
+  cursor: row-resize;
+}
+.lp-split::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 4px;
+  height: 1px;
+  background: var(--hairline);
+}
+.lp-split:hover::after {
+  height: 2px;
+  top: 3.5px;
+  background: var(--accent);
+}
+.lp-resize {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 5px;
+  z-index: 5;
+  cursor: col-resize;
+}
+.lp-resize:hover {
+  background: linear-gradient(to left, var(--accent) 2px, transparent 2px);
+}
+body.lp-resizing * {
+  cursor: inherit !important;
 }
 
 /* layers */
