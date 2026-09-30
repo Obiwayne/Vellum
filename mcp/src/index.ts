@@ -689,13 +689,15 @@ Formats: png (default), jpg (flattened onto the artboard/page background), webp,
         const artboards = ((info.body as { artboards?: { id: string }[] }).artboards ?? []).map((a) => a.id)
         if (!artboards.length) throw new Error('Nothing to export: the page has no artboards')
         if (args.format === 'pdf') {
-          // all artboards of the page in one PDF
-          const b = info.body as { fileName?: string; pageName?: string }
+          // all visible artboards of the page in one PDF (the in-app export skips hidden ones too)
+          const b = info.body as { fileName?: string; pageName?: string; artboards?: { id: string; isVisible?: boolean }[] }
+          const shown = (b.artboards ?? []).filter((a) => a.isVisible !== false).map((a) => a.id)
+          if (!shown.length) throw new Error('Nothing to export: every artboard on the page is hidden')
           const payloads = []
-          for (const id of artboards) payloads.push((await renderPayload({ fileId: args.fileId, nodeId: id })).payload)
+          for (const id of shown) payloads.push((await renderPayload({ fileId: args.fileId, nodeId: id })).payload)
           const pdf = await renderPdf(payloads)
           const path = await writeNew(dir, safeName(`${b.fileName ?? 'Vellum'} - ${b.pageName ?? 'Page'}`), 'pdf', pdf.data)
-          const exported = [{ nodeIds: artboards, name: b.pageName, format: 'pdf', path, pages: pdf.pages }]
+          const exported = [{ nodeIds: shown, name: b.pageName, format: 'pdf', path, pages: pdf.pages }]
           return { content: [text(asText(header)), text(asText({ outputDir: dir, exported }))] }
         }
         for (const id of artboards) jobs.push({ nodeId: id, format: args.format ?? 'png', scale: args.scale })

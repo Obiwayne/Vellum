@@ -43,7 +43,7 @@ export function basicInfo(docId: string, pageIdArg?: unknown): unknown {
     .map((id) => {
       const n = doc.nodes[id]
       const g = geometry(doc, id)
-      return { id, name: n.name, childCount: n.children.length, width: g.width, height: g.height, worldX: g.worldX, worldY: g.worldY }
+      return { id, name: n.name, childCount: n.children.length, width: g.width, height: g.height, worldX: g.worldX, worldY: g.worldY, ...(n.visible ? {} : { isVisible: false }) }
     })
   let nodeCount = 0
   const walk = (id: string): void => {
