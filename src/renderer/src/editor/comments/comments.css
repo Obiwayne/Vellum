@@ -1,0 +1,314 @@
+/* Comment pins, thread card and the Comments panel. */
+.cm-layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+  z-index: 6;
+}
+
+.cm-pin {
+  position: absolute;
+  pointer-events: auto;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border: 2px solid #FFFFFF;
+  border-radius: 13px 13px 13px 2px;
+  background: var(--accent);
+  color: #FFFFFF;
+  font: 600 11px/22px var(--font-ui);
+  text-align: center;
+  cursor: pointer;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
+  transition: transform 80ms ease;
+  transform-origin: 0 100%;
+}
+.cm-pin:hover,
+.cm-pin--active {
+  transform: scale(1.12);
+}
+.cm-pin--active {
+  background: var(--accent-hover);
+}
+.cm-pin--resolved {
+  background: #5A5A5A;
+  color: rgba(255, 255, 255, 0.75);
+}
+.cm-pin--draft {
+  background: var(--accent);
+  cursor: default;
+}
+.cm-pin__agent {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--agent-teal);
+  border: 1.5px solid #FFFFFF;
+}
+
+.cm-card {
+  position: absolute;
+  pointer-events: auto;
+  width: 300px;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-menu);
+  border-radius: var(--radius-menu);
+  box-shadow: var(--menu-shadow);
+  color: var(--text);
+  font: var(--weight-regular) var(--font-size) / var(--line-height) var(--font-ui);
+  cursor: default;
+}
+.cm-card--composer {
+  padding-top: 4px;
+}
+.cm-card__head {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  height: 36px;
+  padding: 0 6px 0 12px;
+  border-bottom: 1px solid var(--hairline);
+}
+.cm-card__num {
+  color: var(--text-3);
+  font-weight: var(--weight-medium);
+  flex-shrink: 0;
+}
+.cm-card__node {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  background: none;
+  border: 0;
+  padding: 2px 4px;
+  border-radius: var(--radius-sm);
+  color: var(--text-2);
+  font: inherit;
+  cursor: pointer;
+}
+.cm-card__node:hover:not(:disabled) {
+  background: var(--control-hover);
+  color: var(--text);
+}
+.cm-card__node:disabled {
+  cursor: default;
+  font-style: italic;
+}
+.cm-card__resolved {
+  margin: 8px 12px 0;
+  color: var(--agent-teal);
+  font-weight: var(--weight-medium);
+}
+.cm-card__msgs {
+  max-height: 260px;
+  overflow-y: auto;
+  padding: 4px 0;
+}
+.cm-msg {
+  padding: 8px 12px;
+}
+.cm-msg__meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 3px;
+}
+.cm-msg__who {
+  font-weight: var(--weight-medium);
+}
+.cm-msg__agent {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--agent-teal);
+  font-weight: var(--weight-medium);
+}
+.cm-msg__time {
+  color: var(--text-4);
+}
+.cm-msg__body {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  color: var(--text);
+}
+
+.cm-spacer {
+  flex: 1;
+}
+.cm-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: none;
+  color: var(--text-2);
+  cursor: pointer;
+}
+.cm-icon:hover {
+  background: var(--control-hover);
+  color: var(--text);
+}
+
+.cm-reply {
+  display: flex;
+  align-items: flex-end;
+  gap: 6px;
+  padding: 8px;
+  border-top: 1px solid var(--hairline);
+}
+.cm-card--composer .cm-reply {
+  border-top: 0;
+  padding-top: 4px;
+}
+.cm-reply textarea {
+  flex: 1;
+  min-height: 28px;
+  resize: none;
+  box-sizing: border-box;
+  padding: 6px 8px;
+  border: 0;
+  border-radius: var(--radius);
+  background: var(--control-bg);
+  color: var(--text);
+  font: inherit;
+  outline: none;
+}
+.cm-reply textarea:focus {
+  box-shadow: inset 0 0 0 1px var(--accent);
+}
+.cm-reply textarea::placeholder {
+  color: var(--text-4);
+}
+.cm-send {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  flex-shrink: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: var(--accent);
+  color: #FFFFFF;
+  cursor: pointer;
+}
+.cm-send:disabled {
+  background: var(--control-bg);
+  color: var(--text-disabled);
+  cursor: default;
+}
+
+/* ---------------------------------------------------------------- left panel */
+.cm-panel {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+.cm-panel__bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 12px 8px;
+  color: var(--text-3);
+}
+.cm-panel__list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0 4px 8px;
+}
+.cm-panel__page {
+  padding: 10px 8px 4px;
+  color: var(--text-3);
+  font-weight: var(--weight-medium);
+}
+.cm-row {
+  display: flex;
+  gap: 8px;
+  width: 100%;
+  padding: 8px;
+  border: 0;
+  border-radius: var(--radius);
+  background: none;
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.cm-row:hover {
+  background: var(--control-hover);
+}
+.cm-row--active {
+  background: var(--row-selected-strong);
+}
+.cm-row__num {
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+  border-radius: 10px 10px 10px 2px;
+  background: var(--accent);
+  color: #FFFFFF;
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 20px;
+  text-align: center;
+}
+.cm-row--resolved .cm-row__num {
+  background: #5A5A5A;
+}
+.cm-row__main {
+  min-width: 0;
+  flex: 1;
+}
+.cm-row__node {
+  color: var(--text-3);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.cm-row__body {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+}
+.cm-row__meta {
+  display: flex;
+  gap: 6px;
+  margin-top: 2px;
+  color: var(--text-4);
+}
+.cm-row__ai {
+  color: var(--agent-teal);
+}
+.cm-empty {
+  padding: 16px 16px;
+  color: var(--text-3);
+  line-height: 18px;
+}
+.cm-empty b {
+  color: var(--text);
+  font-weight: var(--weight-medium);
+}
+.cm-empty code {
+  display: block;
+  margin-top: 8px;
+  padding: 6px 8px;
+  border-radius: var(--radius-sm);
+  background: var(--control-bg);
+  color: var(--text-2);
+  font: 11px/16px var(--font-mono);
+}

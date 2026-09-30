@@ -1,7 +1,7 @@
 // MCP tools: files, pages, basic info, tokens, working indicator, comments.
 import { getStore, activePage, activeDocId } from '../model/store'
 import { topLevelOf } from '../model/ops'
-import type { Doc, Token } from '../model/types'
+import type { CommentThread, Doc, Token } from '../model/types'
 import {
   arr,
   geometry,
@@ -62,6 +62,7 @@ export function basicInfo(docId: string, pageIdArg?: unknown): unknown {
     artboards,
     pages: doc.pages.map((p) => ({ id: p.id, name: p.name, isActive: p.id === viewing })),
     fontFamilies: fontFamiliesOf(doc),
+    openComments: (doc.comments ?? []).filter((t) => t.status === 'open').length,
     tokens: { items: doc.tokens.map((t) => ({ name: t.name, value: t.value })) }
   })
 }
@@ -296,14 +297,131 @@ registerHandler('finish_working_on_nodes', (args) => {
 })
 
 // ------------------------------------------------------------------------------------------------
-// comments (Vellum is local and single-user: there are no comment threads)
+// comments: threads the user pins to layers with the Comment tool (C). Agents read them, make the
+// change, reply and resolve.
 
-registerHandler('list_comment_threads', (args) => scoped(resolveDocId(args), { threads: [], count: 0, total: 0 }))
-registerHandler('get_comment_thread', (args) => {
-  resolveDocId(args)
-  throw new Error(`Comment thread ${String(args.threadId ?? '')} not found`)
+const AGENT = { kind: 'agent' as const, name: 'AI' }
+
+function artboardOf(doc: Doc, nodeId: string): { id: string; name: string } | undefined {
+  const top = topLevelOf(doc, nodeId)
+  const n = top ? doc.nodes[top] : undefined
+  return n ? { id: n.id, name: n.name } : undefined
+}
+
+function threadNode(doc: Doc, t: CommentThread): Record<string, unknown> | null {
+  if (!t.nodeId) return null
+  const n = doc.nodes[t.nodeId]
+  if (!n) return { id: t.nodeId, deleted: true }
+  return {
+    id: n.id,
+    name: n.name,
+    type: n.type,
+    ...(n.type === 'text' ? { text: n.text ?? '' } : {}),
+    ...(n.parent && doc.nodes[n.parent] && !doc.pages.some((p) => p.rootId === n.parent)
+      ? { parent: { id: n.parent, name: doc.nodes[n.parent].name, type: doc.nodes[n.parent].type } }
+      : {}),
+    artboard: artboardOf(doc, n.id)
+  }
+}
+
+function threadSummary(doc: Doc, t: CommentThread): Record<string, unknown> {
+  const first = t.messages[0]
+  const last = t.messages[t.messages.length - 1]
+  return {
+    threadId: t.id,
+    number: t.number,
+    status: t.status,
+    pageId: t.pageId,
+    pageName: doc.pages.find((p) => p.id === t.pageId)?.name,
+    node: threadNode(doc, t),
+    comment: first?.body ?? '',
+    author: first?.authorName,
+    messageCount: t.messages.length,
+    ...(t.messages.length > 1 ? { lastMessage: { author: last.author === 'agent' ? 'agent' : last.authorName, body: last.body } } : {}),
+    createdAt: new Date(t.createdAt).toISOString(),
+    updatedAt: new Date(t.updatedAt).toISOString()
+  }
+}
+
+function requireThread(doc: Doc, id: unknown): CommentThread {
+  const t = typeof id === 'string' ? doc.comments?.find((c) => c.id === id || String(c.number) === id.replace(/^#/, '')) : undefined
+  if (!t) throw new Error(`Comment thread ${String(id ?? '')} not found. Use list_comment_threads to see the threads.`)
+  return t
+}
+
+registerHandler('list_comment_threads', (args) => {
+  const docId = resolveDocId(args)
+  const doc = getDoc(docId)
+  const status = str(args.status) ?? 'open'
+  const pageId = str(args.pageId)
+  const nodeId = str(args.nodeId)
+  // a nodeId filter also matches threads on the node's descendants
+  const under = (id: string | null): boolean => {
+    if (!nodeId) return true
+    let cur: string | null = id
+    while (cur) {
+      if (cur === nodeId) return true
+      cur = doc.nodes[cur]?.parent ?? null
+    }
+    return false
+  }
+  const all = (doc.comments ?? [])
+    .filter((t) => (status === 'all' || t.status === status) && (!pageId || t.pageId === pageId) && under(t.nodeId))
+    .sort((a, b) => a.number - b.number)
+  const offset = typeof args.offset === 'number' ? Math.max(0, args.offset) : 0
+  const limit = typeof args.limit === 'number' ? Math.max(1, Math.min(200, args.limit)) : 50
+  const threads = all.slice(offset, offset + limit).map((t) => threadSummary(doc, t))
+  return scoped(docId, {
+    threads,
+    count: threads.length,
+    total: all.length,
+    ...(threads.length
+      ? { hint: 'For each thread: make the change on its node, reply_to_comment_thread with what you did (resolve: true), then finish_working_on_nodes.' }
+      : {})
+  })
 })
+
+registerHandler('get_comment_thread', (args) => {
+  const docId = resolveDocId(args)
+  const doc = getDoc(docId)
+  const t = requireThread(doc, args.threadId)
+  return scoped(docId, {
+    ...threadSummary(doc, t),
+    messages: t.messages.map((m) => ({
+      id: m.id,
+      author: m.author === 'agent' ? 'agent' : 'user',
+      authorName: m.authorName,
+      body: m.body,
+      createdAt: new Date(m.createdAt).toISOString()
+    }))
+  })
+})
+
 registerHandler('set_comment_thread_status', (args) => {
-  resolveDocId(args)
-  throw new Error(`Comment thread ${String(args.threadId ?? '')} not found`)
+  const docId = resolveDocId(args)
+  const t = requireThread(getDoc(docId), args.threadId)
+  const status = args.status === 'open' ? 'open' : args.status === 'resolved' ? 'resolved' : null
+  if (!status) throw new Error('status must be "open" or "resolved"')
+  getStore().setCommentStatus(docId, t.id, status)
+  return scoped(docId, { threadId: t.id, number: t.number, status })
+})
+
+registerHandler('reply_to_comment_thread', (args) => {
+  const docId = resolveDocId(args)
+  const t = requireThread(getDoc(docId), args.threadId)
+  const body = str(args.body)?.trim()
+  if (!body) throw new Error('body is empty')
+  if (body.length > 4000) throw new Error('body is too long (max 4000 characters)')
+  const s = getStore()
+  s.replyComment(docId, t.id, body, AGENT)
+  if (args.resolve === true) s.setCommentStatus(docId, t.id, 'resolved')
+  const after = getDoc(docId).comments?.find((c) => c.id === t.id)
+  return scoped(docId, { threadId: t.id, number: t.number, status: after?.status, messageCount: after?.messages.length })
+})
+
+registerHandler('list_comment_thread_authors', (args) => {
+  const docId = resolveDocId(args)
+  const names = new Set<string>()
+  for (const t of getDoc(docId).comments ?? []) for (const m of t.messages) names.add(m.author === 'agent' ? `${m.authorName} (agent)` : m.authorName)
+  return scoped(docId, { authors: [...names] })
 })

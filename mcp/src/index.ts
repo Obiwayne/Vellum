@@ -791,12 +791,13 @@ server.registerTool(
 server.registerTool(
   'list_comment_threads',
   {
-    description: 'List comment threads in the file. (Vellum is single-user and local; this returns the threads stored in the file, usually none.)',
+    description:
+      'List comment threads in the file. The user leaves comments by pinning them to layers with the Comment tool, usually as change requests for you ("make this say Get started", "more padding here"). Each thread includes the node it is pinned to (id, name, type, text, parent, artboard) and the comment text. Defaults to open threads. To address comments: make the change on the node, then reply_to_comment_thread with a short note of what you did and resolve: true.',
     inputSchema: {
       fileId,
-      pageId: z.string().optional(),
-      nodeId: z.string().optional(),
-      status: z.enum(['open', 'resolved', 'all']).optional(),
+      pageId: z.string().optional().describe('Only threads on this page.'),
+      nodeId: z.string().optional().describe('Only threads pinned to this node or its descendants.'),
+      status: z.enum(['open', 'resolved', 'all']).optional().describe('Default "open".'),
       limit: z.number().int().optional(),
       offset: z.number().int().optional()
     }
@@ -807,10 +808,25 @@ server.registerTool(
 server.registerTool(
   'get_comment_thread',
   {
-    description: 'Get a comment thread with all its messages.',
-    inputSchema: { fileId, threadId: z.string() }
+    description: 'Get a comment thread with all its messages (user comments and earlier agent replies) and the node it is pinned to.',
+    inputSchema: { fileId, threadId: z.string().describe('Thread id, or its number as shown on the pin (e.g. "3").') }
   },
   (args) => forward('get_comment_thread', args)
+)
+
+server.registerTool(
+  'reply_to_comment_thread',
+  {
+    description:
+      'Reply to a comment thread as the AI; the reply shows in the thread on the canvas. Say briefly what you changed (or ask a clarifying question and leave it open). Pass resolve: true when the request is done.',
+    inputSchema: {
+      fileId,
+      threadId: z.string().describe('Thread id, or its number as shown on the pin.'),
+      body: z.string().describe('Reply text (plain text, max 4000 characters).'),
+      resolve: z.boolean().optional().describe('Also mark the thread resolved.')
+    }
+  },
+  (args) => forward('reply_to_comment_thread', args)
 )
 
 server.registerTool(
@@ -820,6 +836,15 @@ server.registerTool(
     inputSchema: { fileId, threadId: z.string(), status: z.enum(['open', 'resolved']) }
   },
   (args) => forward('set_comment_thread_status', args)
+)
+
+server.registerTool(
+  'list_comment_thread_authors',
+  {
+    description: 'List the names of everyone who wrote in the comment threads of the file.',
+    inputSchema: { fileId }
+  },
+  (args) => forward('list_comment_thread_authors', args)
 )
 
 // ------------------------------------------------------------------------------------------------

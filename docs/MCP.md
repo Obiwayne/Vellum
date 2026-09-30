@@ -73,7 +73,11 @@ The server's `instructions` tell the model to load `get_guide({topic:"vellum-mcp
 | `create_tokens` | `tokens[{name, value, type?}]` (upsert) | `{name, result: created \| updated}` per entry |
 | `get_font_family_info` | `familyNames` | `fontsPerFamily{family:[{style,weight,isItalic,axes?}]}, sources, notFound?` |
 | `finish_working_on_nodes` | `nodeIds?` | `{released, remaining}` |
-| `list_comment_threads` / `get_comment_thread` / `set_comment_thread_status` | – | Vellum has no comments: returns an empty list, or "not found" |
+| `list_comment_threads` | `status?: open (default) \| resolved \| all, pageId?, nodeId? (includes descendants), limit?, offset?` | `{threads[{threadId, number, status, pageId, pageName, node{id,name,type,text?,parent?,artboard} \| null, comment, author, messageCount, lastMessage?}], count, total}` |
+| `get_comment_thread` | `threadId` (id or pin number) | thread summary + `messages[{author: user \| agent, authorName, body, createdAt}]` |
+| `reply_to_comment_thread` | `threadId, body, resolve?` | `{threadId, number, status, messageCount}`; the reply shows as "AI" in the thread |
+| `set_comment_thread_status` | `threadId, status: open \| resolved` | `{threadId, number, status}` |
+| `list_comment_thread_authors` | – | `{authors}` |
 
 Each mutating tool call is a single undo step in the app (`store.mutate` / `store.transact`). Nodes created or edited by the agent put their **artboard** into `editor.workingNodes`, which the canvas draws with the teal outline and orange glow. `finish_working_on_nodes` clears them.
 
@@ -124,7 +128,7 @@ fails with "Vellum is locked — open your profile in the app first", and `list_
 - tree, children, find, JSX (both formats), computed styles
 - screenshots at 1x and 2x, which are saved to outDir
 - export to png, svg, html and jsx
-- selection, comments, finish
+- selection, comments (pinned change requests: list → edit → reply + resolve), finish
 
 ## Troubleshooting
 

@@ -18,6 +18,9 @@ import { canvasMenu, nodeMenu } from './menus'
 import { toast } from './toast'
 import './canvas.css'
 import { useDocFonts } from './useDocFonts'
+import { CommentsLayer } from '../comments/CommentsLayer'
+import { openThread, useCommentUi } from '../comments/state'
+import { LEFT_TAB_EVENT } from '../left/LeftPanel'
 import { CANVAS_CONTENT_DEFAULTS } from './contentDefaults'
 
 /** Inherited defaults for canvas content (see contentDefaults.ts). */
@@ -260,6 +263,12 @@ export function CanvasView({ docId }: { docId: string }): JSX.Element | null {
     if (tool !== 'pen' && pen.current) finishPen()
   }, [tool, finishPen])
 
+  // the Comment tool opens the Comments tab; leaving it drops an unsent draft
+  useEffect(() => {
+    if (tool === 'comment') window.dispatchEvent(new CustomEvent(LEFT_TAB_EVENT, { detail: { docId, tab: 'comments' } }))
+    else if (useCommentUi.getState().draft) useCommentUi.setState({ draft: null })
+  }, [tool, docId])
+
   // ---------------------------------------------------------------- keyboard (space, pen) + shortcuts
   useEffect(() => {
     const isText = (el: EventTarget | null): boolean =>
@@ -328,6 +337,8 @@ export function CanvasView({ docId }: { docId: string }): JSX.Element | null {
     const el = viewport.current
     if (!el) return
     const onWheel = (e: WheelEvent): void => {
+      // let comment threads scroll
+      if (e.target instanceof Element && e.target.closest('.cm-card')) return
       e.preventDefault()
       const s = getStore()
       const cam = s.editors[docId]?.camera
@@ -407,6 +418,10 @@ export function CanvasView({ docId }: { docId: string }): JSX.Element | null {
       return
     }
     const world0 = clientToWorld(e.clientX, e.clientY, docId)
+    if (ed.tool !== 'comment') {
+      const cu = useCommentUi.getState()
+      if (cu.openId || cu.draft) openThread(null)
+    }
 
     if (e.button === 2) {
       const deepest = nodeIdFromTarget(e.target)
@@ -457,10 +472,29 @@ export function CanvasView({ docId }: { docId: string }): JSX.Element | null {
         setTransient((t) => ({ ...t, pen: { points: [...pts], cursor: p } }))
         return
       }
-      case 'comment':
-        toast('Comments are not available in Vellum')
-        s.setTool(docId, 'move')
+      case 'comment': {
+        e.preventDefault()
+        const p = page ?? activePage(s, docId)
+        if (!p) return
+        const target = nodeIdFromTarget(e.target)
+        const r = target ? measure(target, docId) : null
+        const nodeId = target && r ? target : null
+        useCommentUi.setState({
+          openId: null,
+          draft: {
+            docId,
+            anchor: {
+              pageId: p.id,
+              nodeId,
+              ox: r ? Math.round(world0.x - r.x) : 0,
+              oy: r ? Math.round(world0.y - r.y) : 0,
+              x: Math.round(world0.x),
+              y: Math.round(world0.y)
+            }
+          }
+        })
         return
+      }
       case 'image':
       case 'svg':
         s.setTool(docId, 'move')
@@ -982,6 +1016,12 @@ export function CanvasView({ docId }: { docId: string }): JSX.Element | null {
       setTransient((t) => ({ ...t, pen: { points: [...pts], cursor: p } }))
       return
     }
+    if (ed.tool === 'comment' && !spaceRef.current) {
+      // highlight the exact layer a comment would be pinned to
+      const target = nodeIdFromTarget(e.target)
+      if (target !== ed.hovered) s.setHovered(docId, target)
+      return
+    }
     if (ed.tool !== 'move' || spaceRef.current) {
       if (ed.hovered) s.setHovered(docId, null)
       return
@@ -1028,7 +1068,7 @@ export function CanvasView({ docId }: { docId: string }): JSX.Element | null {
   const root = doc.nodes[page.rootId]
   const tokenVars = Object.fromEntries(doc.tokens.map((t) => [t.name, t.value])) as CSSProperties
   const cursor =
-    panning ? 'grabbing' : space || tool === 'pan' ? 'grab' : tool === 'text' ? 'text' : tool === 'move' ? 'default' : 'crosshair'
+    panning ? 'grabbing' : space || tool === 'pan' ? 'grab' : tool === 'text' ? 'text' : tool === 'comment' ? 'cell' : tool === 'move' ? 'default' : 'crosshair'
   const gridSize = camera.zoom
 
   return (
@@ -1043,7 +1083,7 @@ export function CanvasView({ docId }: { docId: string }): JSX.Element | null {
       }}
       onMouseDown={(e) => {
         // keep focus behaviour under our control (text editing, inspector inputs are blurred manually)
-        if (!(e.target instanceof HTMLElement && e.target.closest('[data-editing], input'))) e.preventDefault()
+        if (!(e.target instanceof HTMLElement && e.target.closest('[data-editing], input, textarea'))) e.preventDefault()
       }}
       onDoubleClick={onDoubleClick}
       onContextMenu={onContextMenu}
@@ -1092,6 +1132,7 @@ export function CanvasView({ docId }: { docId: string }): JSX.Element | null {
         />
       )}
       <Overlay docId={docId} transient={transient} onHandleDown={onHandleDown} onLabelDown={onLabelDown} />
+      <CommentsLayer docId={docId} />
       {working && <div className="cv-glow" />}
       {ctx.element}
     </div>

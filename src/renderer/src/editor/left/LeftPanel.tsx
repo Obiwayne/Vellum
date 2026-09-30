@@ -1,4 +1,5 @@
-// Editor left panel: header (file name + collapse), Design | Theme, Pages + Layers, Theme tokens.
+// Editor left panel: header (file name + collapse), Design | Theme | Comments, Pages + Layers,
+// Theme tokens, comment threads.
 import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { PanelLeft } from 'lucide-react'
@@ -9,6 +10,7 @@ import { LayersTree } from './LayersTree'
 import { ThemePanel } from './ThemePanel'
 import { InlineEdit } from './InlineEdit'
 import { FooterLinks } from './WhatsNew'
+import { CommentsPanel } from '../comments/CommentsPanel'
 import './left.css'
 
 function FileGlyph(): JSX.Element {
@@ -21,18 +23,33 @@ function FileGlyph(): JSX.Element {
   )
 }
 
-const tabByDoc = new Map<string, 'design' | 'theme'>()
+type LeftTab = 'design' | 'theme' | 'comments'
+const tabByDoc = new Map<string, LeftTab>()
+
+/** Switch a doc's left panel to a tab (used by the Comment tool). */
+export const LEFT_TAB_EVENT = 'left-panel:tab'
 
 export function LeftPanel({ docId }: { docId: string }): JSX.Element {
   const name = useStore((s) => s.docs[docId]?.name ?? '')
   const collapsed = useStore((s) => Boolean(s.prefs.leftCollapsed))
-  const [tab, setTabState] = useState<'design' | 'theme'>(() => tabByDoc.get(docId) ?? 'design')
+  const [tab, setTabState] = useState<LeftTab>(() => tabByDoc.get(docId) ?? 'design')
   const [renaming, setRenaming] = useState(false)
-  const setTab = (t: 'design' | 'theme'): void => {
+  const setTab = (t: LeftTab): void => {
     tabByDoc.set(docId, t)
     setTabState(t)
   }
   const setCollapsed = (v: boolean): void => getStore().setPref('leftCollapsed', v)
+
+  useEffect(() => {
+    const on = (e: Event): void => {
+      const d = (e as CustomEvent<{ docId: string; tab: LeftTab }>).detail
+      if (d?.docId !== docId) return
+      tabByDoc.set(docId, d.tab)
+      setTabState(d.tab)
+    }
+    window.addEventListener(LEFT_TAB_EVENT, on)
+    return () => window.removeEventListener(LEFT_TAB_EVENT, on)
+  }, [docId])
 
   // Ctrl+\ toggles the sidebar
   useEffect(() => {
@@ -88,7 +105,8 @@ export function LeftPanel({ docId }: { docId: string }): JSX.Element {
           onChange={setTab}
           options={[
             { value: 'design', label: 'Design' },
-            { value: 'theme', label: 'Theme' }
+            { value: 'theme', label: 'Theme' },
+            { value: 'comments', label: 'Comments' }
           ]}
         />
       </div>
@@ -98,8 +116,10 @@ export function LeftPanel({ docId }: { docId: string }): JSX.Element {
           <div className="lp-hairline" />
           <LayersTree docId={docId} />
         </div>
-      ) : (
+      ) : tab === 'theme' ? (
         <ThemePanel docId={docId} />
+      ) : (
+        <CommentsPanel docId={docId} />
       )}
       <FooterLinks />
     </div>

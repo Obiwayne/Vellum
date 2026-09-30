@@ -13,6 +13,7 @@ You MUST load the full guide before other Vellum tools: get_guide({ topic: "vell
 - Quality: use get_screenshot to review after meaningful changes. Artboard height is a starting point — when content clips set height: "fit-content" via update_styles rather than guessing a fixed height.
 - Repeated rows (lists, nav): use fixed-width slots for icons and trailing actions (flexShrink: 0); gap alone won't align columns across rows.
 - When done creating or editing, you MUST call finish_working_on_nodes.
+- Comments: the user pins change requests to layers with the Comment tool. When they say "address my comments" (or get_basic_info shows openComments > 0 and they ask you to work on the file), call list_comment_threads, make each change on the thread's node, then reply_to_comment_thread with what you did and resolve: true.
 - Never show raw node IDs to the user.
 - Export to the user's codebase: use get_jsx and get_computed_styles for exact values — never read sizes or colors from screenshots.
 - If a tool says the Vellum app is not running, ask the user to start Vellum (Vellum.cmd or the Vellum shortcut, or npm run dev in the Vellum folder).`
@@ -98,6 +99,13 @@ Unless the user gave a detailed design system, post a short brief in chat BEFORE
 1. Prefer font families already used in the file (get_basic_info → fontFamilies) unless the user asks otherwise.
 2. You MUST call get_font_family_info before writing typographic styles for the first time in a session, to confirm availability and the exact weights/styles.
 3. Units: font sizes in **px** (required); letter-spacing in **em**; line-height in **px** (relative values are fine if they don't produce sub-pixel line boxes).
+
+## Comments (change requests pinned to layers)
+The user leaves comments on the canvas with the Comment tool (C): each thread is pinned to a node and numbered like a pin (#1, #2…). They are usually instructions for you.
+1. list_comment_threads (defaults to open threads) gives each thread's comment text and the node it is on: id, name, type, text for text nodes, parent and artboard.
+2. Apply each request to that node (set_text_content, update_styles, write_html…). "This" in a comment means the pinned node; when it is a text node inside a button, "the button" is its parent. Check the result with get_screenshot.
+3. reply_to_comment_thread with one short sentence of what you changed and resolve: true. If a request is unclear, reply with a question and leave the thread open instead of guessing.
+4. Resolved threads are history; leave them alone unless asked. Call finish_working_on_nodes at the end as usual.
 
 ## Housekeeping
 - Nodes you create or edit are marked as "working" (the user sees a teal outline and an orange glow). Always release them with finish_working_on_nodes at the end. With no arguments it releases every mark in the file (including other agents'); when several agents work on the same file, pass nodeIds (the artboards or nodes you worked on) so only yours are released.

@@ -65,6 +65,36 @@ export interface Doc {
    * v2: canvas content inherits `line-height: normal` (v1 inherited 20px).
    */
   version?: number
+  /** comment threads pinned to the canvas (not part of undo history) */
+  comments?: CommentThread[]
+}
+
+export interface CommentMessage {
+  id: string
+  /** 'user' = typed in the app, 'agent' = written through MCP */
+  author: 'user' | 'agent'
+  authorName: string
+  body: string
+  createdAt: number
+}
+
+export interface CommentThread {
+  id: string
+  /** 1, 2, 3… per file, shown on the pin */
+  number: number
+  pageId: string
+  /** node the pin is attached to (it follows the node); null = pinned to the canvas */
+  nodeId: string | null
+  /** pin offset from the node's top-left corner (world px); unused when nodeId is null */
+  ox: number
+  oy: number
+  /** world position when the comment was made (fallback when the node is gone or hidden) */
+  x: number
+  y: number
+  status: 'open' | 'resolved'
+  messages: CommentMessage[]
+  createdAt: number
+  updatedAt: number
 }
 
 export type Tool = 'move' | 'pan' | 'frame' | 'rect' | 'pen' | 'text' | 'comment' | 'shader' | 'image' | 'svg'

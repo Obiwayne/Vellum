@@ -3,7 +3,7 @@
 import { create } from 'zustand'
 import { produce, produceWithPatches } from 'immer'
 import { nanoid } from 'nanoid'
-import type { Camera, CNode, Doc, EditorState, NodeType, Page, StylePatch, TabId, Token, Tool } from './types'
+import type { Camera, CNode, CommentThread, Doc, EditorState, NodeType, Page, StylePatch, TabId, Token, Tool } from './types'
 import { history } from './history'
 import * as ops from './ops'
 import { htmlToNodes } from './html'
@@ -85,6 +85,12 @@ export interface Store {
   upsertTokens(docId: string, tokens: Token[]): void
   removeToken(docId: string, name: string): void
 
+  // comments (saved with the file, not part of undo history)
+  addComment(docId: string, anchor: CommentAnchor, body: string, author?: CommentAuthor): string | null
+  replyComment(docId: string, threadId: string, body: string, author?: CommentAuthor): boolean
+  setCommentStatus(docId: string, threadId: string, status: CommentThread['status']): boolean
+  deleteComment(docId: string, threadId: string): void
+
   // editor (not undoable)
   select(docId: string, ids: string[], additive?: boolean): void
   setTool(docId: string, tool: Tool): void
@@ -104,6 +110,13 @@ export interface Store {
   // prefs (persisted in index.json)
   setPref(key: string, value: unknown): void
 }
+
+export type CommentAnchor = Pick<CommentThread, 'pageId' | 'nodeId' | 'ox' | 'oy' | 'x' | 'y'>
+export interface CommentAuthor {
+  kind: 'user' | 'agent'
+  name: string
+}
+const YOU: CommentAuthor = { kind: 'user', name: 'You' }
 
 export function defaultEditor(doc: Doc): EditorState {
   return {
@@ -521,6 +534,79 @@ export const useStore = create<Store>()((set, get) => {
       mutate(docId, 'Remove token', (d) => {
         d.tokens = d.tokens.filter((t) => t.name !== name)
       })
+    },
+
+    // ------------------------------------------------------------------ comments
+    addComment(docId, anchor, body, author = YOU) {
+      const text = body.trim()
+      if (!text) return null
+      const id = nanoid(10)
+      const now = Date.now()
+      const ok = mutate(
+        docId,
+        'Add comment',
+        (d) => {
+          const list = (d.comments ??= [])
+          const number = list.reduce((m, t) => Math.max(m, t.number), 0) + 1
+          list.push({
+            id,
+            number,
+            ...anchor,
+            status: 'open',
+            messages: [{ id: nanoid(10), author: author.kind, authorName: author.name, body: text, createdAt: now }],
+            createdAt: now,
+            updatedAt: now
+          })
+        },
+        { noHistory: true }
+      )
+      return ok ? id : null
+    },
+
+    replyComment(docId, threadId, body, author = YOU) {
+      const text = body.trim()
+      const t = get().docs[docId]?.comments?.find((c) => c.id === threadId)
+      if (!text || !t) return false
+      mutate(
+        docId,
+        'Reply to comment',
+        (d) => {
+          const th = d.comments?.find((c) => c.id === threadId)
+          if (!th) return
+          const now = Date.now()
+          th.messages.push({ id: nanoid(10), author: author.kind, authorName: author.name, body: text, createdAt: now })
+          th.updatedAt = now
+        },
+        { noHistory: true }
+      )
+      return true
+    },
+
+    setCommentStatus(docId, threadId, status) {
+      if (!get().docs[docId]?.comments?.some((c) => c.id === threadId)) return false
+      mutate(
+        docId,
+        status === 'resolved' ? 'Resolve comment' : 'Reopen comment',
+        (d) => {
+          const th = d.comments?.find((c) => c.id === threadId)
+          if (!th || th.status === status) return
+          th.status = status
+          th.updatedAt = Date.now()
+        },
+        { noHistory: true }
+      )
+      return true
+    },
+
+    deleteComment(docId, threadId) {
+      mutate(
+        docId,
+        'Delete comment',
+        (d) => {
+          if (d.comments) d.comments = d.comments.filter((c) => c.id !== threadId)
+        },
+        { noHistory: true }
+      )
     },
 
     // ------------------------------------------------------------------ editor

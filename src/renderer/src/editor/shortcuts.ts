@@ -77,6 +77,7 @@ export function installCanvasShortcuts(docId: string): () => void {
       else if (code === 'Digit1') zoomToFit(docId)
       else if (code === 'Digit2') zoomToSelection(docId)
       else if (code === 'Quote') s.setPref('canvas.pixelGrid', s.prefs['canvas.pixelGrid'] === false)
+      else if (code === 'KeyC') s.setPref('canvas.showComments', s.prefs['canvas.showComments'] === false)
       else if (key === '+') zoomIn(docId)
       else if (code === 'Tab') A.selectSibling(docId, -1)
       else if (key === 'Enter') A.selectParent(docId)

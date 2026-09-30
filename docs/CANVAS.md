@@ -32,7 +32,7 @@ The canvas code lives in `src/renderer/src/editor/canvas/`. The toolbar is in `e
   - Frame (F), Rectangle (R) and Shaders (S) are drag-to-create; S makes a gradient "Shader" frame. A click without a drag creates a 100×100 node. The new node becomes a child of the frame under the pointer, and is appended when that frame is flex.
   - Text (T): click, then type. Esc or clicking away commits, and an empty new text node is removed.
   - Pen (P): click points, then Enter, Esc or double-click to finish. Clicking the first point closes the path. Shift snaps angles to 45°. The result is an SVG `<path>` with a 1.5px black stroke.
-  - Comment (C) only shows a notice.
+  - Comment (C): click a layer (or empty canvas) and type; Enter posts, Shift+Enter adds a line, Esc cancels and a second Esc leaves the tool. The numbered pin is attached to the exact layer under the pointer (highlighted while hovering) and follows it. Click a pin for its thread: reply, resolve/reopen, delete. The left panel's Comments tab lists threads (Open / Resolved / All); clicking one jumps to it. Shift+C toggles pins. Threads are saved in the file (`Doc.comments`) and are not part of undo history. Agents read and answer them through the MCP comment tools.
   - Create image (Ctrl+Shift+I) opens a file picker and inserts the image as a data URL.
   - Create SVG (Ctrl+Shift+J) opens a paste-markup dialog.
   - After you create something, the tool returns to Move.
@@ -95,7 +95,7 @@ The zoom menu can toggle these through `setPref`.
 - Snapping only uses the siblings and parent box, so it doesn't snap to spacing or distances.
 - Marquee selection starting inside an artboard behaves like a drag on the artboard.
 - The pen makes straight segments only; there are no béziers or point editing.
-- Comments, cursor chat and real shaders are not implemented; the Shader tool makes a CSS gradient frame.
+- Cursor chat and real shaders are not implemented; the Shader tool makes a CSS gradient frame.
 - "Adjust text…" only offers auto width, auto height and edit.
 - Paste positioning of external HTML uses model sizes; fit-content boxes are placed by their top-left.
 - React StrictMode double-invokes effects in dev. The text editor is written to tolerate this.

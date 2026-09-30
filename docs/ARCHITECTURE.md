@@ -41,6 +41,7 @@ consistent menus and shortcuts. The product name is "Vellum".
     editor/toolbar/          Toolbar
     editor/canvas/           CanvasView: camera, render nodes, selection overlay, handles, tools, snapping, context menus
     editor/inspector/        Inspector sections
+    editor/comments/         Comment tool UI: pins + thread card (CommentsLayer), Comments tab (CommentsPanel)
     editor/shortcuts.ts      global keyboard shortcuts
     bridge/                  handlers that execute MCP commands against the store (renderer side)
   mcp/                       MCP server package (own package.json, builds to mcp/dist/index.js)
@@ -72,6 +73,7 @@ export interface Doc {
   id: string; name: string; pages: Page[]; nodes: Record<string, CNode>;
   tokens: Token[]; nextId: number; createdAt: number; updatedAt: number; archived?: boolean;
   thumbnail?: string;       // data URL, optional
+  comments?: CommentThread[]; // pinned threads {id, number, pageId, nodeId|null, ox, oy, x, y, status, messages[]}
 }
 ```
 Rules
