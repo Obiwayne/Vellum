@@ -2,7 +2,7 @@ import { app, dialog, ipcMain, session, BrowserWindow } from 'electron'
 import { promises as fs, copyFileSync, existsSync, mkdirSync, readdirSync } from 'fs'
 import { join } from 'path'
 import { IPC, type DocSummary, type IndexData, type ProfileInfo, type ProfileResult, type ProfilesState, type StoredDoc } from '@shared/api'
-import { Vault, type ProfileRecord } from './vault'
+import { Vault, safeId, type ProfileRecord } from './vault'
 import { disposeRenderer } from './offscreen'
 
 const root = (): string => app.getPath('userData')
@@ -20,10 +20,12 @@ let autoOpen = true
 const filesDir = (): string => getVault().path('files')
 const indexPath = (): string => getVault().path('index.json')
 
-const safeId = (id: string): string => {
-  if (typeof id !== 'string' || !/^[A-Za-z0-9_-]+$/.test(id)) throw new Error(`Invalid doc id: ${id}`)
-  return id
-}
+/** IPC arguments are untrusted: anything that isn't a string becomes '' (or undefined when optional). */
+const str = (v: unknown): string => (typeof v === 'string' ? v : '')
+const optStr = (v: unknown): string | undefined => (typeof v === 'string' ? v : undefined)
+
+/** Doc file of the open profile; the id is validated (charset, length, no device names). */
+const docPath = (id: unknown): string => join(filesDir(), `${safeId(id)}.json`)
 
 /**
  * One-time migration from the app's old name: when %APPDATA%\Vellum has no profiles yet, its files
@@ -142,61 +144,70 @@ export async function lockProfile(): Promise<void> {
 export function registerStorageIpc(): void {
   ipcMain.handle(IPC.userDataPath, () => root())
   ipcMain.handle(IPC.listDocs, () => listDocs())
-  ipcMain.handle(IPC.loadDoc, (_e, id: string) => getVault().readJson<StoredDoc>(join(filesDir(), `${safeId(id)}.json`)))
+  ipcMain.handle(IPC.loadDoc, (_e, id: unknown) => getVault().readJson<StoredDoc>(docPath(id)))
   ipcMain.handle(IPC.saveDoc, async (_e, doc: StoredDoc) => {
-    const id = safeId(doc.id)
+    if (!doc || typeof doc !== 'object') throw new Error('Invalid document')
+    const path = docPath(doc.id)
     await fs.mkdir(filesDir(), { recursive: true })
-    await getVault().writeJson(join(filesDir(), `${id}.json`), JSON.stringify(doc))
+    await getVault().writeJson(path, JSON.stringify(doc))
   })
-  ipcMain.handle(IPC.deleteDoc, async (_e, id: string) => {
-    await getVault().remove(join(filesDir(), `${safeId(id)}.json`))
+  ipcMain.handle(IPC.deleteDoc, async (_e, id: unknown) => {
+    await getVault().remove(docPath(id))
   })
   ipcMain.handle(IPC.loadIndex, () => getVault().readJson<IndexData>(indexPath()))
   ipcMain.handle(IPC.saveIndex, async (_e, index: IndexData) => {
+    if (!index || typeof index !== 'object') throw new Error('Invalid index')
     await getVault().writeJson(indexPath(), JSON.stringify(index, null, 2))
   })
 
   // profiles
   const v = getVault
   ipcMain.handle(IPC.profState, () => profilesState())
-  ipcMain.handle(IPC.profCreate, (_e, input: { name: string; avatar?: string; password?: string }) =>
+  ipcMain.handle(IPC.profCreate, (_e, input: { name?: unknown; avatar?: unknown; password?: unknown }) =>
     result(async () => {
-      const r = await v().create(input ?? { name: '' })
+      const i = input && typeof input === 'object' ? input : {}
+      const r = await v().create({ name: str(i.name), avatar: optStr(i.avatar), password: optStr(i.password) })
       autoOpen = true
       return { recoveryKey: r.recoveryKey, migrated: r.migrated }
     })
   )
-  ipcMain.handle(IPC.profOpen, (_e, id: string, password?: string) =>
+  ipcMain.handle(IPC.profOpen, (_e, id: unknown, password?: unknown) =>
     result(async () => {
-      await v().open(id, password)
+      await v().open(str(id), optStr(password))
       autoOpen = true
     })
   )
-  ipcMain.handle(IPC.profRecover, (_e, id: string, key: string, pw?: string) =>
+  ipcMain.handle(IPC.profRecover, (_e, id: unknown, key: unknown, pw?: unknown) =>
     result(async () => {
-      await v().recover(id, String(key ?? ''), pw)
+      await v().recover(str(id), str(key), optStr(pw))
     })
   )
   ipcMain.handle(IPC.profLock, () => lockProfile())
-  ipcMain.handle(IPC.profUpdate, (_e, patch: { name?: string; avatar?: string | null; autoLockMinutes?: number }) =>
+  ipcMain.handle(IPC.profUpdate, (_e, patch: { name?: unknown; avatar?: unknown; autoLockMinutes?: unknown }) =>
     result(async () => {
-      await v().update(patch ?? {})
+      const p = patch && typeof patch === 'object' ? patch : {}
+      await v().update({
+        name: optStr(p.name),
+        avatar: p.avatar === null ? null : optStr(p.avatar),
+        autoLockMinutes: typeof p.autoLockMinutes === 'number' ? p.autoLockMinutes : undefined
+      })
     })
   )
-  ipcMain.handle(IPC.profSetPassword, (_e, cur: string | undefined, next: string) => result(() => v().setPassword(cur, next)))
-  ipcMain.handle(IPC.profRemovePassword, (_e, cur: string) =>
+  ipcMain.handle(IPC.profSetPassword, (_e, cur: unknown, next: unknown) => result(() => v().setPassword(optStr(cur), str(next))))
+  ipcMain.handle(IPC.profRemovePassword, (_e, cur: unknown) =>
     result(async () => {
-      await v().removePassword(String(cur ?? ''))
+      await v().removePassword(str(cur))
       await clearCaches()
     })
   )
-  ipcMain.handle(IPC.profNewRecoveryKey, (_e, cur: string) =>
-    result(async () => ({ recoveryKey: await v().newRecoveryKey(String(cur ?? '')) }))
+  ipcMain.handle(IPC.profNewRecoveryKey, (_e, cur: unknown) =>
+    result(async () => ({ recoveryKey: await v().newRecoveryKey(str(cur)) }))
   )
-  ipcMain.handle(IPC.profRemove, (_e, id: string, pw?: string) =>
+  ipcMain.handle(IPC.profRemove, (_e, idArg: unknown, pw?: unknown) =>
     result(async () => {
+      const id = str(idArg)
       const wasOpen = v().currentProfile?.id === id
-      await v().deleteProfile(id, pw)
+      await v().deleteProfile(id, optStr(pw))
       if (wasOpen) {
         autoOpen = false
         await clearCaches()
@@ -225,4 +236,21 @@ export function registerStorageIpc(): void {
       return { path: r.filePath }
     })
   )
+
+  // On quit: finish pending writes and zero the data key before the process exits (at most 5 s).
+  let closing = false
+  app.on('will-quit', (e) => {
+    if (closing || !getVault().isOpen()) return
+    closing = true
+    e.preventDefault()
+    const done = (): void => app.quit()
+    const timer = setTimeout(done, 5000)
+    void getVault()
+      .close()
+      .catch((err) => console.error('[vault] close on quit failed:', err instanceof Error ? err.message : err))
+      .finally(() => {
+        clearTimeout(timer)
+        done()
+      })
+  })
 }

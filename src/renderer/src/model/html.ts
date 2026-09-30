@@ -1,6 +1,7 @@
 // HTML <-> node conversion.
 import type { CNode, Doc, NodeType, Style } from './types'
 import { anchoredAxes, isFlowChild, isFlowLayout, isPageRoot, makeNode, numericSize, textPreview } from './ops'
+import { cleanAttrs, safeTag, sanitizeAttrs, sanitizeSvgMarkup } from './sanitize'
 
 // ---------------------------------------------------------------------------------------------
 // CSS helpers
@@ -135,7 +136,11 @@ const INLINE_LEVEL = new Set([
   'span', 'a', 'strong', 'b', 'em', 'i', 'small', 'code', 'u', 's', 'mark', 'sub', 'sup', 'img', 'svg', 'button',
   'label', 'input', 'select', 'textarea', 'time', 'q', 'cite', 'abbr', 'kbd', 'var', 'del', 'ins', 'picture', 'canvas'
 ])
-const SKIP_TAGS = new Set(['script', 'style', 'meta', 'link', 'head', 'title', 'template', 'noscript'])
+/** Dropped with their content: scripts, metadata, embedded documents/plugins (never design content). */
+const SKIP_TAGS = new Set([
+  'script', 'style', 'meta', 'link', 'head', 'title', 'template', 'noscript', 'base', 'iframe', 'frame', 'frameset',
+  'object', 'embed', 'applet', 'portal', 'fencedframe', 'math', 'noembed', 'noframes', 'xmp', 'plaintext', 'param'
+])
 
 const HEADING_DEFAULTS: Record<string, Style> = {
   h1: { fontSize: 32, fontWeight: 700 },
@@ -229,7 +234,8 @@ function takeAttrs(el: Element, tag: string): Record<string, string> | undefined
     if (v !== null) attrs[a] = v
   }
   if (!['div', 'img', 'svg'].includes(tag)) attrs.tag = tag
-  return Object.keys(attrs).length ? attrs : undefined
+  // no javascript: links, event handlers or unsafe tags (see sanitize.ts)
+  return sanitizeAttrs(attrs)
 }
 
 /**
@@ -308,8 +314,8 @@ function convertElement(doc: Doc, el: Element, topLevel: boolean): CNode | null 
     return create(doc, 'svg', {
       name: dataName ?? 'SVG',
       style,
-      svg: el.innerHTML.trim(),
-      attrs: Object.keys(svgAttrs).length ? svgAttrs : undefined,
+      svg: sanitizeSvgMarkup(el.innerHTML.trim()),
+      attrs: sanitizeAttrs(svgAttrs),
       ...pos
     })
   }
@@ -402,7 +408,7 @@ export function nodeToRenderHtml(doc: Doc, id: string, asRoot = true, idAttr = '
   const style = css ? ` style="${escAttr(css)}"` : ''
   const data = ` ${idAttr}="${escAttr(id)}"`
   let attrs = ''
-  for (const [k, v] of Object.entries(n.attrs ?? {})) {
+  for (const [k, v] of Object.entries(cleanAttrs(n.attrs))) {
     if (k === 'tag' || (n.type === 'image' && ['href', 'target', 'rel', 'title'].includes(k))) continue
     attrs += ` ${k}="${escAttr(v)}"`
   }
@@ -412,7 +418,7 @@ export function nodeToRenderHtml(doc: Doc, id: string, asRoot = true, idAttr = '
     case 'image':
       return `<img${data}${attrs}${style} draggable="false" />`
     case 'svg':
-      return `<svg xmlns="http://www.w3.org/2000/svg"${data}${attrs}${style}>${n.svg ?? ''}</svg>`
+      return `<svg xmlns="http://www.w3.org/2000/svg"${data}${attrs}${style}>${sanitizeSvgMarkup(n.svg)}</svg>`
     default:
       return `<div${data}${style}>${n.children.map((c) => nodeToRenderHtml(doc, c, false, idAttr)).join('')}</div>`
   }
@@ -424,15 +430,16 @@ export function nodeToRenderHtml(doc: Doc, id: string, asRoot = true, idAttr = '
 const esc = (s: string): string => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
 const escAttr = (s: string): string => esc(s).replace(/"/g, '&quot;')
 
-function tagOf(n: CNode): string {
+export function tagOf(n: CNode): string {
   if (n.type === 'image') return 'img'
   if (n.type === 'svg') return 'svg'
-  return n.attrs?.tag ?? 'div'
+  const t = n.attrs?.tag
+  return safeTag(t) ? t : 'div'
 }
 
 function htmlAttrs(n: CNode): string {
   let out = ''
-  for (const [k, v] of Object.entries(n.attrs ?? {})) {
+  for (const [k, v] of Object.entries(cleanAttrs(n.attrs))) {
     if (k === 'tag') continue
     out += ` ${k}="${escAttr(v)}"`
   }
@@ -449,7 +456,7 @@ export function nodeToHtml(doc: Doc, id: string, opts: { indent?: string; asRoot
   const tag = tagOf(n)
   if (n.type === 'image') return `${ind}<img${htmlAttrs(n)}${styleAttr} />`
   if (n.type === 'svg') {
-    return `${ind}<svg xmlns="http://www.w3.org/2000/svg"${htmlAttrs(n)}${styleAttr}>${n.svg ?? ''}</svg>`
+    return `${ind}<svg xmlns="http://www.w3.org/2000/svg"${htmlAttrs(n)}${styleAttr}>${sanitizeSvgMarkup(n.svg)}</svg>`
   }
   if (n.type === 'text') {
     return `${ind}<${tag}${htmlAttrs(n)}${styleAttr}>${esc(n.text ?? '').replace(/\n/g, '<br />')}</${tag}>`
@@ -473,7 +480,7 @@ const JSX_ATTR_RENAME: Record<string, string> = { class: 'className', for: 'html
 
 function jsxAttrs(n: CNode): string {
   let out = ''
-  for (const [k, v] of Object.entries(n.attrs ?? {})) {
+  for (const [k, v] of Object.entries(cleanAttrs(n.attrs))) {
     if (k === 'tag') continue
     out += ` ${JSX_ATTR_RENAME[k] ?? k}=${JSON.stringify(v)}`
   }
@@ -505,7 +512,7 @@ export function nodeToJsx(doc: Doc, id: string, _format: JsxFormat = 'inline-sty
   const s = jsxStyle(style)
   if (n.type === 'image') return `${indent}<img${jsxAttrs(n)}${s} />`
   if (n.type === 'svg') {
-    return `${indent}<svg xmlns="http://www.w3.org/2000/svg"${jsxAttrs(n)}${s}>${svgInnerToJsx(n.svg ?? '')}</svg>`
+    return `${indent}<svg xmlns="http://www.w3.org/2000/svg"${jsxAttrs(n)}${s}>${svgInnerToJsx(sanitizeSvgMarkup(n.svg))}</svg>`
   }
   if (n.type === 'text') return `${indent}<${tag}${jsxAttrs(n)}${s}>${jsxText(n.text ?? '')}</${tag}>`
   const kids = n.children

@@ -1,8 +1,9 @@
 // Renders document nodes as real DOM. Each NodeView subscribes to its own node object, so a change
 // re-renders only the affected node (memoized by node reference).
-import { memo, useLayoutEffect, useRef, type CSSProperties } from 'react'
+import { memo, useLayoutEffect, useMemo, useRef, type CSSProperties } from 'react'
 import { getStore, useStore } from '../../model/store'
 import { computeNodeStyle } from '../../model/html'
+import { cleanAttrs, sanitizeSvgMarkup } from '../../model/sanitize'
 import { isFlowLayout } from '../../model/ops'
 import type { CNode } from '../../model/types'
 import { commitTextEditing, textEditing } from './actions'
@@ -39,7 +40,7 @@ export const NodeView = memo(function NodeView({ docId, id, topLevel }: Props): 
         <img
           data-node-id={id}
           style={style}
-          src={node.attrs?.src}
+          src={cleanAttrs(node.attrs).src}
           alt={node.attrs?.alt ?? ''}
           draggable={false}
           onLoad={notifyLayout}
@@ -65,12 +66,14 @@ const SVG_SKIP = new Set(['tag', 'style', 'class', 'xmlns', 'width', 'height', '
 function SvgNode({ node, style }: { node: CNode; style: CSSProperties }): JSX.Element {
   const ref = useRef<SVGSVGElement | null>(null)
   const applied = useRef<string[]>([])
+  const markup = useMemo(() => sanitizeSvgMarkup(node.svg), [node.svg])
   useLayoutEffect(() => {
     const el = ref.current
     if (!el) return
     for (const k of applied.current) el.removeAttribute(k)
     const keys: string[] = []
-    for (const [k, v] of Object.entries(node.attrs ?? {})) {
+    // cleaned: no on* handlers or script URLs, even from old or hand-edited files
+    for (const [k, v] of Object.entries(cleanAttrs(node.attrs))) {
       if (SVG_SKIP.has(k)) continue
       try {
         el.setAttribute(k, v)
@@ -87,7 +90,7 @@ function SvgNode({ node, style }: { node: CNode; style: CSSProperties }): JSX.El
       data-node-id={node.id}
       style={style}
       xmlns="http://www.w3.org/2000/svg"
-      dangerouslySetInnerHTML={{ __html: node.svg ?? '' }}
+      dangerouslySetInnerHTML={{ __html: markup }}
     />
   )
 }

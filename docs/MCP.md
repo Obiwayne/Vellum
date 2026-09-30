@@ -16,7 +16,15 @@ Start Vellum with `npm run dev` in `<path-to-Vellum>` (or run the built app). Th
 | Env var | Default | Purpose |
 |---|---|---|
 | `VELLUM_PORT` | `29170` | Bridge WebSocket port. The app and the MCP server must use the same value. `CANVAS_PORT` (the pre-rename name) is still accepted as a fallback. |
-| `VELLUM_EXPORT_DIR` | `%USERPROFILE%\Downloads\Vellum` | Default output folder for `export` (`CANVAS_EXPORT_DIR` is still accepted). |
+| `VELLUM_USER_DATA` | `%APPDATA%\Vellum` | The app's data folder, where the MCP server reads the bridge secret (`bridge-token`). Set it to the same folder as the app's `VELLUM_USER_DATA` for test instances, or when the app runs with `--user-data-dir`. |
+| `VELLUM_EXPORT_DIR` | `%USERPROFILE%\Downloads\Vellum` | Export folder: `export` writes here, and a relative `outputDir` is a subfolder of it (`CANVAS_EXPORT_DIR` is still accepted). |
+| `VELLUM_EXPORT_ROOTS` | – | More folders `export` may write into when the agent passes an absolute `outputDir` (separated by `;` on Windows, `:` elsewhere). Any other folder is refused, symlinks and junctions can't be used to get out, and existing files are never overwritten (` (2)` is added). |
+
+**Bridge authentication.** The bridge only accepts local connections that present the app's secret. On first
+start the app writes 32 random bytes (hex) to `<userData>\bridge-token` (`%APPDATA%\Vellum\bridge-token`). The MCP
+server reads that file on every connect and sends it in the `x-vellum-token` header. Handshakes that carry an
+`Origin` header (every browser does) or a foreign `Host` are refused, so web pages can't reach the bridge. No
+configuration is needed. See `docs/SECURITY.md`.
 
 To use a non-default port: `claude mcp add vellum -e VELLUM_PORT=29174 -- node <path-to-Vellum>/mcp/dist/index.js`
 
@@ -100,9 +108,10 @@ Claude Code ──stdio──▶ mcp/dist/index.js ──ws://127.0.0.1:29170─
 set VELLUM_USER_DATA=%TEMP%\vellum-e2e && set VELLUM_PORT=29174 && npx electron-vite dev
 #   first run: create a profile in the window (no password is fine); the tools need an open profile
 # terminal 2
-cd mcp && npm run build && set VELLUM_PORT=29174 && node test/e2e.mjs [outDir]
+cd mcp && npm run build && set VELLUM_USER_DATA=%TEMP%\vellum-e2e && set VELLUM_PORT=29174 && node test/e2e.mjs [outDir]
 node test/regress.mjs   # regression checks for docs/BUGS.md (reuses a "regress (temp)" file)
 npm run test:profiles   # profile store + encryption (no app needed)
+node test/security.mjs  # bridge authentication, content sanitising, offscreen-render script blocking
 ```
 
 The tools only ever see the profile that is open in the app. With the picker or lock screen showing, every tool
@@ -119,6 +128,9 @@ fails with "Vellum is locked — open your profile in the app first", and `list_
 
 ## Troubleshooting
 
+- **"Vellum refused the connection (bridge authentication failed)"**: the MCP server couldn't read the right
+  `bridge-token`. The app and the MCP server must use the same data folder (`VELLUM_USER_DATA`) and port. An MCP
+  server process started with an older build doesn't send the token, so restart it (restart Claude Code).
 - **"Vellum app is not running"**: start the app, and check that `VELLUM_PORT` matches on both sides. The app logs `[bridge] listening on ws://127.0.0.1:<port>` at startup.
 - **Bridge port already in use** (`[bridge] server error: listen EADDRINUSE`): another Vellum instance owns the port. Close it, or run both sides with a different `VELLUM_PORT`.
 - **The app quits immediately in dev**: the single-instance lock is held by another Vellum that uses the same user-data-dir. Pass `-- --user-data-dir=<dir>`.

@@ -30,8 +30,9 @@ export function installBridge(): void {
         return
       }
       markActivity()
-      const fn = handlers[req.tool]
-      if (!fn) {
+      // own properties only: "constructor", "__proto__", "toString"… are not tools
+      const fn = typeof req.tool === 'string' && Object.prototype.hasOwnProperty.call(handlers, req.tool) ? handlers[req.tool] : undefined
+      if (typeof fn !== 'function') {
         api.bridgeRespond({ id: req.id, error: `Unknown tool: ${req.tool}` })
         return
       }

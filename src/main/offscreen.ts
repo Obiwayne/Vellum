@@ -14,6 +14,31 @@ const PARTITION = 'vellum-render' // no "persist:" prefix → in-memory session 
 /** documents being rendered, by id; removed as soon as the page has loaded */
 const docs = new Map<string, string>()
 
+/**
+ * CSP for rendered documents. Design content never runs script here (the page's own scripts,
+ * inline handlers and javascript: URLs are blocked; our measuring code is injected with
+ * executeJavaScript, which CSP doesn't apply to), can't frame or submit anything, and may only
+ * load images, fonts and stylesheets (Google Fonts, https images, data:/blob: URLs).
+ */
+const RENDER_CSP = [
+  "default-src 'none'",
+  "script-src 'none'",
+  "style-src 'unsafe-inline' https:",
+  'font-src https: data:',
+  'img-src https: http: data: blob:',
+  "media-src 'none'",
+  "object-src 'none'",
+  "frame-src 'none'",
+  "child-src 'none'",
+  "worker-src 'none'",
+  "connect-src 'none'",
+  "form-action 'none'",
+  "base-uri 'none'"
+].join('; ')
+
+/** Largest HTML document accepted for rendering (embedded data: images make these big). */
+const MAX_HTML = 100 * 1024 * 1024
+
 /** Must run before app ready: a standard scheme behaves like http (relative URLs, fonts, CORS). */
 export function registerRenderScheme(): void {
   protocol.registerSchemesAsPrivileged([{ scheme: SCHEME, privileges: { standard: true, supportFetchAPI: true, corsEnabled: true } }])
@@ -27,8 +52,15 @@ function ensureScheme(): void {
     const id = new URL(req.url).hostname
     const html = docs.get(id)
     if (html === undefined) return new Response('Not found', { status: 404 })
-    return new Response(html, { headers: { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store' } })
+    return new Response(html, {
+      headers: { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store', 'content-security-policy': RENDER_CSP }
+    })
   })
+  const ses = session.fromPartition(PARTITION)
+  // rendered content needs no permissions at all (camera, notifications, clipboard, …)
+  ses.setPermissionRequestHandler((_wc, _perm, cb) => cb(false))
+  ses.setPermissionCheckHandler(() => false)
+  ses.on('will-download', (e) => e.preventDefault())
 }
 
 /** Older versions wrote render HTML to %TEMP%\canvas-render-*; remove any leftovers. */
@@ -94,7 +126,14 @@ function getWindow(): BrowserWindow {
   win.webContents.setFrameRate(60)
   win.webContents.setAudioMuted(true)
   win.webContents.setWindowOpenHandler(() => ({ action: 'deny' }))
+  // only our own vellum-render: documents may load (no meta refresh, links, form posts or redirects away)
+  const onlyRender = (e: { preventDefault(): void }, url: string): void => {
+    if (!url.startsWith(`${SCHEME}://`)) e.preventDefault()
+  }
   win.webContents.on('will-navigate', (e) => e.preventDefault())
+  win.webContents.on('will-redirect', (e) => onlyRender(e, e.url))
+  win.webContents.on('will-frame-navigate', (e) => onlyRender(e, e.url))
+  win.webContents.on('will-attach-webview', (e) => e.preventDefault())
   win.on('closed', () => {
     win = null
   })
@@ -230,9 +269,34 @@ async function renderOnce(args: RenderArgs): Promise<RenderResult> {
   }
 }
 
+const num = (v: unknown, min: number, max: number): number | undefined =>
+  typeof v === 'number' && Number.isFinite(v) ? Math.min(max, Math.max(min, v)) : undefined
+
+/** Validate untrusted render arguments (from IPC or the WebSocket bridge). */
+function cleanArgs(raw: unknown): RenderArgs {
+  const a = (raw && typeof raw === 'object' ? raw : {}) as Record<string, unknown>
+  if (typeof a.html !== 'string' || !a.html) throw new Error('render: missing html')
+  if (a.html.length > MAX_HTML) throw new Error('render: html is too large')
+  const bg = typeof a.background === 'string' && a.background.length <= 200 ? a.background : undefined
+  return {
+    html: a.html,
+    scale: num(a.scale, 0.01, 16),
+    format: a.format === 'jpeg' ? 'jpeg' : 'png',
+    quality: num(a.quality, 1, 100),
+    maxDimension: num(a.maxDimension, 1, MAX_TEXTURE),
+    measureOnly: a.measureOnly === true,
+    background: bg
+  }
+}
+
 /** Serialised: one render at a time through the shared hidden window. */
-export function renderHtml(args: RenderArgs): Promise<RenderResult> {
-  if (typeof args?.html !== 'string' || !args.html) return Promise.reject(new Error('render: missing html'))
+export function renderHtml(raw: unknown): Promise<RenderResult> {
+  let args: RenderArgs
+  try {
+    args = cleanArgs(raw)
+  } catch (err) {
+    return Promise.reject(err)
+  }
   const run = queue.then(
     () => renderOnce(args),
     () => renderOnce(args)
@@ -251,7 +315,7 @@ export function disposeRenderer(): void {
 export async function handleMainTool(tool: string, args: Record<string, unknown>): Promise<unknown> {
   switch (tool) {
     case 'main:render_png':
-      return renderHtml(args as unknown as RenderArgs)
+      return renderHtml(args)
     case 'main:ping':
       return { pong: true }
     default:

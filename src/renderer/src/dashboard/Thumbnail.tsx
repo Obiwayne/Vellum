@@ -1,6 +1,7 @@
 // Scaled-down live DOM preview of a doc's first page (no data-node-id, so the canvas resolver never sees it).
 import { memo, useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from 'react'
 import { computeNodeStyle } from '../model/html'
+import { cleanAttrs, sanitizeSvgMarkup } from '../model/sanitize'
 import { numericSize } from '../model/ops'
 import type { Doc } from '../model/types'
 import { loadDocFonts } from '../editor/canvas/useDocFonts'
@@ -21,19 +22,23 @@ function ThumbNode({ doc, id, top }: { doc: Doc; id: string; top?: { x: number; 
   switch (n.type) {
     case 'text':
       return <div style={s}>{n.text}</div>
-    case 'image':
-      return n.attrs?.src ? <img style={s} src={n.attrs.src} alt="" draggable={false} /> : <div style={s} />
-    case 'svg':
+    case 'image': {
+      const src = cleanAttrs(n.attrs).src
+      return src ? <img style={s} src={src} alt="" draggable={false} /> : <div style={s} />
+    }
+    case 'svg': {
+      const a = cleanAttrs(n.attrs)
       return (
         <svg
           style={s}
           xmlns="http://www.w3.org/2000/svg"
-          viewBox={n.attrs?.viewBox}
-          fill={n.attrs?.fill}
-          stroke={n.attrs?.stroke}
-          dangerouslySetInnerHTML={{ __html: n.svg ?? '' }}
+          viewBox={a.viewBox}
+          fill={a.fill}
+          stroke={a.stroke}
+          dangerouslySetInnerHTML={{ __html: sanitizeSvgMarkup(n.svg) }}
         />
       )
+    }
     default:
       return (
         <div style={s}>

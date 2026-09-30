@@ -48,8 +48,8 @@ export async function buildDocument(p: RenderPayload, opts: { exportMode?: boole
 <title>${escapeHtml(p.name)}</title>
 ${cssUrl ? `<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />\n<link rel="stylesheet" href="${cssUrl}" />` : ''}
 <style>${RESET}
-${p.tokensCss}
-#__canvas_wrap{${wrap}align-items:flex-start;${p.inheritedCss}}
+${styleText(p.tokensCss)}
+#__canvas_wrap{${wrap}align-items:flex-start;${styleText(p.inheritedCss)}}
 #__canvas_wrap>*{flex-shrink:0}
 </style>
 </head>
@@ -71,8 +71,8 @@ export async function buildExportHtml(p: RenderPayload): Promise<string> {
 <title>${escapeHtml(p.name)}</title>
 ${cssUrl ? `<link rel="stylesheet" href="${cssUrl}" />` : ''}
 <style>${RESET}
-${p.tokensCss}
-body{${p.inheritedCss}}
+${styleText(p.tokensCss)}
+body{${styleText(p.inheritedCss)}}
 </style>
 </head>
 <body>
@@ -91,7 +91,7 @@ export async function buildSvg(p: RenderPayload, width: number, height: number):
 <svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">
   <foreignObject x="0" y="0" width="${width}" height="${height}">
     <div xmlns="http://www.w3.org/1999/xhtml" style="width:${width}px;height:${height}px;display:flex;align-items:flex-start;${escapeAttr(p.inheritedCss)}">
-      <style>${cssUrl ? `@import url('${cssUrl}');` : ''}${RESET}${p.tokensCss.replace(/:root/g, 'div')}</style>
+      <style>${xmlText(`${cssUrl ? `@import url('${cssUrl}');` : ''}${RESET}${p.tokensCss.replace(/:root/g, 'div')}`)}</style>
       ${xhtml}
     </div>
   </foreignObject>
@@ -110,4 +110,17 @@ export function escapeHtml(s: string): string {
 
 function escapeAttr(s: string): string {
   return escapeHtml(s).replace(/"/g, '&quot;')
+}
+
+/**
+ * CSS from the design (token values, inherited text styles) placed inside an HTML <style> element:
+ * a `<` could close the element (`</style><script>…`), so it becomes the CSS escape `\3c `.
+ */
+function styleText(css: string): string {
+  return String(css ?? '').replace(/</g, '\\3c ')
+}
+
+/** Text content in XML (the SVG export): the XML parser turns the entities back into the original CSS. */
+function xmlText(s: string): string {
+  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
 }

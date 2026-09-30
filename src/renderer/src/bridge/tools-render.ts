@@ -1,5 +1,6 @@
 // MCP tools: code generation (get_jsx) and the render payload used for screenshots/exports.
-import { computeNodeStyle, cssValue, nodeToHtml, nodeToJsx, nodeToRenderHtml, toCamel, toKebab } from '../model/html'
+import { computeNodeStyle, cssValue, nodeToHtml, nodeToJsx, nodeToRenderHtml, tagOf, toCamel, toKebab } from '../model/html'
+import { cleanAttrs, sanitizeSvgMarkup } from '../model/sanitize'
 import { descendants, isPageRoot, pageOf } from '../model/ops'
 import type { CNode, Doc } from '../model/types'
 import { inheritedStyle } from './tools-read'
@@ -30,10 +31,17 @@ registerHandler('_render_node', (args) => {
   if (isPageRoot(doc, n.id)) throw new Error('Cannot render a page root; pass an artboard or node id')
   const g = geometry(doc, n.id)
   const inh = inheritedStyle(doc, n.id)
-  const inheritedCss = Object.entries(inh)
-    .map(([k, v]) => `${toKebab(k)}:${cssValue(k, v)}`)
-    .join(';')
-  const tokensCss = doc.tokens.length ? `:root{${doc.tokens.map((t) => `${t.name}:${t.value}`).join(';')}}` : ''
+  // both end up inside <style> elements of the rendered/exported document: a '<' could close the
+  // element ("</style><script>…"), so it is CSS-escaped; token names must be custom-property names
+  const cssSafe = (v: string): string => v.replace(/</g, '\\3c ')
+  const inheritedCss = cssSafe(
+    Object.entries(inh)
+      .filter(([k]) => /^-?[A-Za-z][\w-]*$/.test(k))
+      .map(([k, v]) => `${toKebab(k)}:${cssValue(k, v)}`)
+      .join(';')
+  )
+  const tokens = doc.tokens.filter((t) => /^--[\w-]+$/.test(t.name))
+  const tokensCss = tokens.length ? cssSafe(`:root{${tokens.map((t) => `${t.name}:${t.value}`).join(';')}}`) : ''
   return scoped(docId, {
     nodeId: n.id,
     name: n.name,
@@ -51,17 +59,11 @@ registerHandler('_render_node', (args) => {
 // ------------------------------------------------------------------------------------------------
 // get_jsx
 
-function tagOf(n: CNode): string {
-  if (n.type === 'image') return 'img'
-  if (n.type === 'svg') return 'svg'
-  return n.attrs?.tag ?? 'div'
-}
-
 const JSX_ATTR_RENAME: Record<string, string> = { class: 'className', for: 'htmlFor' }
 
 function jsxAttrs(n: CNode): string {
   let out = ''
-  for (const [k, v] of Object.entries(n.attrs ?? {})) {
+  for (const [k, v] of Object.entries(cleanAttrs(n.attrs))) {
     if (k === 'tag') continue
     const name = JSX_ATTR_RENAME[k] ?? (k.includes('-') && !k.startsWith('data-') && !k.startsWith('aria-') ? toCamel(k) : k)
     out += ` ${name}=${JSON.stringify(v)}`
@@ -91,7 +93,7 @@ function nodeToTailwindJsx(doc: Doc, id: string, indent: string, asRoot: boolean
   const cls = classes.length ? ` className="${classes.join(' ')}"` : ''
   const tag = tagOf(n)
   if (n.type === 'image') return `${indent}<img${jsxAttrs(n)}${cls} />`
-  if (n.type === 'svg') return `${indent}<svg xmlns="http://www.w3.org/2000/svg"${jsxAttrs(n)}${cls}>${svgInnerToJsx(n.svg ?? '')}</svg>`
+  if (n.type === 'svg') return `${indent}<svg xmlns="http://www.w3.org/2000/svg"${jsxAttrs(n)}${cls}>${svgInnerToJsx(sanitizeSvgMarkup(n.svg))}</svg>`
   if (n.type === 'text') {
     const t = jsxText(n.text ?? '')
     return t.length > 60 ? `${indent}<${tag}${jsxAttrs(n)}${cls}>\n${indent}  ${t}\n${indent}</${tag}>` : `${indent}<${tag}${jsxAttrs(n)}${cls}>${t}</${tag}>`

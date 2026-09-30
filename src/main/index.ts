@@ -1,6 +1,7 @@
-import { app, BrowserWindow, ipcMain, shell } from 'electron'
+import { app, BrowserWindow, ipcMain, session, shell } from 'electron'
 import { readClipboardMedia } from './clipboard'
 import { join } from 'path'
+import { pathToFileURL } from 'url'
 import { IPC, type Rect } from '@shared/api'
 import { clearCachesIfProtected, migrateLegacyUserData, registerStorageIpc } from './storage'
 import { startBridge } from './bridge'
@@ -8,6 +9,59 @@ import { cleanStaleRenderTemp, disposeRenderer, registerRenderScheme, renderHtml
 import appIcon from '../../resources/icon.ico?asset'
 
 let mainWindow: BrowserWindow | null = null
+
+/** Open a link in the user's browser: only absolute http(s) URLs, never file:, custom protocols etc. */
+function openExternalSafe(raw: unknown): void {
+  if (typeof raw !== 'string' || raw.length > 2048) return
+  let u: URL
+  try {
+    u = new URL(raw)
+  } catch {
+    return
+  }
+  if ((u.protocol === 'https:' || u.protocol === 'http:') && !u.username && !u.password) void shell.openExternal(u.href)
+}
+
+/** The app's own page: the dev server origin, or the built index.html. Nothing else may load in the window. */
+function isAppUrl(raw: string): boolean {
+  try {
+    const u = new URL(raw)
+    const dev = !app.isPackaged ? process.env['ELECTRON_RENDERER_URL'] : undefined
+    if (dev) return u.origin === new URL(dev).origin
+    if (u.protocol !== 'file:') return false
+    const own = pathToFileURL(join(__dirname, '../renderer/index.html'))
+    return decodeURIComponent(u.pathname).toLowerCase() === decodeURIComponent(own.pathname).toLowerCase()
+  } catch {
+    return false
+  }
+}
+
+/** Only the app window (its main frame, at the app's own URL) may use the privileged IPC. */
+export function trustedSender(e: Electron.IpcMainEvent | Electron.IpcMainInvokeEvent): boolean {
+  const w = mainWindow
+  if (!w || w.isDestroyed() || e.sender !== w.webContents) return false
+  const f = e.senderFrame
+  return !!f && f === w.webContents.mainFrame && isAppUrl(f.url)
+}
+
+/**
+ * Permissions the renderer may use: clipboard (copy/paste of designs and images), local font
+ * enumeration (font picker) and fullscreen. Everything else (camera, mic, geolocation, notifications,
+ * MIDI, HID/serial/USB, …) is denied.
+ */
+const ALLOWED_PERMISSIONS = new Set(['clipboard-read', 'clipboard-sanitized-write', 'local-fonts', 'fullscreen'])
+
+function hardenDefaultSession(): void {
+  const ses = session.defaultSession
+  ses.setPermissionRequestHandler((wc, permission, cb) => {
+    cb(ALLOWED_PERMISSIONS.has(permission) && wc === mainWindow?.webContents && isAppUrl(wc.getURL()))
+  })
+  ses.setPermissionCheckHandler((wc, permission) => ALLOWED_PERMISSIONS.has(permission) && !!wc && wc === mainWindow?.webContents)
+  // no <webview>s, ever
+  app.on('web-contents-created', (_e, wc) => {
+    wc.on('will-attach-webview', (ev) => ev.preventDefault())
+  })
+}
 
 function createWindow(): void {
   const win = new BrowserWindow({
@@ -26,6 +80,10 @@ function createWindow(): void {
       contextIsolation: true,
       nodeIntegration: false,
       sandbox: true,
+      webSecurity: true,
+      allowRunningInsecureContent: false,
+      webviewTag: false,
+      navigateOnDragDrop: false,
       spellcheck: false
     }
   })
@@ -53,9 +111,21 @@ function createWindow(): void {
   }
   win.webContents.on('render-process-gone', (_e, d) => console.error('[renderer] gone:', d.reason))
 
+  // never open new Electron windows; http(s) links go to the user's browser
   win.webContents.setWindowOpenHandler(({ url }) => {
-    if (/^https?:/.test(url)) void shell.openExternal(url)
+    openExternalSafe(url)
     return { action: 'deny' }
+  })
+  // the window only ever shows the app itself (a design can't navigate it away, e.g. with
+  // <meta http-equiv=refresh>, a link, a form or a dropped file)
+  win.webContents.on('will-navigate', (e) => {
+    if (!isAppUrl(e.url)) e.preventDefault()
+  })
+  win.webContents.on('will-frame-navigate', (e) => {
+    if (!e.isMainFrame && !e.url.startsWith('about:')) e.preventDefault()
+  })
+  win.webContents.on('will-redirect', (e) => {
+    if (e.isMainFrame && !isAppUrl(e.url)) e.preventDefault()
   })
 
   if (!app.isPackaged && process.env['ELECTRON_RENDERER_URL']) {
@@ -78,31 +148,35 @@ function registerWindowIpc(): void {
   })
   ipcMain.on(IPC.close, (e) => current(e)?.close())
   ipcMain.handle(IPC.isMaximized, (e) => current(e)?.isMaximized() ?? false)
-  ipcMain.on(IPC.reload, (e) => e.sender.reload())
-  ipcMain.on(IPC.forceReload, (e) => e.sender.reloadIgnoringCache())
-  ipcMain.on(IPC.toggleDevTools, (e) => e.sender.toggleDevTools())
+  ipcMain.on(IPC.reload, (e) => trustedSender(e) && e.sender.reload())
+  ipcMain.on(IPC.forceReload, (e) => trustedSender(e) && e.sender.reloadIgnoringCache())
+  ipcMain.on(IPC.toggleDevTools, (e) => trustedSender(e) && e.sender.toggleDevTools())
   ipcMain.on(IPC.toggleFullScreen, (e) => {
     const w = current(e)
     if (w) w.setFullScreen(!w.isFullScreen())
   })
-  ipcMain.on(IPC.quit, () => app.quit())
-  ipcMain.on(IPC.openExternal, (_e, url: string) => {
-    if (typeof url === 'string' && /^https?:/.test(url)) void shell.openExternal(url)
+  ipcMain.on(IPC.quit, (e) => trustedSender(e) && app.quit())
+  ipcMain.on(IPC.openExternal, (e, url: unknown) => {
+    if (trustedSender(e)) openExternalSafe(url)
   })
   ipcMain.on(IPC.mcpEntry, (e) => {
     e.returnValue = join(app.getAppPath(), 'mcp', 'dist', 'index.js').split('\\').join('/')
   })
-  ipcMain.handle(IPC.readClipboardMedia, () => readClipboardMedia())
-  ipcMain.handle(IPC.renderHtml, (_e, args: { html: string; scale?: number }) => renderHtml(args))
+  ipcMain.handle(IPC.readClipboardMedia, (e) => {
+    if (!trustedSender(e)) throw new Error('Not allowed')
+    return readClipboardMedia()
+  })
+  ipcMain.handle(IPC.renderHtml, (e, args: unknown) => {
+    if (!trustedSender(e)) throw new Error('Not allowed')
+    return renderHtml(args)
+  })
   ipcMain.handle(IPC.capturePage, async (e, rect?: Rect) => {
-    const r = rect
-      ? {
-          x: Math.round(rect.x),
-          y: Math.round(rect.y),
-          width: Math.max(1, Math.round(rect.width)),
-          height: Math.max(1, Math.round(rect.height))
-        }
-      : undefined
+    if (!trustedSender(e)) throw new Error('Not allowed')
+    const n = (v: unknown): number => (typeof v === 'number' && Number.isFinite(v) ? Math.round(Math.min(1e5, Math.max(-1e5, v))) : 0)
+    const r =
+      rect && typeof rect === 'object'
+        ? { x: n(rect.x), y: n(rect.y), width: Math.max(1, n(rect.width)), height: Math.max(1, n(rect.height)) }
+        : undefined
     const img = await e.sender.capturePage(r)
     return img.toPNG().toString('base64')
   })
@@ -134,6 +208,7 @@ if (!gotLock) {
 
   app.whenReady().then(() => {
     app.setAppUserModelId('app.vellum.desktop')
+    hardenDefaultSession()
     registerWindowIpc()
     registerStorageIpc()
     cleanStaleRenderTemp()

@@ -1,7 +1,7 @@
 // Font lookup for get_font_family_info: locally installed fonts (Windows registry + GDI+ family
 // list via PowerShell) and Google Fonts (metadata fetched from fonts.google.com, cached on disk).
 import { execFile } from 'node:child_process'
-import { mkdir, readFile, stat, writeFile } from 'node:fs/promises'
+import { mkdir, readFile, rename, rm, stat, writeFile } from 'node:fs/promises'
 import { homedir } from 'node:os'
 import { join } from 'node:path'
 
@@ -138,16 +138,40 @@ interface GoogleFamily {
 
 let googlePromise: Promise<Map<string, GoogleFamily>> | null = null
 
+const GOOGLE_METADATA_URL = 'https://fonts.google.com/metadata/fonts'
+const GOOGLE_MAX_BYTES = 32 * 1024 * 1024
+const GOOGLE_TIMEOUT_MS = 20_000
+
+/**
+ * The Google Fonts family list. https only, fixed host, redirects must stay on fonts.google.com,
+ * one timeout for the whole download (headers and body) and a size cap.
+ */
 async function fetchGoogle(): Promise<string | null> {
+  const ctl = new AbortController()
+  const t = setTimeout(() => ctl.abort(), GOOGLE_TIMEOUT_MS)
   try {
-    const ctl = new AbortController()
-    const t = setTimeout(() => ctl.abort(), 10_000)
-    const res = await fetch('https://fonts.google.com/metadata/fonts', { signal: ctl.signal })
-    clearTimeout(t)
-    if (!res.ok) return null
-    return await res.text()
+    const res = await fetch(GOOGLE_METADATA_URL, { signal: ctl.signal, redirect: 'follow' })
+    const final = new URL(res.url || GOOGLE_METADATA_URL)
+    if (!res.ok || final.protocol !== 'https:' || final.hostname !== 'fonts.google.com' || !res.body) return null
+    if (Number(res.headers.get('content-length') ?? 0) > GOOGLE_MAX_BYTES) return null
+    const chunks: Uint8Array[] = []
+    let size = 0
+    const reader = res.body.getReader()
+    for (;;) {
+      const { done, value } = await reader.read()
+      if (done) break
+      size += value.byteLength
+      if (size > GOOGLE_MAX_BYTES) {
+        await reader.cancel().catch(() => undefined)
+        return null
+      }
+      chunks.push(value)
+    }
+    return Buffer.concat(chunks).toString('utf8')
   } catch {
     return null
+  } finally {
+    clearTimeout(t)
   }
 }
 
@@ -163,11 +187,17 @@ async function loadGoogle(): Promise<Map<string, GoogleFamily>> {
   }
   if (!text || !fresh) {
     const fetched = await fetchGoogle()
-    if (fetched) {
+    if (fetched && isGoogleMetadata(fetched)) {
       text = fetched
       try {
         await mkdir(CACHE_DIR, { recursive: true })
-        await writeFile(GOOGLE_CACHE, fetched)
+        // atomic: a crash or a second server process never leaves a half-written cache
+        const tmp = `${GOOGLE_CACHE}.${process.pid}.tmp`
+        await writeFile(tmp, fetched)
+        await rename(tmp, GOOGLE_CACHE).catch(async (err) => {
+          await rm(tmp, { force: true })
+          throw err
+        })
       } catch {
         /* cache is best-effort */
       }
@@ -176,12 +206,29 @@ async function loadGoogle(): Promise<Map<string, GoogleFamily>> {
   const map = new Map<string, GoogleFamily>()
   if (!text) return map
   try {
-    const json = JSON.parse(text.replace(/^\)\]\}'\s*/, '')) as { familyMetadataList?: GoogleFamily[] }
-    for (const f of json.familyMetadataList ?? []) map.set(f.family.toLowerCase(), f)
+    const json = parseGoogle(text)
+    for (const f of json.familyMetadataList ?? []) {
+      // only well-formed entries: the family name ends up in a Google Fonts URL
+      if (f && typeof f.family === 'string' && /^[^\x00-\x1f<>"'`\\]{1,100}$/.test(f.family) && f.fonts && typeof f.fonts === 'object') {
+        map.set(f.family.toLowerCase(), f)
+      }
+    }
   } catch {
     /* corrupt cache */
   }
   return map
+}
+
+function parseGoogle(text: string): { familyMetadataList?: GoogleFamily[] } {
+  return JSON.parse(text.replace(/^\)\]\}'\s*/, '')) as { familyMetadataList?: GoogleFamily[] }
+}
+
+function isGoogleMetadata(text: string): boolean {
+  try {
+    return Array.isArray(parseGoogle(text).familyMetadataList)
+  } catch {
+    return false
+  }
 }
 
 export function googleFonts(): Promise<Map<string, GoogleFamily>> {
@@ -280,7 +327,11 @@ export function googleCssUrl(families: { family: string; weights: string[] }[]):
       .sort((a, b) => a.ital - b.ital || a.wght - b.wght)
       .map((t) => `${t.ital},${t.wght}`)
     const uniq = [...new Set(tuples)]
-    return `family=${encodeURIComponent(family).replace(/%20/g, '+')}:ital,wght@${uniq.join(';')}`
+    // encodeURIComponent leaves ' ( ) unescaped; escape them so the URL is safe inside url('…') too
+    const fam = encodeURIComponent(family)
+      .replace(/%20/g, '+')
+      .replace(/[!'()*]/g, (c) => `%${c.charCodeAt(0).toString(16).toUpperCase()}`)
+    return `family=${fam}:ital,wght@${uniq.join(';')}`
   })
   return `https://fonts.googleapis.com/css2?${parts.join('&')}&display=block`
 }

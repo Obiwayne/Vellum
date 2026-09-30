@@ -14,7 +14,8 @@ mkdirSync(outDir, { recursive: true })
 const transport = new StdioClientTransport({
   command: process.execPath,
   args: [join(here, '..', 'dist', 'index.js')],
-  env: { ...process.env, VELLUM_PORT: process.env.VELLUM_PORT || process.env.CANVAS_PORT || '29170' },
+  // exports are only written inside the export folder: point it at outDir
+  env: { ...process.env, VELLUM_PORT: process.env.VELLUM_PORT || process.env.CANVAS_PORT || '29170', VELLUM_EXPORT_DIR: outDir },
   stderr: 'inherit'
 })
 const client = new Client({ name: 'canvas-e2e', version: '0.0.1' })
@@ -162,7 +163,7 @@ async function main() {
   }
 
   const exp = await call('export', {
-    outputDir: join(outDir, 'export'),
+    outputDir: 'export',
     nodes: { [artboardId]: [{ format: 'png', scale: '2x' }, { format: 'svg' }, { format: 'html' }, { format: 'jsx' }] }
   })
   ok(exp.body.exported?.length === 4 && !exp.body.errors, `export wrote ${exp.body.exported?.length} files`)

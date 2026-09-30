@@ -17,7 +17,7 @@ export function resolveDocId(args: Record<string, unknown>): string {
   const s = getStore()
   const explicit = typeof args.fileId === 'string' && args.fileId ? args.fileId : undefined
   if (explicit) {
-    if (!s.docs[explicit]) throw new Error(`File ${explicit} not found. Use list_files to see available files.`)
+    if (!hasDoc(explicit)) throw new Error(`File ${explicit} not found. Use list_files to see available files.`)
     return explicit
   }
   const id = activeDocId(s) ?? s.recents.find((r) => s.docs[r] && !s.docs[r].archived)
@@ -25,10 +25,14 @@ export function resolveDocId(args: Record<string, unknown>): string {
   return id
 }
 
+/** true for an id of a loaded doc (own key only: "__proto__", "constructor"… are not docs) */
+export function hasDoc(docId: unknown): docId is string {
+  return typeof docId === 'string' && Object.prototype.hasOwnProperty.call(getStore().docs, docId)
+}
+
 export function getDoc(docId: string): Doc {
-  const d = getStore().docs[docId]
-  if (!d) throw new Error(`File ${docId} not found`)
-  return d
+  if (!hasDoc(docId)) throw new Error(`File ${docId} not found`)
+  return getStore().docs[docId]
 }
 
 /** The page named by args.pageId, or the page the user is viewing. */

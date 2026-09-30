@@ -6,6 +6,7 @@ import {
   arr,
   geometry,
   getDoc,
+  hasDoc,
   registerHandler,
   resolveDocId,
   resolvePage,
@@ -93,7 +94,7 @@ registerHandler('list_files', (args) => {
 registerHandler('open_file', (args) => {
   const s = getStore()
   const id = str(args.fileId)?.replace(/^.*\/file\//, '').split('/')[0]
-  if (!id || !s.docs[id]) throw new Error(`File ${args.fileId} not found. Use list_files to see available files.`)
+  if (!id || !hasDoc(id)) throw new Error(`File ${args.fileId} not found. Use list_files to see available files.`)
   const wasOpen = s.tabs.includes(id)
   if (s.docs[id].archived) s.archiveDoc(id, false)
   s.openDoc(id)
@@ -106,7 +107,7 @@ registerHandler('create_file', (args) => {
   const s = getStore()
   const name = str(args.name)?.trim() || 'Untitled'
   const cloneId = str(args.cloneFileId)
-  if (cloneId && !s.docs[cloneId]) throw new Error(`File ${cloneId} not found`)
+  if (cloneId && !hasDoc(cloneId)) throw new Error(`File ${cloneId} not found`)
   const id = s.createDoc(name, { open: false })
   if (cloneId) {
     const src = getStore().docs[cloneId]

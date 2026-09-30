@@ -11,7 +11,15 @@ import { fileURLToPath } from 'node:url'
 
 const here = dirname(fileURLToPath(import.meta.url))
 const client = new Client({ name: 'vellum-regress', version: '0.0.1' })
-await client.connect(new StdioClientTransport({ command: process.execPath, args: [join(here, '..', 'dist', 'index.js')], env: process.env }))
+// exports go to a temp export folder (the server only writes inside its export folder)
+const exportRoot = join((await import('node:os')).tmpdir(), 'vellum-regress-export')
+await client.connect(
+  new StdioClientTransport({
+    command: process.execPath,
+    args: [join(here, '..', 'dist', 'index.js')],
+    env: { ...process.env, VELLUM_EXPORT_DIR: exportRoot, VELLUM_EXPORT_ROOTS: '' }
+  })
+)
 
 async function call(name, args) {
   const res = await client.callTool({ name, arguments: args })
@@ -236,11 +244,49 @@ try {
     const w = pngSize((await call('get_screenshot', { fileId, nodeId: wide })).image.data)
     check('4500px wide node → 4500×300 image', w.width === 4500 && w.height === 300, w)
     // no scrollbar: the last column/row of a solid artboard must be the fill colour
-    const out = join((await import('node:os')).tmpdir(), 'vellum-regress-export')
-    const ex = (await call('export', { fileId, nodeId: tall, format: 'png', scale: 1, outputDir: out })).json
+    const ex = (await call('export', { fileId, nodeId: tall, format: 'png', scale: 1 })).json
     check('export is full size too', ex.exported?.[0]?.width === 600 && ex.exported?.[0]?.height === 5200, ex.exported)
     const px = await solidEdges(r.image.data)
     check('no scrollbars / seams (edges and tile rows are solid red)', px.ok, px)
+  }
+
+  // 3. export can only write inside its export folder, with safe file names, never overwriting
+  console.log('3. export paths')
+  {
+    const { existsSync, readFileSync } = await import('node:fs')
+    const { tmpdir } = await import('node:os')
+    const { relative, isAbsolute, basename } = await import('node:path')
+    const inside = (p) => {
+      const rel = relative(exportRoot, p)
+      return rel && !rel.startsWith('..') && !isAbsolute(rel)
+    }
+    const evil = await artboard('..\\..\\evil/../CON', { width: '40px', height: '40px', backgroundColor: '#123456' })
+    const a = (await call('export', { fileId, nodeId: evil, format: 'png', outputDir: 'sub/dir' })).json
+    const p1 = a.exported?.[0]?.path
+    check('relative outputDir lands in a subfolder of the export folder', p1 && inside(p1) && p1.includes('sub'), a)
+    check(
+      'layer name cannot traverse or use a device name',
+      p1 && relative(join(exportRoot, 'sub', 'dir'), p1) === basename(p1) && !/[\\/]/.test(basename(p1)) && !/^(CON|\.)/i.test(basename(p1)),
+      p1
+    )
+    const b = (await call('export', { fileId, nodeId: evil, format: 'png', outputDir: 'sub/dir' })).json
+    const p2 = b.exported?.[0]?.path
+    check('second export does not overwrite the first', p2 && p2 !== p1 && existsSync(p1) && existsSync(p2), [p1, p2])
+    const abs = (await call('export', { fileId, nodeId: evil, format: 'svg', outputDir: join(exportRoot, 'abs') })).json
+    check('absolute outputDir inside the export folder is allowed', abs.exported?.[0]?.path && inside(abs.exported[0].path), abs)
+    const svg = abs.exported?.[0]?.path ? readFileSync(abs.exported[0].path, 'utf8') : ''
+    check('svg export: no raw & in <style> (well-formed XML)', !/<style>[^<]*&(?!amp;|lt;|gt;|#)/.test(svg))
+    const refused = []
+    for (const outputDir of ['..', '../escape', '..\\..\\escape', tmpdir(), 'C:\\Windows\\Temp', '\\\\127.0.0.1\\c$\\vellum', '//127.0.0.1/c$/vellum', 'sub/../../escape']) {
+      try {
+        await call('export', { fileId, nodeId: evil, format: 'png', outputDir })
+        refused.push({ outputDir, refused: false })
+      } catch (e) {
+        refused.push({ outputDir, refused: /export folder/.test(e.message) })
+      }
+    }
+    check('outputDir outside the export folder is refused (.., absolute, drive, UNC)', refused.every((r) => r.refused), refused)
+    check('nothing escaped next to the export folder', !existsSync(join(exportRoot, '..', 'escape')))
   }
 } catch (err) {
   failed++

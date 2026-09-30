@@ -5,9 +5,9 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
 import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js'
 import { z } from 'zod'
-import { mkdir, writeFile } from 'node:fs/promises'
+import { mkdir, realpath, writeFile } from 'node:fs/promises'
 import { homedir } from 'node:os'
-import { join } from 'node:path'
+import { delimiter, dirname, isAbsolute, join, relative, resolve } from 'node:path'
 import { VellumBridge } from './bridge.js'
 import { GUIDES, GUIDE_TOPICS_DESCRIPTION, SERVER_INSTRUCTIONS } from './guide.js'
 import { fontFamilyInfo, prefetchFonts } from './fonts.js'
@@ -112,21 +112,95 @@ function resolveScale(scale: unknown, cssWidth: number, cssHeight: number): numb
   }
 }
 
-const exportDir = (): string => process.env.VELLUM_EXPORT_DIR || process.env.CANVAS_EXPORT_DIR || join(homedir(), 'Downloads', 'Vellum')
+// ------------------------------------------------------------------------------------------------
+// export folder policy
+//
+// `export` writes files, and its arguments (outputDir, and node names used as file names) come from
+// the agent / the design, so: files only ever land inside the export folder (VELLUM_EXPORT_DIR,
+// default %USERPROFILE%\Downloads\Vellum) or inside a folder the user listed in VELLUM_EXPORT_ROOTS
+// (separated by ";" on Windows, ":" elsewhere). A relative outputDir is taken relative to the export
+// folder. Symlinks/junctions can't be used to step outside, and existing files are never
+// overwritten (a " (2)" suffix is added instead).
 
-const safeName = (s: string): string => s.replace(/[<>:"/\\|?*\x00-\x1f]+/g, '-').replace(/\s+/g, ' ').trim().slice(0, 80) || 'node'
+const exportDir = (): string => resolve(process.env.VELLUM_EXPORT_DIR || process.env.CANVAS_EXPORT_DIR || join(homedir(), 'Downloads', 'Vellum'))
 
-async function uniquePath(dir: string, base: string, ext: string): Promise<string> {
-  const { access } = await import('node:fs/promises')
-  let p = join(dir, `${base}.${ext}`)
-  for (let i = 2; ; i++) {
+function exportRoots(): string[] {
+  const extra = (process.env.VELLUM_EXPORT_ROOTS || '')
+    .split(delimiter)
+    .map((s) => s.trim())
+    .filter((s) => s && isAbsolute(s))
+    .map((s) => resolve(s))
+  return [exportDir(), ...extra]
+}
+
+/** `child` is `root` or inside it (path.relative is case-insensitive on Windows; other drives / UNC are outside). */
+function within(root: string, child: string): boolean {
+  const rel = relative(root, child)
+  return rel === '' || (!rel.startsWith('..') && !isAbsolute(rel))
+}
+
+/** realpath of the deepest existing ancestor of `p` (+ the not-yet-existing rest). */
+async function realish(p: string): Promise<string> {
+  let cur = p
+  const rest: string[] = []
+  for (;;) {
     try {
-      await access(p)
-      p = join(dir, `${base} (${i}).${ext}`)
+      return join(await realpath(cur), ...rest.reverse())
     } catch {
-      return p
+      const up = dirname(cur)
+      if (up === cur) return p
+      rest.push(cur.slice(up.length).replace(/^[\\/]+/, ''))
+      cur = up
     }
   }
+}
+
+/** Resolve and authorise the folder an export writes into (creating it). Throws when it's not allowed. */
+async function resolveExportDir(outputDir: string | undefined): Promise<string> {
+  const base = exportDir()
+  const roots = exportRoots()
+  if (outputDir !== undefined && (typeof outputDir !== 'string' || outputDir.includes('\0'))) throw new Error('Invalid outputDir')
+  const target = outputDir ? resolve(base, outputDir) : base
+  const root = roots.find((r) => within(r, target))
+  if (!root) {
+    throw new Error(
+      `outputDir must be inside the export folder ${base}` +
+        (roots.length > 1 ? ` or one of ${roots.slice(1).join(', ')}` : '') +
+        '. Pass a relative outputDir (a subfolder of the export folder), or ask the user to add the folder to VELLUM_EXPORT_ROOTS in the MCP server config.'
+    )
+  }
+  // symlinks / junctions: compare real locations (before creating anything, and again after)
+  const realRoot = await realish(root)
+  if (!within(realRoot, await realish(target))) throw new Error('outputDir resolves outside the export folder (symlink or junction)')
+  await mkdir(target, { recursive: true })
+  if (!within(await realpath(root), await realpath(target))) throw new Error('outputDir resolves outside the export folder (symlink or junction)')
+  return target
+}
+
+/** A file name from a layer name: no separators, control chars, device names, or leading/trailing dots and spaces. */
+function safeName(s: string): string {
+  let n = String(s ?? '')
+    .replace(/[<>:"/\\|?*\x00-\x1f\x7f]+/g, '-')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, 80)
+    .replace(/^[.\s]+|[.\s]+$/g, '')
+  if (/^(con|prn|aux|nul|com[0-9]|lpt[0-9])(\..*)?$/i.test(n)) n = `_${n}`
+  return n || 'node'
+}
+
+/** Write a new file `<base>.<ext>` (or `<base> (n).<ext>`) in `dir`, never overwriting anything. */
+async function writeNew(dir: string, base: string, ext: string, data: string | Buffer): Promise<string> {
+  for (let i = 1; i < 10_000; i++) {
+    const p = join(dir, i === 1 ? `${base}.${ext}` : `${base} (${i}).${ext}`)
+    try {
+      await writeFile(p, data, { flag: 'wx' }) // O_EXCL: fails on any existing file or symlink
+      return p
+    } catch (err) {
+      if ((err as NodeJS.ErrnoException).code !== 'EEXIST') throw err
+    }
+  }
+  throw new Error('Too many files with that name in the export folder')
 }
 
 type ExportFormat = 'png' | 'jpg' | 'svg' | 'html' | 'jsx'
@@ -139,11 +213,9 @@ async function exportNode(
   dir: string
 ): Promise<{ nodeId: string; name: string; format: string; path: string; width?: number; height?: number }> {
   const { payload } = await renderPayload({ fileId: fileIdArg, nodeId })
-  await mkdir(dir, { recursive: true })
   const base = safeName(payload.name)
   if (fmt === 'html') {
-    const path = await uniquePath(dir, base, 'html')
-    await writeFile(path, await buildExportHtml(payload), 'utf8')
+    const path = await writeNew(dir, base, 'html', await buildExportHtml(payload))
     return { nodeId, name: payload.name, format: fmt, path }
   }
   if (fmt === 'jsx') {
@@ -151,15 +223,13 @@ async function exportNode(
     const code = typeof res.body === 'string' ? res.body : String((res.body as { jsx?: string })?.jsx ?? '')
     const comp = base.replace(/[^A-Za-z0-9]+(.)?/g, (_m, c: string | undefined) => (c ? c.toUpperCase() : '')).replace(/^[^A-Za-z]+/, '') || 'Design'
     const name = comp[0].toUpperCase() + comp.slice(1)
-    const path = await uniquePath(dir, base, 'jsx')
-    await writeFile(path, `export default function ${name}() {\n  return ${code.trim()}\n}\n`, 'utf8')
+    const path = await writeNew(dir, base, 'jsx', `export default function ${name}() {\n  return ${code.trim()}\n}\n`)
     return { nodeId, name: payload.name, format: fmt, path }
   }
   // measure once so w/h/p scales can be resolved
   const measured = await rasterize(payload, { measureOnly: true })
   if (fmt === 'svg') {
-    const path = await uniquePath(dir, base, 'svg')
-    await writeFile(path, await buildSvg(payload, Math.ceil(measured.cssWidth), Math.ceil(measured.cssHeight)), 'utf8')
+    const path = await writeNew(dir, base, 'svg', await buildSvg(payload, Math.ceil(measured.cssWidth), Math.ceil(measured.cssHeight)))
     return { nodeId, name: payload.name, format: fmt, path, width: Math.ceil(measured.cssWidth), height: Math.ceil(measured.cssHeight) }
   }
   const s = resolveScale(scale ?? '1x', measured.cssWidth, measured.cssHeight)
@@ -169,8 +239,7 @@ async function exportNode(
     maxDimension: 16000,
     background: fmt === 'jpg' ? '#FFFFFF' : undefined
   })
-  const path = await uniquePath(dir, base, fmt)
-  await writeFile(path, Buffer.from(img.base64, 'base64'))
+  const path = await writeNew(dir, base, fmt, Buffer.from(img.base64, 'base64'))
   return { nodeId, name: payload.name, format: fmt, path, width: img.width, height: img.height }
 }
 
@@ -572,7 +641,7 @@ const exportSetting = z.object({
 server.registerTool(
   'export',
   {
-    description: `Export nodes to files on disk (default folder: %USERPROFILE%\\Downloads\\Vellum, override with outputDir or env VELLUM_EXPORT_DIR). Returns the written paths.
+    description: `Export nodes to files on disk. Returns the written paths. Files go to the export folder (%USERPROFILE%\\Downloads\\Vellum unless the user set VELLUM_EXPORT_DIR). outputDir may be a subfolder of it (relative path) or an absolute folder inside it or inside a folder the user allowed with VELLUM_EXPORT_ROOTS; other folders are refused. Existing files are never overwritten.
 Pass either:
 - nodeId (+ format, scale), or
 - nodes: { [nodeId]: [{format, scale}] } ([] = PNG 1x), or
@@ -585,12 +654,12 @@ Formats: png (default), jpg, svg (HTML in foreignObject), html (standalone page)
       format: z.enum(['png', 'jpg', 'svg', 'html', 'jsx']).optional(),
       scale: z.union([z.string(), z.number()]).optional(),
       nodes: z.record(z.string(), z.array(exportSetting)).optional(),
-      outputDir: z.string().optional()
+      outputDir: z.string().max(1024).optional().describe('Subfolder of the export folder (relative), or an absolute folder inside an allowed export root.')
     }
   },
   async (args) => {
     try {
-      const dir = args.outputDir || exportDir()
+      const dir = await resolveExportDir(args.outputDir || undefined)
       const jobs: { nodeId: string; format: ExportFormat; scale: unknown }[] = []
       let header: Record<string, unknown> | null = null
       if (args.nodes && Object.keys(args.nodes).length) {

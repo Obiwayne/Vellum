@@ -184,6 +184,151 @@ try {
   check('profiles.json lists one profile', (await v.readProfiles()).length === 1)
   await v.deleteProfile(bob.id)
   check('deleting the open profile locks', !v.isOpen())
+
+  console.log('ids and paths (traversal)')
+  {
+    const bad = ['', '..', '../x', '..\\x', 'a/b', 'a\\b', 'C:', 'C:\\Windows', '\\\\server\\share', '//server/share', 'CON', 'nul', 'Com1', 'LPT9', 'a.b', 'x'.repeat(129), 'a\0b', 'é']
+    check('isSafeId rejects traversal, drive, UNC, device and odd names', bad.every((s) => !V.isSafeId(s)), bad.filter((s) => V.isSafeId(s)))
+    check('isSafeId rejects non-strings', [null, undefined, 1, {}, ['a']].every((s) => !V.isSafeId(s)))
+    check('isSafeId accepts normal ids', ['abc', 'A-b_9', 'x'.repeat(128), 'CONSOLE', 'nul1x'].every((s) => V.isSafeId(s)))
+    check('isInside: child', V.isInside(join(root, 'p'), join(root, 'p', 'files', 'a.json')))
+    check('isInside: .. escapes', !V.isInside(join(root, 'p'), join(root, 'p', '..', 'q', 'a.json')))
+    check('isInside: the folder itself is not inside', !V.isInside(join(root, 'p'), join(root, 'p')))
+    check('isInside: sibling with same prefix', !V.isInside(join(root, 'p'), join(root, 'p2', 'a.json')))
+    if (process.platform === 'win32') {
+      check('isInside: other drive', !V.isInside('C:\\a', 'D:\\a\\b'))
+      check('isInside: UNC', !V.isInside('C:\\a', '\\\\server\\share\\a'))
+    }
+    const v3 = new Vault(root)
+    await rejects('open("../x") rejected', v3.open('../x'), 'Invalid id')
+    await rejects('open("CON") rejected', v3.open('CON'), 'Invalid id')
+    await rejects('delete("..") rejected', v3.deleteProfile('..'), 'Invalid id')
+    await rejects('recover("..\\\\x") rejected', v3.recover('..\\x', 'k'), 'Invalid id')
+    await rejects('reading while locked', (async () => v3.readJson(join(root, 'x.json')))(), LOCKED_ERROR)
+    const p3 = (await v3.create({ name: 'Paths' })).profile
+    const d3 = v3.profileDir(p3.id)
+    let threw = 0
+    for (const f of [
+      () => v3.readJson(join(d3, '..', 'x.json')),
+      () => v3.writeJson(join(d3, '..', '..', 'evil.json'), '{}'),
+      () => v3.remove(join(root, 'profiles.json')),
+      () => v3.path('..', 'x.json'),
+      () => v3.path('files', '..', '..', 'y.json')
+    ]) {
+      try {
+        await f()
+      } catch (e) {
+        if (String(e.message).includes('outside the profile')) threw++
+      }
+    }
+    check('read/write/remove/path outside the open profile are refused', threw === 5, threw)
+    check('profiles.json untouched by the refused remove', existsSync(join(root, 'profiles.json')))
+    check('profileDir refuses a bad id', (() => {
+      try {
+        v3.profileDir('..')
+        return false
+      } catch {
+        return true
+      }
+    })())
+    await v3.deleteProfile(p3.id)
+  }
+
+  console.log('format v2 binds a file to its name; v1 still reads')
+  {
+    const v4 = new Vault(root, { throttleBaseMs: 200 })
+    const c4 = await v4.create({ name: 'Format', password: 'pw-format' })
+    const d4 = v4.profileDir(c4.profile.id)
+    await v4.writeJson(v4.path('files', 'one.json'), JSON.stringify(doc('one', 'One')))
+    await v4.writeJson(v4.path('files', 'two.json'), JSON.stringify(doc('two', 'Two')))
+    const oneBytes = raw(join(d4, 'files', 'one.json'))
+    check('new files are format v2', oneBytes[4] === 2, oneBytes[4])
+    writeFileSync(join(d4, 'files', 'two.json'), oneBytes) // swap: one's ciphertext under two's name
+    check('swapped ciphertext is rejected (AAD = file name)', (await v4.readJson(v4.path('files', 'two.json'))) === null)
+    check('the original still reads', (await v4.readJson(v4.path('files', 'one.json')))?.name === 'One')
+    // v1 file (AAD = magic only), as written before this change
+    const dek = v4['dek']
+    const { createCipheriv, randomBytes } = await import('node:crypto')
+    const iv = randomBytes(12)
+    const c = createCipheriv('aes-256-gcm', dek, iv)
+    c.setAAD(Buffer.from('VLME'))
+    const ct = Buffer.concat([c.update(Buffer.from(JSON.stringify(doc('old', 'Old v1')))), c.final()])
+    writeFileSync(join(d4, 'files', 'old.json'), Buffer.concat([Buffer.from('VLME'), Buffer.from([1]), iv, c.getAuthTag(), ct]))
+    check('v1 file still reads', (await v4.readJson(v4.path('files', 'old.json')))?.name === 'Old v1')
+    await v4.writeJson(v4.path('files', 'old.json'), JSON.stringify(doc('old', 'Old v1')))
+    check('rewritten as v2', raw(join(d4, 'files', 'old.json'))[4] === 2)
+    check('unknown version is rejected', (() => {
+      const b = Buffer.from(raw(join(d4, 'files', 'old.json')))
+      b[4] = 9
+      try {
+        decryptBytes(dek, b)
+        return false
+      } catch (e) {
+        return /version/.test(e.message)
+      }
+    })())
+
+    console.log('lock wipes the key; stale temp files; heal')
+    const keyRef = v4['dek']
+    await v4.close()
+    check('close() zeroes the data key in memory', keyRef.length === 32 && keyRef.every((b) => b === 0))
+    check('no key kept after close', v4['dek'] === null && v4.currentProfile === null)
+    writeFileSync(join(d4, 'files', 'one.json.tmp'), JSON.stringify(doc('one', 'PLAINTEXT LEFTOVER')))
+    writeFileSync(join(d4, 'index.json.tmp'), '{"prefs":{}}')
+    writeFileSync(join(d4, 'files', 'planted.json'), JSON.stringify(doc('planted', 'Plain file')))
+    await v4.open(c4.profile.id, 'pw-format')
+    check('stale .tmp files removed on unlock', !existsSync(join(d4, 'files', 'one.json.tmp')) && !existsSync(join(d4, 'index.json.tmp')))
+    check('plaintext file in a protected profile is encrypted on unlock', isEncrypted(raw(join(d4, 'files', 'planted.json'))))
+    check('temp write leaves no .tmp behind', readdirSync(join(d4, 'files')).every((n) => !n.endsWith('.tmp')))
+
+    console.log('input limits')
+    await rejects('overlong new password refused', v4.setPassword('pw-format', 'x'.repeat(1025)), 'at most')
+    await v4.update({ autoLockMinutes: 1e9 })
+    check('auto-lock minutes clamped', v4.currentProfile.autoLockMinutes === 1440, v4.currentProfile.autoLockMinutes)
+    await v4.update({ autoLockMinutes: Infinity })
+    check('non-finite auto-lock ignored', v4.currentProfile.autoLockMinutes === 1440)
+
+    console.log('brute-force throttle')
+    await v4.close()
+    await rejects('wrong 1', v4.open(c4.profile.id, 'a'), WRONG_PASSWORD)
+    await rejects('wrong 2', v4.open(c4.profile.id, 'b'), WRONG_PASSWORD)
+    await rejects('wrong 3', v4.open(c4.profile.id, 'c'), WRONG_PASSWORD)
+    await rejects('4th attempt is throttled, even with the right password', v4.open(c4.profile.id, 'pw-format'), V.TOO_MANY_ATTEMPTS)
+    await rejects('delete is throttled too', v4.deleteProfile(c4.profile.id, 'pw-format'), V.TOO_MANY_ATTEMPTS)
+    await rejects('recovery is throttled too', v4.recover(c4.profile.id, c4.recoveryKey), V.TOO_MANY_ATTEMPTS)
+    await new Promise((r) => setTimeout(r, 250))
+    await rejects('wrong 4 (after the wait)', v4.open(c4.profile.id, 'd'), WRONG_PASSWORD)
+    await rejects('delay doubles', v4.open(c4.profile.id, 'pw-format'), V.TOO_MANY_ATTEMPTS)
+    check('throttleDelay grows and is capped', V.throttleDelay(2, 1000) === 0 && V.throttleDelay(3, 1000) === 1000 && V.throttleDelay(5, 1000) === 4000 && V.throttleDelay(50, 1000) === 60000)
+    await new Promise((r) => setTimeout(r, 450))
+    await v4.open(c4.profile.id, 'pw-format')
+    check('correct password after the wait opens and resets the count', v4.isOpen())
+    await v4.close()
+    await rejects('count was reset (1 wrong is not throttled)', v4.open(c4.profile.id, 'z'), WRONG_PASSWORD)
+    await v4.open(c4.profile.id, 'pw-format')
+
+    console.log('tampered profiles.json')
+    await v4.close()
+    const pjPath = join(root, 'profiles.json')
+    const saved = readFileSync(pjPath, 'utf8')
+    const pjData = JSON.parse(saved)
+    pjData.profiles.find((p) => p.id === c4.profile.id).crypto.kdf.N = 2
+    writeFileSync(pjPath, JSON.stringify(pjData))
+    await rejects('weak KDF params in profiles.json are refused', v4.open(c4.profile.id, 'pw-format'), 'invalid')
+    const pj2 = JSON.parse(saved)
+    pj2.profiles.find((p) => p.id === c4.profile.id).crypto.byPassword.ct = 'AAAA'
+    writeFileSync(pjPath, JSON.stringify(pj2))
+    await rejects('malformed wrapped key is refused', v4.open(c4.profile.id, 'pw-format'))
+    const pj3 = JSON.parse(saved)
+    pj3.profiles.push({ ...pj3.profiles[0], id: '..' })
+    writeFileSync(pjPath, JSON.stringify(pj3))
+    check('profiles with unusable ids are ignored', (await v4.readProfiles()).every((p) => p.id !== '..'))
+    writeFileSync(pjPath, saved)
+    await v4.open(c4.profile.id, 'pw-format')
+    check('restored profiles.json opens again', v4.isOpen())
+    check('profiles.json never holds key material in clear', !readFileSync(pjPath, 'utf8').includes(c4.recoveryKey) && !readFileSync(pjPath, 'utf8').includes('pw-format'))
+    await v4.deleteProfile(c4.profile.id, 'pw-format')
+  }
 } finally {
   rmSync(root, { recursive: true, force: true })
 }
