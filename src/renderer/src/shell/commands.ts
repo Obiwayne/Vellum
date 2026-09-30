@@ -1,6 +1,7 @@
 // App-level commands shared by the hamburger menu and global shortcuts.
 import type { MenuEntry } from '../ui/Menu'
 import { DASHBOARD, activeDocId, getStore } from '../model/store'
+import { exportPagePdf } from '../editor/canvas/actions'
 
 const api = (): Window['canvasApi'] | undefined => window.canvasApi
 
@@ -61,7 +62,11 @@ export const commands = {
   goToDashboard: (): void => getStore().setActiveTab(DASHBOARD),
   nextTab: (): void => getStore().cycleTab(1),
   previousTab: (): void => getStore().cycleTab(-1),
-  goToLastTab: (): void => getStore().goToLastTab()
+  goToLastTab: (): void => getStore().goToLastTab(),
+  exportPagePdf: (): void => {
+    const id = activeDocId(getStore())
+    if (id) void exportPagePdf(id)
+  }
 }
 
 /** Hamburger menu (NOTES §2). */
@@ -79,6 +84,8 @@ export function appMenu(): MenuEntry[] {
         { type: 'separator' },
         { label: 'Close Tab', shortcut: 'Ctrl+W', onSelect: commands.closeTab, disabled: s.activeTab === DASHBOARD },
         { label: 'Close Window', shortcut: 'Ctrl+Shift+W', onSelect: commands.closeWindow },
+        { type: 'separator' },
+        { label: 'Export PDF of All Artboards…', onSelect: commands.exportPagePdf, disabled: !docId },
         { type: 'separator' },
         { label: 'Exit', onSelect: commands.exit }
       ]

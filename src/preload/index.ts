@@ -43,6 +43,7 @@ const api: CanvasApi = {
 
   capturePage: (rect) => ipcRenderer.invoke(IPC.capturePage, rect),
   renderHtml: (args) => ipcRenderer.invoke(IPC.renderHtml, args),
+  renderPdf: (args) => ipcRenderer.invoke(IPC.renderPdf, args),
   readClipboardMedia: () => ipcRenderer.invoke(IPC.readClipboardMedia),
 
   onBridgeRequest: (cb) => {

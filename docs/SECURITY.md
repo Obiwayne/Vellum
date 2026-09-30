@@ -103,6 +103,11 @@ redirects away from `vellum-render:`, frame navigation, webviews and new windows
 are validated and clamped (html type and 100 MB cap, scale 0.01–16, format enum, quality, maxDimension,
 background length).
 
+PDF export (`main:render_pdf`, the `renderPdf` IPC with the same `trustedSender` check) loads its document in the
+same window, scheme and CSP, with the same HTML type and size checks; WebP encoding runs our own injected code in
+that page on a `data:` PNG, which the CSP allows. Neither adds a way to write files: the app still saves through
+the renderer's download (a save dialog), and MCP exports go through the export-folder policy (#6).
+
 **Verified.** `security.mjs` checks that a `<script>` and an `onerror` handler that would resize the measured box
 don't run (the box stays 10px), that normal 2x renders still work, and that a non-string `html` is rejected.
 e2e screenshots and exports and the regress large-screenshot tiling pass.

@@ -122,7 +122,15 @@ export interface CanvasApi {
   // rasterise a standalone HTML document offscreen; returns PNG base64 + pixel size
   // images on the system clipboard: a bitmap (screenshots, "Copy image") and/or image files copied in Explorer
   readClipboardMedia(): Promise<ClipboardMedia>
-  renderHtml(args: { html: string; scale?: number }): Promise<{ base64: string; width: number; height: number }>
+  renderHtml(args: {
+    html: string
+    scale?: number
+    format?: 'png' | 'jpeg' | 'webp'
+    /** flatten onto this colour (JPEG has no alpha) */
+    background?: string
+  }): Promise<{ base64: string; width: number; height: number }>
+  // print a standalone HTML document to PDF offscreen: one page per `.__vellum_page` element, sized to it
+  renderPdf(args: { html: string }): Promise<{ base64: string; pages: { width: number; height: number }[] }>
   // bridge (MCP)
   onBridgeRequest(cb: (req: BridgeRequest) => void): () => void
   bridgeRespond(res: BridgeResponse): void
@@ -158,6 +166,7 @@ export const IPC = {
   mcpEntry: 'app:mcpEntry',
   capturePage: 'win:capturePage',
   renderHtml: 'win:renderHtml',
+  renderPdf: 'win:renderPdf',
   readClipboardMedia: 'clip:readMedia',
   bridgeRequest: 'bridge:request',
   bridgeRespond: 'bridge:respond',

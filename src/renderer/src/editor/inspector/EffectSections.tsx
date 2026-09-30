@@ -18,7 +18,7 @@ import {
   type Shadow
 } from './common'
 import { ColorInput } from './ColorInput'
-import { exportNode, type ExportFormat } from './exporting'
+import { RASTER_FORMATS, exportNode, type ExportFormat } from './exporting'
 
 const Mixed = ({ what }: { what: string }): JSX.Element => <div className="insp-mixed">Mixed {what} — click + to replace</div>
 
@@ -434,6 +434,13 @@ interface ExportRow {
 }
 const exportRows = new Map<string, ExportRow[]>()
 
+/** A new row is a PNG at the first of 2x, 3x, 1x that the raster rows don't have yet (2x by default). */
+function newExportRow(rows: ExportRow[]): ExportRow {
+  const used = new Set(rows.filter((r) => RASTER_FORMATS.has(r.format)).map((r) => r.scale))
+  const scale = (['2', '3', '1'] as const).find((s) => !used.has(s)) ?? '2'
+  return { scale, format: 'png' }
+}
+
 export function ExportSection({ ctx }: { ctx: Ctx }): JSX.Element {
   const key = ctx.ids.join(',')
   const [, force] = useState(0)
@@ -456,7 +463,7 @@ export function ExportSection({ ctx }: { ctx: Ctx }): JSX.Element {
           onClick={() => ctx.nodes[0] && void exportNode(ctx.doc, ctx.nodes[0].id, 'png', 1, { clipboard: true })}
         />
       }
-      onAdd={() => setRows([...rows, { scale: rows.length ? String(Math.min(3, rows.length + 1)) as ExportRow['scale'] : '1', format: 'png' }])}
+      onAdd={() => setRows([...rows, newExportRow(rows)])}
       addLabel="Add export"
     >
       {rows.map((r, i) => (
@@ -468,14 +475,17 @@ export function ExportSection({ ctx }: { ctx: Ctx }): JSX.Element {
               { value: '2', label: '2x' },
               { value: '3', label: '3x' }
             ]}
-            disabled={r.format !== 'png'}
+            disabled={!RASTER_FORMATS.has(r.format)}
             onChange={(scale) => setRows(rows.map((x, j) => (j === i ? { ...x, scale } : x)))}
           />
           <Select<ExportFormat>
             value={r.format}
             options={[
               { value: 'png', label: 'PNG' },
+              { value: 'jpg', label: 'JPG' },
+              { value: 'webp', label: 'WebP' },
               { value: 'svg', label: 'SVG' },
+              { value: 'pdf', label: 'PDF' },
               { value: 'html', label: 'HTML' }
             ]}
             onChange={(format) => setRows(rows.map((x, j) => (j === i ? { ...x, format } : x)))}

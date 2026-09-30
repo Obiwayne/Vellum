@@ -1,7 +1,7 @@
 // MCP tools: code generation (get_jsx) and the render payload used for screenshots/exports.
 import { computeNodeStyle, cssValue, nodeToHtml, nodeToJsx, nodeToRenderHtml, tagOf, toCamel, toKebab } from '../model/html'
 import { cleanAttrs, sanitizeSvgMarkup } from '../model/sanitize'
-import { descendants, isPageRoot, pageOf } from '../model/ops'
+import { descendants, isPageRoot, pageOf, topLevelOf } from '../model/ops'
 import type { CNode, Doc } from '../model/types'
 import { effectiveMode, modeVars, nodeMode, tokensCssWithModes } from '../model/modes'
 import { inheritedStyle } from './tools-read'
@@ -23,6 +23,14 @@ export function fontsFor(doc: Doc, id: string): string[] {
   }
   if (typeof inherited === 'string') out.add(resolve(inherited))
   return [...out]
+}
+
+/** Opaque backdrop for formats without alpha (JPG): the artboard's fill, else the page background. */
+export function exportBackground(doc: Doc, id: string): string {
+  const top = topLevelOf(doc, id)
+  const bg = top ? doc.nodes[top]?.style.backgroundColor : undefined
+  if (typeof bg === 'string' && bg.trim() && bg.trim() !== 'transparent') return bg.trim()
+  return pageOf(doc, id)?.background ?? '#FFFFFF'
 }
 
 registerHandler('_render_node', (args) => {
@@ -55,7 +63,8 @@ registerHandler('_render_node', (args) => {
     width: g && g.width !== null && g.width > 0 ? g.width : null,
     height: g && g.height !== null && g.height > 0 ? g.height : null,
     inheritedCss,
-    pageBackground: pageOf(doc, n.id)?.background ?? '#282828'
+    pageBackground: pageOf(doc, n.id)?.background ?? '#282828',
+    background: exportBackground(doc, n.id).replace(/</g, '')
   })
 })
 
@@ -88,7 +97,7 @@ function svgInnerToJsx(markup: string): string {
     .replace(/\sxlink:href=/g, ' href=')
 }
 
-function nodeToTailwindJsx(doc: Doc, id: string, indent: string, asRoot: boolean): string {
+export function nodeToTailwindJsx(doc: Doc, id: string, indent: string, asRoot: boolean): string {
   const n = doc.nodes[id]
   if (!n) return ''
   const classes = styleToTailwind(computeNodeStyle(doc, id, { asRoot, export: true }))

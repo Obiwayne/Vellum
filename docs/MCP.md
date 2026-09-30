@@ -67,7 +67,7 @@ The server's `instructions` tell the model to load `get_guide({topic:"vellum-mcp
 | `get_jsx` | `nodeId, format: tailwind (default) \| inline-styles` | JSX string |
 | `get_computed_styles` | `nodeIds` | `{styles:{[id]: CSSProperties}}`. Text nodes include their inherited typography, read from the live DOM when the node is on screen. |
 | `get_screenshot` | `nodeId, scale=1` (max 4) | PNG image at full size (large nodes are captured in tiles, never with scrollbars); only clamped to the MCP image limit (8000 px per side, ~5 MB) |
-| `export` | `nodeId + format + scale`, or `nodes{[id]:[{format,scale}]}`, or `pageId` (all artboards); `outputDir?` | `{outputDir, exported[{nodeId,name,format,path,width?,height?}]}`. Formats: `png`, `jpg`, `svg` (HTML in `foreignObject`), `html` (standalone page), `jsx` (component file). Scale can be `2`, `"2x"`, `"512w"`, `"512h"` or `"720p"`. |
+| `export` | `nodeId + format + scale`, or `nodes{[id]:[{format,scale}]}`, or `pageId` (all artboards); `outputDir?` | `{outputDir, exported[{nodeId,name,format,path,width?,height?}]}`. Formats: `png`, `jpg` (flattened onto the artboard's fill, else the page background), `webp`, `svg` (HTML in `foreignObject`), `html` (standalone page), `jsx` (component file), `pdf` (vector, page = node size, scale ignored). Scale can be `2`, `"2x"`, `"512w"`, `"512h"` or `"720p"`. `format: "pdf"` with only `pageId` (or nothing) writes one multi-page PDF of every artboard on the page (`exported[{nodeIds, name, format, path, pages[{width,height}]}]`). |
 | `get_tokens` | `format: json \| css \| tailwind, types?, namePattern?` | tokens (type is inferred from the Tailwind v4 namespace) |
 | `set_tokens` | `tokens[{name, newName?, value?, delete?}]`, or `replace: true` with the full list | per-entry results. A rename rewrites `var(--old)` references across the file. |
 | `create_tokens` | `tokens[{name, value, type?}]` (upsert) | `{name, result: created \| updated}` per entry |
@@ -86,7 +86,7 @@ Each mutating tool call is a single undo step in the app (`store.mutate` / `stor
 
 ```
 Claude Code ──stdio──▶ mcp/dist/index.js ──ws://127.0.0.1:29170──▶ src/main/bridge.ts
-                         │                                           │  tool "main:*" → src/main/offscreen.ts (hidden offscreen window)
+                         │                                           │  tool "main:*" → src/main/offscreen.ts (hidden offscreen window: render_png, render_pdf)
                          │                                           └─ other tools → IPC 'bridge:request' → renderer
                          │                                                           src/renderer/src/bridge/*  (store actions)
                          └─ local tools: get_guide, get_font_family_info (PowerShell + Google Fonts metadata)
@@ -102,7 +102,7 @@ Claude Code ──stdio──▶ mcp/dist/index.js ──ws://127.0.0.1:29170─
   - `tailwind.ts`: style → Tailwind v4 classes.
   - `handlers.ts`: installs the IPC listener. Requests run one at a time, and each one waits a tick so React has committed earlier mutations before anything is measured.
 - **Geometry.** When a node is on the page the user is viewing, sizes and positions are measured from the DOM through the canvas's world-rect resolver. Otherwise the artboard is rendered into a hidden container in the renderer document (`bridge/measure.ts`, cached per doc version) and measured there; only hidden nodes fall back to model arithmetic (`null` / `?`).
-- **Screenshots and export.** `_render_node` returns the node's markup the way the canvas renders it, along with the tokens as `:root` CSS, the font stacks, the inherited text styles and the measured size. The MCP server adds Google Fonts `<link>`s for any families that aren't installed locally, plus a reset that mirrors the canvas. It then sends the document to `main:render_png`. The main process loads it in a hidden offscreen `BrowserWindow` (in-memory partition `vellum-render`; the HTML is served from memory through the `vellum-render:` scheme, never written to disk), waits for fonts and images (up to 6 s), measures the node, applies `zoom` for the scale, and `capturePage`s exactly the node's rect. This works when the node is off-screen, zoomed, or on another page. The window is destroyed along with the main window.
+- **Screenshots and export.** `_render_node` returns the node's markup the way the canvas renders it, along with the tokens as `:root` CSS, the font stacks, the inherited text styles and the measured size. The MCP server adds Google Fonts `<link>`s for any families that aren't installed locally, plus a reset that mirrors the canvas. It then sends the document to `main:render_png`. The main process loads it in a hidden offscreen `BrowserWindow` (in-memory partition `vellum-render`; the HTML is served from memory through the `vellum-render:` scheme, never written to disk), waits for fonts and images (up to 6 s), measures the node, applies `zoom` for the scale, and `capturePage`s exactly the node's rect. This works when the node is off-screen, zoomed, or on another page. WebP is encoded by a canvas inside that window (nativeImage has no WebP encoder). PDFs go to `main:render_pdf` instead: every `.__vellum_page` element of the document becomes one page with its own named `@page` rule, sized in whole points to its node (Chromium rounds PDF pages to whole points; the sub-pixel rest gets the node's fill), then `printToPDF` with backgrounds and no margins. The window is destroyed along with the main window.
 - **Fonts.** Local fonts come from one PowerShell call that reads the Windows font registry and the GDI+ family list, cached per process. Google Fonts come from `https://fonts.google.com/metadata/fonts`, cached for 7 days in `%LOCALAPPDATA%\Vellum\google-fonts-metadata.json`.
 
 ## Testing
@@ -128,7 +128,7 @@ fails with "Vellum is locked — open your profile in the app first", and `list_
 - duplicate, move, delete
 - tree, children, find, JSX (both formats), computed styles
 - screenshots at 1x and 2x, which are saved to outDir
-- export to png, svg, html and jsx
+- export to png, svg, html and jsx (jpg, webp and pdf: `node test/call.mjs export '{"format":"pdf"}'` writes one PDF of the page's artboards)
 - selection, comments (pinned change requests: list → edit → reply + resolve), finish
 
 ## Troubleshooting

@@ -2,6 +2,8 @@
 import { activePage, getStore } from '../../model/store'
 import * as ops from '../../model/ops'
 import { nodeToHtml, nodeToJsx, styleToCss } from '../../model/html'
+import { nodeToTailwindJsx } from '../../bridge/tools-render'
+import { exportArtboardsPdf } from '../inspector/exporting'
 import type { CNode, Doc, Style, WorldRect } from '../../model/types'
 import { centerOn, visibleWorldRect, zoomToRect } from './camera'
 import { clientToWorld, intersects, measure, union } from './geometry'
@@ -581,15 +583,47 @@ export function pasteStyles(docId: string): void {
   })
 }
 
-export function copyAs(docId: string, format: 'html' | 'jsx' | 'css'): void {
+const COPY_LABEL = { html: 'HTML', jsx: 'JSX', css: 'CSS', tailwind: 'Tailwind', react: 'React' } as const
+
+/** "Hero card / v2" → "HeroCardV2" (a valid component name). */
+function componentName(name: string): string {
+  const s = name.replace(/[^A-Za-z0-9]+(.)?/g, (_m, c: string | undefined) => (c ? c.toUpperCase() : '')).replace(/^[^A-Za-z]+/, '')
+  return s ? s[0].toUpperCase() + s.slice(1) : 'Design'
+}
+
+/**
+ * Copy the selection as code. Tailwind is JSX with the same classes as get_jsx (tokens become
+ * `bg-primary` / `p-(--gap)` references); React is a component with inline styles.
+ */
+export function copyAs(docId: string, format: keyof typeof COPY_LABEL): void {
   const doc = docOf(docId)
   const sel = topSel(docId)
   if (!doc || !sel.length) return
   let text = ''
   if (format === 'html') text = sel.map((id) => nodeToHtml(doc, id)).join('\n')
   else if (format === 'jsx') text = sel.map((id) => nodeToJsx(doc, id, 'inline-styles')).join('\n')
-  else text = sel.map((id) => styleToCss(doc.nodes[id].style).replace(/; /g, ';\n') + ';').join('\n\n')
-  void writeText(text, `Copied as ${format.toUpperCase()}`)
+  else if (format === 'tailwind') text = sel.map((id) => nodeToTailwindJsx(doc, id, '', true)).join('\n')
+  else if (format === 'react') {
+    const many = sel.length > 1
+    const body = sel.map((id) => nodeToJsx(doc, id, 'inline-styles', many ? '      ' : '    ')).join('\n')
+    const jsx = many ? `    <>\n${body}\n    </>` : body
+    text = `export default function ${componentName(doc.nodes[sel[0]].name)}() {\n  return (\n${jsx}\n  )\n}\n`
+  } else text = sel.map((id) => styleToCss(doc.nodes[id].style).replace(/; /g, ';\n') + ';').join('\n\n')
+  void writeText(text, `Copied as ${COPY_LABEL[format]}`)
+}
+
+/** One PDF of every artboard on the current page (one page per artboard, each at its own size). */
+export async function exportPagePdf(docId: string): Promise<void> {
+  const doc = docOf(docId)
+  const page = activePage(S(), docId)
+  if (!doc || !page) return
+  toast('Exporting PDF…')
+  try {
+    const n = await exportArtboardsPdf(doc, page.id)
+    toast(n ? `Exported ${n} artboard${n === 1 ? '' : 's'} to PDF` : 'No artboards to export')
+  } catch {
+    toast('Could not export the PDF')
+  }
 }
 
 export function copyLink(docId: string): void {

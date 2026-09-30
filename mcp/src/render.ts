@@ -1,4 +1,4 @@
-// Builds standalone HTML documents for a node (used for screenshots, PNG/SVG/HTML export).
+// Builds standalone HTML documents for a node (used for screenshots, PNG/JPG/WebP/SVG/HTML/PDF export).
 // The renderer returns the node's markup (as the canvas renders it) plus tokens and fonts; we add
 // Google Fonts links and a reset that mirrors the canvas, then the app's main process rasterises it
 // in a hidden offscreen window (main:render_png).
@@ -19,6 +19,8 @@ export interface RenderPayload {
   /** inherited text styles from ancestors + canvas defaults, as CSS text */
   inheritedCss: string
   pageBackground: string
+  /** opaque backdrop for JPG: the artboard's fill, else the page background (older apps: absent) */
+  background?: string
 }
 
 const RESET = `
@@ -31,16 +33,22 @@ a{color:inherit;text-decoration:inherit}
 img,svg{display:block}
 `
 
+/**
+ * The wrapper reproduces the canvas context: inherited text defaults, and — when we know the
+ * measured size — a one-cell grid of exactly that size, so width:100% children resolve and
+ * flow children without a width (grid cells, stretched flex items) keep their measured width.
+ */
+function wrapCss(p: RenderPayload, unsized = 'display:inline-flex;'): string {
+  const sized = p.width !== null && p.height !== null
+  return sized
+    ? `display:grid;grid-template-columns:${p.width}px;grid-template-rows:${p.height}px;width:${p.width}px;height:${p.height}px;`
+    : unsized
+}
+
 export async function buildDocument(p: RenderPayload, opts: { exportMode?: boolean } = {}): Promise<string> {
   const google = await googleFamiliesFor(p.fontFamilies)
   const cssUrl = googleCssUrl(google)
-  const sized = p.width !== null && p.height !== null
-  // The wrapper reproduces the canvas context: inherited text defaults, and — when we know the
-  // measured size — a one-cell grid of exactly that size, so width:100% children resolve and
-  // flow children without a width (grid cells, stretched flex items) keep their measured width.
-  const wrap = sized
-    ? `display:grid;grid-template-columns:${p.width}px;grid-template-rows:${p.height}px;width:${p.width}px;height:${p.height}px;`
-    : 'display:inline-flex;'
+  const wrap = wrapCss(p)
   const body = opts.exportMode ? p.exportHtml : p.html
   return `<!doctype html>
 <html>
@@ -56,6 +64,34 @@ ${styleText(p.tokensCss)}
 </head>
 <body>
 <div id="__canvas_wrap">${body}</div>
+</body>
+</html>`
+}
+
+/**
+ * A document for `main:render_pdf`: every node in its own `.__vellum_page` wrapper, which the app
+ * prints as one page sized to that node. Tokens come from the first node (artboards on one page
+ * share them).
+ */
+export async function buildPdfDocument(ps: RenderPayload[]): Promise<string> {
+  const google = await googleFamiliesFor([...new Set(ps.flatMap((p) => p.fontFamilies))])
+  const cssUrl = googleCssUrl(google)
+  const pages = ps
+    .map((p) => `<div class="__vellum_page" style="${escapeAttr(wrapCss(p, 'display:flex;width:max-content;') + 'align-items:flex-start;' + p.inheritedCss)}">${p.html}</div>`)
+    .join('\n')
+  return `<!doctype html>
+<html>
+<head>
+<meta charset="utf-8" />
+<title>${escapeHtml(ps[0]?.name ?? 'Export')}</title>
+${cssUrl ? `<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />\n<link rel="stylesheet" href="${cssUrl}" />` : ''}
+<style>${RESET}
+${styleText(ps[0]?.tokensCss ?? '')}
+.__vellum_page>*{flex-shrink:0}
+</style>
+</head>
+<body>
+${pages}
 </body>
 </html>`
 }

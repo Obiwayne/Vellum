@@ -37,6 +37,8 @@ const GROUPS: { title: string; items: [string, string][] }[] = [
       ['Undo', 'Ctrl+Z'],
       ['Redo', 'Ctrl+Shift+Z'],
       ['Copy / Paste', 'Ctrl+C / Ctrl+V'],
+      ['Copy as Tailwind', 'Alt+T'],
+      ['Copy as React', 'Alt+R'],
       ['Duplicate', 'Ctrl+D'],
       ['Delete', 'Delete'],
       ['Wrap in flex', 'Shift+A'],
