@@ -26,6 +26,19 @@ const api: CanvasApi = {
   loadIndex: () => ipcRenderer.invoke(IPC.loadIndex),
   saveIndex: (index) => ipcRenderer.invoke(IPC.saveIndex, index),
   userDataPath: () => ipcRenderer.invoke(IPC.userDataPath),
+  profiles: {
+    state: () => ipcRenderer.invoke(IPC.profState),
+    create: (input) => ipcRenderer.invoke(IPC.profCreate, input),
+    open: (id, password) => ipcRenderer.invoke(IPC.profOpen, id, password),
+    recover: (id, key, pw) => ipcRenderer.invoke(IPC.profRecover, id, key, pw),
+    lock: () => ipcRenderer.invoke(IPC.profLock),
+    update: (patch) => ipcRenderer.invoke(IPC.profUpdate, patch),
+    setPassword: (cur, next) => ipcRenderer.invoke(IPC.profSetPassword, cur, next),
+    removePassword: (cur) => ipcRenderer.invoke(IPC.profRemovePassword, cur),
+    newRecoveryKey: (cur) => ipcRenderer.invoke(IPC.profNewRecoveryKey, cur),
+    remove: (id, pw) => ipcRenderer.invoke(IPC.profRemove, id, pw),
+    saveRecoveryKey: (name, key) => ipcRenderer.invoke(IPC.profSaveRecoveryKey, name, key)
+  },
   mcpEntry: ipcRenderer.sendSync(IPC.mcpEntry) as string,
 
   capturePage: (rect) => ipcRenderer.invoke(IPC.capturePage, rect),

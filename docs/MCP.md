@@ -89,18 +89,24 @@ Claude Code ──stdio──▶ mcp/dist/index.js ──ws://127.0.0.1:29170─
   - `tailwind.ts`: style → Tailwind v4 classes.
   - `handlers.ts`: installs the IPC listener. Requests run one at a time, and each one waits a tick so React has committed earlier mutations before anything is measured.
 - **Geometry.** When a node is on the page the user is viewing, sizes and positions are measured from the DOM through the canvas's world-rect resolver. Otherwise the artboard is rendered into a hidden container in the renderer document (`bridge/measure.ts`, cached per doc version) and measured there; only hidden nodes fall back to model arithmetic (`null` / `?`).
-- **Screenshots and export.** `_render_node` returns the node's markup the way the canvas renders it, along with the tokens as `:root` CSS, the font stacks, the inherited text styles and the measured size. The MCP server adds Google Fonts `<link>`s for any families that aren't installed locally, plus a reset that mirrors the canvas. It then sends the document to `main:render_png`. The main process loads it in a hidden offscreen `BrowserWindow` (partition `canvas-render`), waits for fonts and images (up to 6 s), measures the node, applies `zoom` for the scale, and `capturePage`s exactly the node's rect. This works when the node is off-screen, zoomed, or on another page. The window is destroyed along with the main window.
+- **Screenshots and export.** `_render_node` returns the node's markup the way the canvas renders it, along with the tokens as `:root` CSS, the font stacks, the inherited text styles and the measured size. The MCP server adds Google Fonts `<link>`s for any families that aren't installed locally, plus a reset that mirrors the canvas. It then sends the document to `main:render_png`. The main process loads it in a hidden offscreen `BrowserWindow` (in-memory partition `vellum-render`; the HTML is served from memory through the `vellum-render:` scheme, never written to disk), waits for fonts and images (up to 6 s), measures the node, applies `zoom` for the scale, and `capturePage`s exactly the node's rect. This works when the node is off-screen, zoomed, or on another page. The window is destroyed along with the main window.
 - **Fonts.** Local fonts come from one PowerShell call that reads the Windows font registry and the GDI+ family list, cached per process. Google Fonts come from `https://fonts.google.com/metadata/fonts`, cached for 7 days in `%LOCALAPPDATA%\Vellum\google-fonts-metadata.json`.
 
 ## Testing
 
 ```
-# terminal 1 (a separate user-data-dir avoids the single-instance lock of another running Vellum)
-set VELLUM_PORT=29174 && npx electron-vite dev -- --user-data-dir=%TEMP%\vellum-e2e
+# terminal 1: a separate data folder (VELLUM_USER_DATA) keeps your real profiles out of it and avoids the
+# single-instance lock of another running Vellum
+set VELLUM_USER_DATA=%TEMP%\vellum-e2e && set VELLUM_PORT=29174 && npx electron-vite dev
+#   first run: create a profile in the window (no password is fine); the tools need an open profile
 # terminal 2
 cd mcp && npm run build && set VELLUM_PORT=29174 && node test/e2e.mjs [outDir]
 node test/regress.mjs   # regression checks for docs/BUGS.md (reuses a "regress (temp)" file)
+npm run test:profiles   # profile store + encryption (no app needed)
 ```
+
+The tools only ever see the profile that is open in the app. With the picker or lock screen showing, every tool
+fails with "Vellum is locked — open your profile in the app first", and `list_files` lists only the open profile's files.
 
 `test/e2e.mjs` covers the following, then cleans up after itself (set `KEEP=1` to keep the artboard):
 - guide, files, basic info, tokens, fonts
@@ -116,6 +122,7 @@ node test/regress.mjs   # regression checks for docs/BUGS.md (reuses a "regress 
 - **"Vellum app is not running"**: start the app, and check that `VELLUM_PORT` matches on both sides. The app logs `[bridge] listening on ws://127.0.0.1:<port>` at startup.
 - **Bridge port already in use** (`[bridge] server error: listen EADDRINUSE`): another Vellum instance owns the port. Close it, or run both sides with a different `VELLUM_PORT`.
 - **The app quits immediately in dev**: the single-instance lock is held by another Vellum that uses the same user-data-dir. Pass `-- --user-data-dir=<dir>`.
+- **"Vellum is locked — open your profile in the app first"**: the app shows the profile picker or a protected profile is locked. Open the profile in the app.
 - **"No file is open"**: the dashboard is active and no files exist. Call `create_file` then `open_file`.
 - **Sizes are `null` / `?`**: the node is hidden (`display: none`), so it has no layout. Nodes on other pages or in files that aren't open are measured offscreen.
 - **Fonts look different in screenshots than on the canvas**: screenshots load Google Fonts over the network. If you're offline, a fallback font is used.

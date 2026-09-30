@@ -1,0 +1,338 @@
+/* Profiles: picker screen, avatar, profile forms. Prefix: pf- */
+.pf-avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  border-radius: 50%;
+  object-fit: cover;
+  background: #455a64;
+  color: #fff;
+  font-weight: var(--weight-medium);
+  line-height: 1;
+  user-select: none;
+}
+.pf-ellipsis {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ---------------------------------------------------------------- screen */
+.pf-screen {
+  flex: 1;
+  display: flex;
+  min-width: 0;
+  min-height: 0;
+  overflow: auto;
+  background: #222222;
+  user-select: none;
+}
+.pf-center {
+  margin: auto;
+  padding: 48px 24px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.pf-heading {
+  font-size: 22px;
+  line-height: 28px;
+  font-weight: 600;
+  letter-spacing: -0.3px;
+  color: var(--text);
+}
+.pf-sub {
+  margin-top: 6px;
+  font-size: 13px;
+  color: var(--text-3);
+}
+.pf-tiles {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  max-width: 720px;
+  margin-top: 32px;
+}
+.pf-tile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  width: 128px;
+  padding: 16px 8px 14px;
+  border-radius: 10px;
+  color: var(--text);
+  font: inherit;
+}
+.pf-tile:hover,
+.pf-tile:focus-visible {
+  background: var(--row-selected-strong);
+  outline: none;
+}
+.pf-tile__name {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  max-width: 100%;
+  font-size: 13px;
+  font-weight: var(--weight-medium);
+}
+.pf-tile__name--muted {
+  color: var(--text-2);
+}
+.pf-tile__lock {
+  flex-shrink: 0;
+  color: var(--text-3);
+}
+.pf-tile__add {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  border: 1px dashed var(--hairline-strong);
+  color: var(--text-3);
+}
+.pf-tile:hover .pf-tile__add {
+  color: var(--text);
+  border-color: var(--text-4);
+}
+
+/* ---------------------------------------------------------------- card */
+.pf-card {
+  position: relative;
+  width: 400px;
+  max-width: calc(100vw - 48px);
+  padding: 28px 28px 24px;
+  border-radius: 12px;
+  background: var(--bg-panel);
+  box-shadow: var(--menu-shadow);
+  user-select: text;
+}
+.pf-card--narrow {
+  width: 340px;
+}
+.pf-back {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 24px;
+  padding: 0 6px;
+  border-radius: var(--radius);
+  color: var(--text-3);
+  font: inherit;
+}
+.pf-back:hover {
+  background: var(--control-hover);
+  color: var(--text);
+}
+.pf-who {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  margin: 12px 0 20px;
+}
+.pf-title {
+  font-size: 15px;
+  line-height: 20px;
+  font-weight: 600;
+  color: var(--text);
+}
+.pf-card > .pf-title {
+  margin-top: 4px;
+}
+.pf-card > .pf-back + .pf-title {
+  margin-top: 20px;
+}
+.pf-text {
+  margin-top: 6px;
+  line-height: 18px;
+  color: var(--text-3);
+}
+.pf-text--center {
+  text-align: center;
+}
+.pf-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 20px;
+}
+.pf-who + .pf-form {
+  margin-top: 0;
+}
+.pf-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.pf-field__label {
+  font-weight: var(--weight-label);
+  color: var(--text-2);
+}
+.pf-optional {
+  margin-left: 4px;
+  font-weight: var(--weight-regular);
+  color: var(--text-4);
+}
+.pf-input {
+  width: 100%;
+  height: 32px;
+  padding: 0 10px;
+  border: 0;
+  outline: none;
+  border-radius: var(--radius);
+  background: var(--control-bg);
+  box-shadow: inset 0 0 0 1px var(--hairline);
+  color: var(--text);
+  font: inherit;
+  font-size: 13px;
+}
+.pf-input::placeholder {
+  color: var(--text-4);
+}
+.pf-input:focus {
+  box-shadow: inset 0 0 0 1px var(--accent);
+}
+.pf-input--mono {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  letter-spacing: 0.5px;
+}
+.pf-hint {
+  line-height: 16px;
+  color: var(--text-4);
+}
+.pf-error {
+  color: var(--danger);
+  line-height: 16px;
+}
+.pf-done {
+  margin-top: 8px;
+  color: var(--agent-teal);
+}
+.pf-note {
+  padding: 8px 10px;
+  border-radius: var(--radius);
+  background: var(--accent-soft);
+  color: var(--text);
+  line-height: 16px;
+}
+.pf-link {
+  display: block;
+  margin: 14px auto 0;
+  color: var(--text-3);
+  font: inherit;
+}
+.pf-link:hover {
+  color: var(--text);
+  text-decoration: underline;
+}
+.pf-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+.pf-row--end {
+  justify-content: flex-end;
+  margin-top: 0;
+}
+
+/* ---------------------------------------------------------------- picture */
+.pf-picture {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+.pf-picture__circle {
+  position: relative;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.pf-picture__cam {
+  position: absolute;
+  right: -2px;
+  bottom: -2px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--segment-active);
+  box-shadow: 0 0 0 2px var(--bg-panel);
+  color: var(--text);
+}
+.pf-picture__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+.pf-picture__actions .pf-hint {
+  flex-basis: 100%;
+}
+
+/* ---------------------------------------------------------------- recovery key */
+.pf-recovery {
+  display: flex;
+  flex-direction: column;
+}
+.pf-recovery__icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  margin-bottom: 12px;
+  border-radius: 50%;
+  background: var(--accent-soft);
+  color: var(--text);
+}
+.pf-recovery__key {
+  margin-top: 16px;
+  padding: 14px 12px;
+  border-radius: var(--radius);
+  background: #1e1e1e;
+  box-shadow: inset 0 0 0 1px var(--hairline);
+  font-family: var(--font-mono);
+  font-size: 15px;
+  line-height: 20px;
+  letter-spacing: 1px;
+  text-align: center;
+  color: var(--text);
+  user-select: all;
+  word-break: break-all;
+}
+.pf-recovery__note {
+  margin-top: 8px;
+  word-break: break-all;
+}
+.pf-recovery__confirm {
+  margin: 16px 0 16px;
+}
+
+/* ---------------------------------------------------------------- modals */
+.pf-modal-body {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 20px;
+}
+.pf-section {
+  padding-top: 16px;
+  border-top: 1px solid var(--hairline);
+}
+.pf-pwform {
+  margin-top: 12px;
+  gap: 8px;
+}

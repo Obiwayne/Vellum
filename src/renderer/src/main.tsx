@@ -3,13 +3,13 @@ import ReactDOM from 'react-dom/client'
 import './styles/global.css'
 import './ui'
 import App from './App'
-import { initPersistence } from './model/persist'
+import { startProfiles } from './profile/profile'
 import { installBridge } from './bridge/handlers'
 import { installAppShortcuts } from './shell/commands'
 
 installAppShortcuts()
 installBridge()
-void initPersistence()
+void startProfiles()
 
 // Dropping a file outside a drop target must not navigate the window to it.
 for (const type of ['dragover', 'drop'] as const)

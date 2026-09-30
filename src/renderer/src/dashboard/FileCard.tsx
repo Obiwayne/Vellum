@@ -1,11 +1,13 @@
 import { useEffect, useState } from 'react'
 import { Ellipsis, File, Pencil } from 'lucide-react'
 import { type MenuEntry } from '../ui'
-import { DASHBOARD, getStore, useStore } from '../model/store'
+import { DASHBOARD, getStore } from '../model/store'
 import type { Doc } from '../model/types'
 import { InlineEdit } from '../editor/left/InlineEdit'
 import { Thumbnail } from './Thumbnail'
 import { DEFAULT_USER_NAME } from './SettingsPage'
+import { Avatar } from '../profile/parts'
+import { useCurrentProfile } from '../profile/profile'
 
 export function relativeTime(ts: number, now = Date.now()): string {
   const s = Math.max(0, Math.round((now - ts) / 1000))
@@ -88,7 +90,7 @@ interface CardProps {
 
 export function FileCard({ doc, now, onMenu }: CardProps): JSX.Element {
   const [renaming, setRenaming] = useState(false)
-  const userName = useStore((s) => String(s.prefs.userName ?? DEFAULT_USER_NAME))
+  const profile = useCurrentProfile()
   const rename = (): void => setRenaming(true)
   return (
     <div
@@ -131,9 +133,14 @@ export function FileCard({ doc, now, onMenu }: CardProps): JSX.Element {
           </div>
           <div className="db-card__sub">{subtitle(doc, now)}</div>
         </div>
-        <span className="db-avatar db-card__avatar" title={userName}>
-          {userName.charAt(0).toUpperCase()}
-        </span>
+        <Avatar
+          className="db-card__avatar"
+          name={profile?.name ?? DEFAULT_USER_NAME}
+          avatar={profile?.avatar}
+          color={profile?.color}
+          size={24}
+          title={profile?.name ?? DEFAULT_USER_NAME}
+        />
         <button
           type="button"
           className="db-card__more"

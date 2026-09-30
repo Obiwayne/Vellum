@@ -2,11 +2,46 @@
 // document (node markup + tokens + font links) through the bridge as `main:render_png`; we load it
 // in a hidden offscreen BrowserWindow, wait for fonts/images, measure the node and capture it.
 // Works regardless of whether the node is visible, zoomed or on another page in the editor.
-import { BrowserWindow, nativeImage, type NativeImage } from 'electron'
-import { mkdtemp, rm, writeFile } from 'fs/promises'
+// The document is served from memory through the `vellum-render:` scheme on the window's own
+// in-memory session, so design content never touches the disk.
+import { BrowserWindow, nativeImage, protocol, session, type NativeImage } from 'electron'
+import { readdirSync, rmSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
-import { pathToFileURL } from 'url'
+
+const SCHEME = 'vellum-render'
+const PARTITION = 'vellum-render' // no "persist:" prefix → in-memory session (no disk cache)
+/** documents being rendered, by id; removed as soon as the page has loaded */
+const docs = new Map<string, string>()
+
+/** Must run before app ready: a standard scheme behaves like http (relative URLs, fonts, CORS). */
+export function registerRenderScheme(): void {
+  protocol.registerSchemesAsPrivileged([{ scheme: SCHEME, privileges: { standard: true, supportFetchAPI: true, corsEnabled: true } }])
+}
+
+let schemeReady = false
+function ensureScheme(): void {
+  if (schemeReady) return
+  schemeReady = true
+  session.fromPartition(PARTITION).protocol.handle(SCHEME, (req) => {
+    const id = new URL(req.url).hostname
+    const html = docs.get(id)
+    if (html === undefined) return new Response('Not found', { status: 404 })
+    return new Response(html, { headers: { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store' } })
+  })
+}
+
+/** Older versions wrote render HTML to %TEMP%\canvas-render-*; remove any leftovers. */
+export function cleanStaleRenderTemp(): void {
+  try {
+    const t = tmpdir()
+    for (const n of readdirSync(t)) {
+      if (n.startsWith('canvas-render-')) rmSync(join(t, n), { recursive: true, force: true })
+    }
+  } catch {
+    /* ignore */
+  }
+}
 
 export interface RenderArgs {
   html: string
@@ -34,7 +69,6 @@ const MAX_TEXTURE = 16000
 
 let win: BrowserWindow | null = null
 let queue: Promise<unknown> = Promise.resolve()
-let tempDir: string | null = null
 let seq = 0
 
 function getWindow(): BrowserWindow {
@@ -54,7 +88,7 @@ function getWindow(): BrowserWindow {
       javascript: true,
       backgroundThrottling: false,
       spellcheck: false,
-      partition: 'canvas-render'
+      partition: PARTITION
     }
   })
   win.webContents.setFrameRate(60)
@@ -98,16 +132,17 @@ const NO_SCROLLBARS = 'html,body{overflow:hidden!important}::-webkit-scrollbar{d
 const nextFrames = `new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)))`
 
 async function renderOnce(args: RenderArgs): Promise<RenderResult> {
+  ensureScheme()
   const w = getWindow()
-  if (!tempDir) tempDir = await mkdtemp(join(tmpdir(), 'canvas-render-'))
-  const file = join(tempDir, `r${++seq}.html`)
+  const docId = `r${++seq}`
   // apply the scale with CSS zoom on the root so layout stays in CSS px and text renders crisp
   let scale = args.scale && args.scale > 0 ? args.scale : 1
 
-  await writeFile(file, args.html, 'utf8')
+  docs.set(docId, args.html)
   try {
     w.setContentSize(MEASURE_VIEWPORT, MEASURE_VIEWPORT)
-    await w.loadURL(pathToFileURL(file).href)
+    await w.loadURL(`${SCHEME}://${docId}/`)
+    docs.delete(docId)
     await w.webContents.insertCSS(NO_SCROLLBARS)
     const m = (await w.webContents.executeJavaScript(WAIT_AND_MEASURE, true)) as {
       x: number
@@ -191,7 +226,7 @@ async function renderOnce(args: RenderArgs): Promise<RenderResult> {
     const buf = args.format === 'jpeg' ? img.toJPEG(args.quality ?? 92) : img.toPNG()
     return { base64: buf.toString('base64'), width: W, height: H, cssWidth, cssHeight }
   } finally {
-    void rm(file, { force: true })
+    docs.delete(docId)
   }
 }
 
@@ -209,8 +244,7 @@ export function renderHtml(args: RenderArgs): Promise<RenderResult> {
 export function disposeRenderer(): void {
   if (win && !win.isDestroyed()) win.destroy()
   win = null
-  if (tempDir) void rm(tempDir, { recursive: true, force: true })
-  tempDir = null
+  docs.clear()
 }
 
 /** Tools handled in the main process (prefix `main:`), called through the WebSocket bridge. */

@@ -20,11 +20,11 @@
 - `WhatsNew.tsx` exports `FooterLinks` and `WhatsNewModal` (`APP_VERSION`). `InlineEdit.tsx` is the shared rename input.
 
 ## Dashboard (`src/renderer/src/dashboard/`)
-- `Dashboard.tsx` has the sidebar: account menu with the editable name, search (Ctrl+F), Recents, Learn, Files, Archive, Settings, the dismissible "Using agents" card and the footer.
+- `Dashboard.tsx` has the sidebar: the account row (profile picture + name; menu: Edit profile…, Switch profile, Lock for protected profiles, Settings, Delete profile…), search (Ctrl+F), Recents, Learn, Files, Archive, Settings, the dismissible "Using agents" card and the footer.
   - The main area has the title, "+ New file" (`createFile()` applies the default page colour) and the grid/list toggle.
   - It also contains the delete confirmation.
 - `FileCard.tsx` has the cards and list rows with relative times. Its file menu has Open, Open in new tab, Rename, Duplicate (`duplicateDoc`), Archive/Unarchive and Delete…, and hides the unsafe items for the Scratchpad.
 - `Thumbnail.tsx` renders a scaled live DOM preview of page 1. It has no `data-node-id`, so the canvas resolver is not affected.
 - `LearnPage.tsx` has the shortcut reference and the Claude setup. `ConnectAgentModal.tsx` exports `ConnectAgentBody`, `MCP_COMMAND` and `ConnectAgentModal`.
-- `SettingsPage.tsx` stores local prefs. The `PREF` keys are: `userName`, `defaultPageColor`, `scrollWheelZooms` (default false), `snapToPixel` (default true), `showPixelGrid` (default true), `dashboardView`, `agentsCardDismissed`.
+- `SettingsPage.tsx` stores local prefs. It starts with the profile row (Edit profile…) and, for protected profiles, "Auto-lock after" (Off/5/15/30/60 min, stored on the profile in `profiles.json`). `userName` is only a fallback now; the profile name is used everywhere. The `PREF` keys are: `userName`, `defaultPageColor`, `scrollWheelZooms` (default false), `snapToPixel` (default true), `showPixelGrid` (default true), `dashboardView`, `agentsCardDismissed`.
   - The canvas and inspector should read the zoom and snap keys from `prefs`.

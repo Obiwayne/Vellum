@@ -2,9 +2,9 @@ import { app, BrowserWindow, ipcMain, shell } from 'electron'
 import { readClipboardMedia } from './clipboard'
 import { join } from 'path'
 import { IPC, type Rect } from '@shared/api'
-import { migrateLegacyUserData, registerStorageIpc } from './storage'
+import { clearCachesIfProtected, migrateLegacyUserData, registerStorageIpc } from './storage'
 import { startBridge } from './bridge'
-import { disposeRenderer, renderHtml } from './offscreen'
+import { cleanStaleRenderTemp, disposeRenderer, registerRenderScheme, renderHtml } from './offscreen'
 import appIcon from '../../resources/icon.ico?asset'
 
 let mainWindow: BrowserWindow | null = null
@@ -108,13 +108,18 @@ function registerWindowIpc(): void {
   })
 }
 
-// userData is %APPDATA%\Vellum (unless --user-data-dir is given); must be set before the
-// single-instance lock, which lives in userData
+// userData is %APPDATA%\Vellum (unless --user-data-dir or VELLUM_USER_DATA is given); must be set
+// before the single-instance lock, which lives in userData. VELLUM_USER_DATA points the app at a
+// separate data folder (profiles.json, profiles/…) — used for testing without touching real data.
 app.setName('Vellum')
-if (!app.commandLine.hasSwitch('user-data-dir')) {
+const testUserData = process.env.VELLUM_USER_DATA
+if (testUserData) {
+  app.setPath('userData', testUserData)
+} else if (!app.commandLine.hasSwitch('user-data-dir')) {
   app.setPath('userData', join(app.getPath('appData'), 'Vellum'))
   migrateLegacyUserData()
 }
+registerRenderScheme()
 
 const gotLock = app.requestSingleInstanceLock()
 if (!gotLock) {
@@ -131,6 +136,8 @@ if (!gotLock) {
     app.setAppUserModelId('app.vellum.desktop')
     registerWindowIpc()
     registerStorageIpc()
+    cleanStaleRenderTemp()
+    void clearCachesIfProtected()
     startBridge(() => mainWindow)
     createWindow()
     app.on('activate', () => {

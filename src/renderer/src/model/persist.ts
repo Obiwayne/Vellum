@@ -102,11 +102,23 @@ function toIndex(s: Store): IndexData {
   return { recents: s.recents, tabs: s.tabs, activeTab: s.activeTab, scratchpadId: s.scratchpadId, prefs: s.prefs }
 }
 
+/** false once the profile is being locked / switched: nothing may be written after that */
+let enabled = true
+const inflight = new Set<Promise<unknown>>()
+function track(p: Promise<unknown> | undefined): void {
+  if (!p) return
+  const q = p.catch(() => undefined).finally(() => inflight.delete(q))
+  inflight.add(q)
+}
+
 function writeDoc(doc: Doc): void {
   pendingDocs.delete(doc.id)
-  void api()
-    ?.saveDoc(doc as unknown as StoredDoc)
-    .catch((err) => console.error('[persist] save failed', doc.id, err))
+  if (!enabled) return
+  track(
+    api()
+      ?.saveDoc(doc as unknown as StoredDoc)
+      .catch((err) => console.error('[persist] save failed', doc.id, err))
+  )
 }
 
 function scheduleDocs(s: Store, saved: Map<string, Doc>): void {
@@ -132,7 +144,7 @@ function scheduleDocs(s: Store, saved: Map<string, Doc>): void {
       const t = docTimers.get(id)
       if (t) clearTimeout(t)
       docTimers.delete(id)
-      void api()?.deleteDoc(id)
+      if (enabled) track(api()?.deleteDoc(id))
     }
   }
 }
@@ -144,7 +156,7 @@ function scheduleIndex(s: Store): void {
   if (indexTimer) clearTimeout(indexTimer)
   indexTimer = setTimeout(() => {
     indexTimer = null
-    void api()?.saveIndex(JSON.parse(json) as IndexData)
+    if (enabled) track(api()?.saveIndex(JSON.parse(json) as IndexData))
   }, INDEX_DEBOUNCE)
 }
 
@@ -168,6 +180,13 @@ export function flushNow(): void {
   if (indexTimer) {
     clearTimeout(indexTimer)
     indexTimer = null
-    void api()?.saveIndex(toIndex(useStore.getState()))
+    if (enabled) track(api()?.saveIndex(toIndex(useStore.getState())))
   }
+}
+
+/** Flush everything, wait until it is on disk, then stop writing (before lock / switch profile). */
+export async function flushAndStop(): Promise<void> {
+  flushNow()
+  enabled = false
+  await Promise.all([...inflight])
 }

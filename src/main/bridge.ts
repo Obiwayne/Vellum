@@ -2,6 +2,8 @@ import { ipcMain, type BrowserWindow } from 'electron'
 import { WebSocketServer, WebSocket } from 'ws'
 import { IPC, type BridgeRequest, type BridgeResponse } from '@shared/api'
 import { handleMainTool } from './offscreen'
+import { getVault } from './storage'
+import { LOCKED_ERROR } from './vault'
 
 const TIMEOUT_MS = 30_000
 
@@ -51,6 +53,11 @@ export function startBridge(getWindow: () => BrowserWindow | null): WebSocketSer
       const clientId = msg.id ?? null
       if (typeof msg.tool !== 'string') {
         send(socket, { id: clientId, error: 'Missing "tool"' })
+        return
+      }
+      // tools only ever see the open profile; while the picker / lock screen shows, refuse everything
+      if (!getVault().isOpen()) {
+        send(socket, { id: clientId, error: LOCKED_ERROR })
         return
       }
       // `main:*` tools (offscreen rendering for screenshots/export) run here, not in the renderer

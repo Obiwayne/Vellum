@@ -54,6 +54,11 @@ button.db-account__btn:hover {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+.db-account__lock {
+  color: var(--text-3);
+  flex-shrink: 0;
+  margin-left: -4px;
+}
 .db-account__chev {
   color: var(--text-3);
   flex-shrink: 0;
@@ -538,6 +543,11 @@ button.db-account__btn:hover {
   gap: 24px;
   padding: 16px 0;
   border-bottom: 1px solid var(--hairline);
+}
+.db-settings__who {
+  display: flex;
+  align-items: center;
+  gap: 12px;
 }
 .db-settings__label {
   font-size: 13px;

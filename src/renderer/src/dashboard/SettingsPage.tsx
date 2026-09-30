@@ -1,6 +1,9 @@
 import { useRef, useState } from 'react'
-import { Checkbox, ColorPickerPopover } from '../ui'
+import { Button, Checkbox, ColorPickerPopover, Select } from '../ui'
 import { getStore, useStore } from '../model/store'
+import { Avatar } from '../profile/parts'
+import { AUTO_LOCK_OPTIONS, refreshProfiles, useCurrentProfile } from '../profile/profile'
+import { EditProfileModal } from '../profile/ProfileModals'
 
 export const DEFAULT_USER_NAME = 'You'
 
@@ -18,7 +21,9 @@ export const PREF = {
 export function SettingsPage(): JSX.Element {
   const prefs = useStore((s) => s.prefs)
   const setPref = (k: string, v: unknown): void => getStore().setPref(k, v)
+  const profile = useCurrentProfile()
   const [name, setName] = useState(String(prefs.userName ?? DEFAULT_USER_NAME))
+  const [editOpen, setEditOpen] = useState(false)
   const [pickerOpen, setPickerOpen] = useState(false)
   const swatchRef = useRef<HTMLButtonElement | null>(null)
   const pageColor = typeof prefs.defaultPageColor === 'string' ? prefs.defaultPageColor : '#282828'
@@ -26,23 +31,58 @@ export function SettingsPage(): JSX.Element {
 
   return (
     <div className="db-settings">
-      <div className="db-settings__row">
-        <div>
-          <div className="db-settings__label">Your name</div>
-          <div className="db-settings__hint">Shown in the sidebar and on your files.</div>
+      {profile && (
+        <div className="db-settings__row">
+          <div className="db-settings__who">
+            <Avatar name={profile.name} avatar={profile.avatar} color={profile.color} size={32} />
+            <div>
+              <div className="db-settings__label">{profile.name}</div>
+              <div className="db-settings__hint">
+                {profile.hasPassword
+                  ? 'Protected with a password. Files are encrypted on this PC.'
+                  : 'No password. Files are stored as plain JSON.'}
+              </div>
+            </div>
+          </div>
+          <Button onClick={() => setEditOpen(true)}>Edit profile…</Button>
+          <EditProfileModal open={editOpen} onClose={() => setEditOpen(false)} />
         </div>
-        <input
-          className="db-input"
-          value={name}
-          spellCheck={false}
-          onChange={(e) => setName(e.target.value)}
-          onBlur={() => setPref(PREF.userName, name.trim() || DEFAULT_USER_NAME)}
-          onKeyDown={(e) => {
-            e.stopPropagation()
-            if (e.key === 'Enter') (e.target as HTMLInputElement).blur()
-          }}
-        />
-      </div>
+      )}
+      {profile?.hasPassword && (
+        <div className="db-settings__row">
+          <div>
+            <div className="db-settings__label">Auto-lock after</div>
+            <div className="db-settings__hint">Lock this profile when Vellum has been idle this long.</div>
+          </div>
+          <Select
+            value={String(profile.autoLockMinutes ?? 0)}
+            options={AUTO_LOCK_OPTIONS}
+            style={{ width: 140 }}
+            onChange={(v) => {
+              void window.canvasApi?.profiles.update({ autoLockMinutes: Number(v) }).then(() => refreshProfiles())
+            }}
+          />
+        </div>
+      )}
+      {!profile && (
+        <div className="db-settings__row">
+          <div>
+            <div className="db-settings__label">Your name</div>
+            <div className="db-settings__hint">Shown in the sidebar and on your files.</div>
+          </div>
+          <input
+            className="db-input"
+            value={name}
+            spellCheck={false}
+            onChange={(e) => setName(e.target.value)}
+            onBlur={() => setPref(PREF.userName, name.trim() || DEFAULT_USER_NAME)}
+            onKeyDown={(e) => {
+              e.stopPropagation()
+              if (e.key === 'Enter') (e.target as HTMLInputElement).blur()
+            }}
+          />
+        </div>
+      )}
       <div className="db-settings__row">
         <div>
           <div className="db-settings__label">Default page color</div>

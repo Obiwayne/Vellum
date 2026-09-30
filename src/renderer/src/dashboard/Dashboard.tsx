@@ -1,15 +1,17 @@
 // Dashboard: sidebar (account, search, Recents/Learn, Files/Archive/Settings, agents card) + main area.
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
-import { Archive, ChevronDown, ChevronRight, Clock, GraduationCap, LayoutGrid, List, Minus, Plus, Search, Settings } from 'lucide-react'
+import { Archive, ChevronDown, ChevronRight, Clock, GraduationCap, LayoutGrid, List, Lock, Minus, Plus, Search, Settings } from 'lucide-react'
 import { Button, Menu, Modal, Tooltip, useContextMenu } from '../ui'
 import { getStore, useStore } from '../model/store'
 import type { Doc } from '../model/types'
 import { FooterLinks } from '../editor/left/WhatsNew'
-import { InlineEdit } from '../editor/left/InlineEdit'
 import { FileCard, FileRow, fileMenu, useNow } from './FileCard'
 import { LearnPage } from './LearnPage'
 import { DEFAULT_USER_NAME, PREF, SettingsPage } from './SettingsPage'
 import { ConnectAgentModal } from './ConnectAgentModal'
+import { Avatar } from '../profile/parts'
+import { lockAndReload, useCurrentProfile } from '../profile/profile'
+import { DeleteProfileModal, EditProfileModal } from '../profile/ProfileModals'
 import './dashboard.css'
 
 type Section = 'recents' | 'learn' | 'files' | 'archive' | 'settings'
@@ -57,7 +59,9 @@ export function Dashboard(): JSX.Element {
   const prefs = useStore((s) => s.prefs)
   const [section, setSectionState] = useState<Section>(lastSection)
   const [query, setQuery] = useState('')
-  const [renamingUser, setRenamingUser] = useState(false)
+  const [editProfileOpen, setEditProfileOpen] = useState(false)
+  const [deleteProfileOpen, setDeleteProfileOpen] = useState(false)
+  const profile = useCurrentProfile()
   const [accountOpen, setAccountOpen] = useState(false)
   const [connectOpen, setConnectOpen] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState<Doc | null>(null)
@@ -66,7 +70,7 @@ export function Dashboard(): JSX.Element {
   const ctx = useContextMenu()
   const now = useNow()
 
-  const userName = String(prefs[PREF.userName] ?? DEFAULT_USER_NAME)
+  const userName = profile?.name ?? String(prefs[PREF.userName] ?? DEFAULT_USER_NAME)
   const view = prefs[PREF.dashboardView] === 'list' ? 'list' : 'grid'
   const agentsDismissed = Boolean(prefs[PREF.agentsCardDismissed])
   const setSection = (s: Section): void => {
@@ -125,44 +129,41 @@ export function Dashboard(): JSX.Element {
     <div className="db">
       <aside className="db-side">
         <div className="db-account">
-          {renamingUser ? (
-            <div className="db-account__btn">
-              <span className="db-avatar">{userName.charAt(0).toUpperCase()}</span>
-              <InlineEdit
-                value={userName}
-                onCommit={(v) => {
-                  getStore().setPref(PREF.userName, v)
-                  setRenamingUser(false)
-                }}
-                onCancel={() => setRenamingUser(false)}
-              />
-            </div>
-          ) : (
-            <button
-              type="button"
-              ref={accountRef}
-              className="db-account__btn"
-              onClick={() => setAccountOpen((o) => !o)}
-              onDoubleClick={() => {
-                setAccountOpen(false)
-                setRenamingUser(true)
-              }}
-            >
-              <span className="db-avatar">{userName.charAt(0).toUpperCase()}</span>
-              <span className="db-account__name">{userName}</span>
-              <ChevronDown size={14} className="db-account__chev" />
-            </button>
-          )}
+          <button
+            type="button"
+            ref={accountRef}
+            className="db-account__btn"
+            onClick={() => setAccountOpen((o) => !o)}
+            onDoubleClick={() => {
+              if (!profile) return
+              setAccountOpen(false)
+              setEditProfileOpen(true)
+            }}
+          >
+            <Avatar name={userName} avatar={profile?.avatar} color={profile?.color} size={24} />
+            <span className="db-account__name">{userName}</span>
+            {profile?.hasPassword && <Lock size={12} className="db-account__lock" />}
+            <ChevronDown size={14} className="db-account__chev" />
+          </button>
           <Menu
             open={accountOpen}
             onClose={() => setAccountOpen(false)}
             anchor={accountRef.current}
             ignore={[accountRef.current]}
             minWidth={200}
-            items={[
-              { label: 'Change name…', onSelect: () => setRenamingUser(true) },
-              { label: 'Settings', onSelect: () => setSection('settings') }
-            ]}
+            items={
+              profile
+                ? [
+                    { label: 'Edit profile…', onSelect: () => setEditProfileOpen(true) },
+                    { label: 'Switch profile', onSelect: () => void lockAndReload() },
+                    ...(profile.hasPassword ? [{ label: 'Lock', onSelect: () => void lockAndReload() }] : []),
+                    { type: 'separator' as const },
+                    { label: 'Settings', onSelect: () => setSection('settings') },
+                    { type: 'separator' as const },
+                    { label: 'Delete profile…', danger: true, onSelect: () => setDeleteProfileOpen(true) }
+                  ]
+                : [{ label: 'Settings', onSelect: () => setSection('settings') }]
+            }
           />
         </div>
 
@@ -282,6 +283,8 @@ export function Dashboard(): JSX.Element {
 
       {ctx.element}
       <ConnectAgentModal open={connectOpen} onClose={() => setConnectOpen(false)} />
+      <EditProfileModal open={editProfileOpen} onClose={() => setEditProfileOpen(false)} />
+      <DeleteProfileModal open={deleteProfileOpen} onClose={() => setDeleteProfileOpen(false)} />
       <Modal
         open={Boolean(confirmDelete)}
         onClose={() => setConfirmDelete(null)}

@@ -5,7 +5,7 @@ Code: `src/renderer/src/editor/inspector/`. Every edit goes through store action
 | File | Contents |
 |---|---|
 | `Inspector.tsx` | Picks sections: page (nothing selected), text (all selected nodes are text), or frame/rect/image/svg |
-| `TopBar.tsx` | Avatar (initial of `prefs.userName`, default "V"), zoom menu, Share popover (Export `.vellum` JSON / Copy HTML) |
+| `TopBar.tsx` | Avatar (the open profile's picture, or its initial on the profile colour), zoom menu, Share popover (Export `.vellum` JSON / Copy HTML) |
 | `ConnectAgentModal.tsx` | "Connect your agent": agent list, commands and config snippets, bridge status, example prompts |
 | `LayoutSection.tsx` | X/Y/rotation, W/H with Fixed/Fit/Fill, rotate/flip, Add flex / Wrap in flex, Absolute position, Clip content, size presets (`SIZE_PRESETS`) |
 | `FlexSection.tsx` | 3×3 align grid, direction, wrap, gap, spacing menu, padding H/V or per side, remove |

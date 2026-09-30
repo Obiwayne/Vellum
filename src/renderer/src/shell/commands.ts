@@ -28,10 +28,10 @@ function editCommand(command: CanvasCommand['command']): void {
 
 export const commands = {
   newFile: (): void => {
-    getStore().createDoc()
+    if (getStore().ready) getStore().createDoc()
   },
   newTab: (): void => {
-    getStore().createDoc()
+    if (getStore().ready) getStore().createDoc()
   },
   reopenClosedTab: (): void => getStore().reopenClosedTab(),
   closeTab: (): void => {

@@ -111,8 +111,12 @@ interface Store {
   undo(docId); redo(docId); transact(docId, label, fn)   // groups several mutations into one undo step
 }
 ```
-Persistence: every doc is saved (debounced 500ms) as JSON to `%APPDATA%/Vellum/files/<id>.json` by main process;
-`index.json` keeps list + recents + open tabs. On first run create a "Scratchpad" doc (permanent draft, can't be deleted).
+Persistence: every doc is saved (debounced 500ms) by the main process to the open profile's folder,
+`%APPDATA%/Vellum/profiles/<profileId>/files/<id>.json`; `index.json` next to `files/` keeps recents, open tabs and prefs.
+Profiles (`src/main/vault.ts`): `profiles.json` lists them (name, avatar, colour, KDF params, wrapped data keys). A profile
+with a password has every file AES-256-GCM encrypted (`VLME` header, version, IV, tag, ciphertext) with a random data key
+that is wrapped by an scrypt password key and by a recovery key; the key only lives in main-process memory while the
+profile is open. The renderer shows a profile picker (`src/renderer/src/profile/`) until a profile is open. On first run create a "Scratchpad" doc (permanent draft, can't be deleted).
 
 ## Bridge / MCP
 - Electron main runs a WebSocket server on `ws://127.0.0.1:29170` (env `VELLUM_PORT`). Messages `{id, tool, args}` → main

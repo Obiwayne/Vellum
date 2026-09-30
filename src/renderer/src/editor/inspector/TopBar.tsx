@@ -3,6 +3,8 @@ import { ChevronDown, Code, FileDown } from 'lucide-react'
 import { Button, Menu, Popover, type MenuEntry } from '../../ui'
 import { activePage, getStore, useStore } from '../../model/store'
 import { nodeToHtml } from '../../model/html'
+import { Avatar } from '../../profile/parts'
+import { useCurrentProfile } from '../../profile/profile'
 import { zoomIn, zoomOut, zoomTo100, zoomToFit, zoomToSelection } from './zoom'
 
 /** Zoom-menu prefs (persisted via setPref). */
@@ -47,8 +49,8 @@ export function TopBar({ docId }: { docId: string }): JSX.Element {
   const [shareOpen, setShareOpen] = useState(false)
   const [copied, setCopied] = useState(false)
 
-  const name = typeof prefs.userName === 'string' && prefs.userName.trim() ? prefs.userName : 'Vellum'
-  const initial = name.trim()[0]?.toUpperCase() ?? 'V'
+  const profile = useCurrentProfile()
+  const name = profile?.name ?? (typeof prefs.userName === 'string' && prefs.userName.trim() ? prefs.userName : 'Vellum')
 
   const items: MenuEntry[] = [
     { label: 'Zoom in', shortcut: '+', onSelect: () => zoomIn(docId) },
@@ -88,9 +90,7 @@ export function TopBar({ docId }: { docId: string }): JSX.Element {
 
   return (
     <div className="insp-top">
-      <div className="insp-avatar" title={name}>
-        {initial}
-      </div>
+      <Avatar className="insp-avatar" name={name} avatar={profile?.avatar} color={profile?.color ?? '#4A5A6A'} size={24} title={name} />
       <button
         ref={zoomRef}
         type="button"

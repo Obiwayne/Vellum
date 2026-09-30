@@ -12,7 +12,8 @@
 </p>
 
 Vellum gives you an infinite canvas, artboards, flex layout, design tokens and a compact dark editor.
-There are no accounts, teams or subscriptions: your files stay on your machine as plain JSON.
+There are no online accounts, teams or subscriptions: your files stay on your machine. Several people can share
+one PC with local profiles, each optionally protected by a password that encrypts their files.
 
 Everything on the canvas is an HTML element with CSS styles, so what you design is exactly what a browser
 renders, and it exports cleanly to HTML, JSX or images. That also makes it a natural fit for AI agents:
@@ -49,8 +50,30 @@ its design system, component sheets and every screen and dialog (85 artboards), 
 - **Dashboard** — recents, files, archive, search, grid/list views and live thumbnails.
 - **Editing** — undo/redo, copy/paste (including HTML from other apps), copy as HTML/JSX/CSS,
   right-click menus and keyboard shortcuts throughout.
+- **Profiles & privacy** — local profiles with an optional password that encrypts your files (see below).
 - **MCP server** — 32 tools (`write_html`, `update_styles`, `get_screenshot`, `get_jsx`, tokens, pages, export…).
   Layers an agent is working on are outlined live on the canvas.
+
+### Profiles & privacy
+
+Vellum keeps a separate **profile** for each person using the PC — a name, an optional picture and an optional
+password. Profiles are purely local: no server, no online account. On start you pick your profile (with a single
+profile that has no password, Vellum opens it straight away). The account menu in the dashboard has
+**Edit profile**, **Switch profile**, **Lock** and **Delete profile**; Settings has **Auto-lock after** for
+protected profiles.
+
+- **Without a password** your files are stored as plain JSON, readable by anyone who uses this Windows account.
+- **With a password** every file of the profile (designs, file list, preferences) is encrypted on disk with
+  AES-256-GCM. The encryption key is random and is itself locked by your password (scrypt); it only exists in
+  memory while the profile is open, so nobody else on the PC can read your files, in Vellum or from File Explorer.
+  While a profile is locked, the MCP tools refuse to work.
+- **Recovery key**: when you set a password you get a one-time recovery key (`XXXX-XXXX-…`). Copy it or save it as
+  a `.txt` somewhere safe: it is the only way back in if you forget the password (*Forgot password? → Use recovery
+  key*). **If you forget the password and lose the recovery key, your files can’t be recovered.**
+- You can add, change or remove the password at any time (removing it decrypts the files back to plain JSON) and
+  create a new recovery key from **Edit profile**.
+- Upgrading from a version without profiles: the first profile you create takes over your existing files (they are
+  copied into the profile, encrypted if you set a password, checked, and only then removed from the old folder).
 
 ## Requirements
 
@@ -84,7 +107,8 @@ powershell -ExecutionPolicy Bypass -File scripts\make-shortcuts.ps1
 | `npm start` | Run the built app |
 | `npm run typecheck` | TypeScript checks only |
 
-Your files are saved as JSON in `%APPDATA%\Vellum\files`.
+Your data lives in `%APPDATA%\Vellum`: `profiles.json` lists the profiles, and each profile's files are in
+`profiles\<id>\` (plain JSON, or encrypted when the profile has a password).
 
 ## Let Claude design in Vellum
 
@@ -99,6 +123,8 @@ Your files are saved as JSON in `%APPDATA%\Vellum\files`.
 
 The MCP server is started by Claude Code in the background — you only need the Vellum app open.
 It talks to the app over `ws://127.0.0.1:29170` (change it with the `VELLUM_PORT` environment variable).
+The tools work on the profile that is open in the app; while Vellum shows the profile picker or is locked they
+return "Vellum is locked — open your profile in the app first".
 See [`docs/MCP.md`](docs/MCP.md) for the full tool list and troubleshooting.
 
 ## Keyboard shortcuts (highlights)

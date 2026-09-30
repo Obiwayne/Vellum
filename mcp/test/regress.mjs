@@ -1,4 +1,6 @@
-// Regression checks for the bugs in docs/BUGS.md. Needs the Vellum app running (npm run dev).
+// Regression checks for the bugs in docs/BUGS.md. Needs the Vellum app running (npm run dev) with a profile
+// open: for a clean run use a test data folder, e.g. set VELLUM_USER_DATA=%TEMP%\vellum-regress and VELLUM_PORT=29174
+// for both the app and this script, and create an unprotected profile in the window first.
 //   cd mcp && npm run build && node test/regress.mjs
 // Creates a temporary file, writes HTML cases into it, asserts via get_computed_styles /
 // get_node_info / get_screenshot, then deletes the artboards. KEEP=1 keeps them.

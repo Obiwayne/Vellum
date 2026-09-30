@@ -10,7 +10,9 @@ npm run typecheck      # tsc for node (main/preload/shared) + web (renderer)
 npm run build          # typecheck + electron-vite build -> out/
 npm start              # preview the built app
 ```
-Data lives in `%APPDATA%/Vellum/files/<id>.json` plus `%APPDATA%/Vellum/index.json`. To get a first run again, delete both. The bridge listens on `ws://127.0.0.1:29170` (env `VELLUM_PORT`).
+Data lives in `%APPDATA%/Vellum/profiles.json` plus one folder per profile, `%APPDATA%/Vellum/profiles/<id>/` (`files/<docId>.json` + `index.json`, encrypted when the profile has a password; see "Profiles" below). The bridge listens on `ws://127.0.0.1:29170` (env `VELLUM_PORT`).
+
+**Testing without touching real data:** set `VELLUM_USER_DATA` to another folder before starting Electron (e.g. `set VELLUM_USER_DATA=%TEMP%\vellum-test && set VELLUM_PORT=29171 && npx electron .` after `npm run build`). The whole userData (profiles, Chromium caches, single-instance lock) then lives there. An empty folder starts at "Create your profile".
 
 Path aliases: `@shared/*` → `src/shared/*` (all targets), `@renderer/*` → `src/renderer/src/*`.
 
@@ -44,7 +46,14 @@ Every placeholder receives `{ docId }`, except Dashboard, which receives nothing
 
 ## window.canvasApi (src/shared/api.ts)
 - Window: `minimize()`, `toggleMaximize()`, `close()`, `isMaximized(): Promise<boolean>`, `onMaximizedChange(cb) => unsubscribe`, `reload()`, `forceReload()`, `toggleDevTools()`, `toggleFullScreen()`, `quit()`, `openExternal(url)`
-- Storage: `listDocs(): Promise<DocSummary[]>`, `loadDoc(id)`, `saveDoc(doc)`, `deleteDoc(id)`, `loadIndex()`, `saveIndex(index)`, `userDataPath()`. Normally you only go through the store, and persist.ts does the saving.
+- Storage: `listDocs(): Promise<DocSummary[]>`, `loadDoc(id)`, `saveDoc(doc)`, `deleteDoc(id)`, `loadIndex()`, `saveIndex(index)`, `userDataPath()`. Normally you only go through the store, and persist.ts does the saving. All of these act on the open profile and fail with "Vellum is locked…" when none is open.
+- Profiles: `profiles.state()`, `create()`, `open()`, `recover()`, `lock()`, `update()`, `setPassword()`, `removePassword()`, `newRecoveryKey()`, `remove()`, `saveRecoveryKey()`; results are `{ok:true,…} | {ok:false,error}`. The renderer never gets key material.
+
+## Profiles
+- Main: `src/main/vault.ts` (pure Node, no Electron; tested by `cd mcp && npm run test:profiles`) holds `profiles.json`, the crypto and the file I/O of the open profile; `src/main/storage.ts` wires it to IPC. Password → scrypt (N=2^17, r=8, p=1) → key that wraps the random 256-bit data key (AES-256-GCM); a 128-bit recovery key (Crockford base32, `XXXX-…`) wraps it too (via HKDF). Files: `VLME` + version byte + 12-byte IV + 16-byte tag + ciphertext; plaintext profiles store plain JSON. Writes are atomic (tmp + rename) and serialised per file. Unlocking a protected profile re-encrypts any plaintext file it finds (interrupted conversion).
+- Migration: with no `profiles.json` and legacy `files/*.json` in userData, the first profile created copies them in (encrypting if it has a password), verifies each by reading it back, and only then deletes the legacy files. Any failure rolls the new profile back and leaves the legacy files alone.
+- Renderer: `src/renderer/src/profile/`: `profile.ts` (state, `startProfiles`, `enterProfile`, `lockAndReload`, idle auto-lock, `imageFileToAvatar`), `ProfilePicker.tsx` (picker, unlock, recovery, create, recovery-key screens), `ProfileModals.tsx` (Edit / Delete profile), `parts.tsx` (`Avatar`, `PicturePicker`, `RecoveryKeyPanel`). Locking flushes pending saves (`flushAndStop()`), locks in main, then reloads the window so no design stays in renderer memory.
+- MCP renders (`main:render_png`) are served from memory through the `vellum-render:` scheme on an in-memory session; nothing is written to %TEMP%.
 - `capturePage(rect?: {x,y,width,height}): Promise<string>` takes a rect in CSS px of the window's web contents and returns PNG base64 with no `data:` prefix. Use it for screenshots and exports after rendering the node on screen.
 - Bridge: `onBridgeRequest(cb) => unsubscribe`, `bridgeRespond({id, result?|error?})`, `bridgePort()`.
 

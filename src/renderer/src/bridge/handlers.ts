@@ -3,6 +3,8 @@
 // register themselves with registerHandler() (see docs/MCP.md for the full list).
 import type { BridgeRequest } from '@shared/api'
 import { handlers, settle } from './registry'
+import { getStore } from '../model/store'
+import { markActivity } from '../profile/profile'
 import './tools-files'
 import './tools-read'
 import './tools-write'
@@ -23,6 +25,11 @@ export function installBridge(): void {
   let chain: Promise<void> = Promise.resolve()
   api.onBridgeRequest((req: BridgeRequest) => {
     chain = chain.then(async () => {
+      if (!getStore().ready) {
+        api.bridgeRespond({ id: req.id, error: 'Vellum is locked — open your profile in the app first' })
+        return
+      }
+      markActivity()
       const fn = handlers[req.tool]
       if (!fn) {
         api.bridgeRespond({ id: req.id, error: `Unknown tool: ${req.tool}` })
