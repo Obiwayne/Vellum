@@ -1,10 +1,11 @@
-// Editor keyboard shortcuts (tools, selection, arrange, clipboard, zoom). Installed by CanvasView
+// Editor keyboard shortcuts (tools, selection, arrange, clipboard, zoom, text formatting). Installed by CanvasView
 // for the mounted doc. Runs in the capture phase so editor keys (e.g. Ctrl+Shift+R = Paste to
 // replace) win over app shortcuts; it skips text inputs, open menus/popovers and modals.
 import { getStore } from '../model/store'
 import { isPopoverOpen } from '../ui'
 import type { Tool } from '../model/types'
 import * as A from './canvas/actions'
+import * as T from './textStyle'
 import { zoomIn, zoomOut, zoomTo100, zoomToFit, zoomToSelection } from './canvas/camera'
 import { collapseAllLayers } from './left/LayersTree'
 
@@ -45,6 +46,11 @@ export function installCanvasShortcuts(docId: string): () => void {
     const sel = ed.selection
     let handled = true
 
+    if (textShortcut(docId, ctrl, shift, alt, code)) {
+      e.preventDefault()
+      e.stopPropagation()
+      return
+    }
     if (ctrl && !alt) {
       if (code === 'KeyD' && !shift) A.duplicateSelection(docId)
       else if (code === 'KeyC' && !shift) void A.copySelection(docId)
@@ -134,6 +140,26 @@ function numberKey(docId: string, digit: number): void {
     return
   }
   A.setOpacity(docId, digit === 0 ? 1 : digit / 10)
+}
+
+/**
+ * Text formatting, only when text layers are selected (otherwise the key falls through):
+ * Ctrl+B / I / U bold, italic, underline; with . (increase) and , (decrease): Ctrl+Shift font size,
+ * Ctrl+Alt weight, Alt letter spacing, Alt+Shift line height. Matched by code so Shift's '>' / '<' work.
+ */
+function textShortcut(docId: string, ctrl: boolean, shift: boolean, alt: boolean, code: string): boolean {
+  if (ctrl && !shift && !alt) {
+    if (code === 'KeyB') return T.toggleText(docId, 'bold')
+    if (code === 'KeyI') return T.toggleText(docId, 'italic')
+    if (code === 'KeyU') return T.toggleText(docId, 'underline')
+  }
+  const dir = code === 'Period' ? 1 : code === 'Comma' ? -1 : 0
+  if (!dir) return false
+  if (ctrl && shift && !alt) return T.nudgeText(docId, 'size', dir)
+  if (ctrl && alt && !shift) return T.nudgeText(docId, 'weight', dir)
+  if (alt && !ctrl && !shift) return T.nudgeText(docId, 'tracking', dir)
+  if (alt && shift && !ctrl) return T.nudgeText(docId, 'leading', dir)
+  return false
 }
 
 function nudgeKey(docId: string, key: string, step: number): void {

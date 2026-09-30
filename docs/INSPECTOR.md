@@ -17,7 +17,8 @@ Code: `src/renderer/src/editor/inspector/`. Every edit goes through store action
 | `EffectSections.tsx` | Outline, Border (All or one side), Shadow / Inner shadow, Filters (slider + field per filter, presets in the + menu), Background blur (`backdropFilter`: blur + saturate), Guides/Video placeholders, Export |
 | `SelectionColorsSection.tsx` + `colors.ts` | Selection colors: every distinct colour in the selection and its descendants (styles, gradients, shadows, borders, SVG `fill`/`stroke`/`stop-color`, `var(--token)` refs) with a use count; editing a row replaces it everywhere in one undo step |
 | `OtherStylesSection.tsx` | Other styles: `property: value` rows for every style key no other section edits (`handledStyleKeys`), add (+ with a name field) / edit / remove |
-| `TextSection.tsx` + `fonts.ts` | Font picker, weight, size, line height, letter spacing, align, vertical align, Formatting popover, Underline, Stroke |
+| `TextSection.tsx` + `fonts.ts` | Font picker, weight, size, line height, letter spacing, align, vertical align, variable axes, Type details popover (OpenType features, add axis), Formatting popover, Underline, Stroke |
+| `reorder.tsx` | Drag to reorder (grip per row) for Fill, Shadow, Inner shadow and Filters. A drop is one commit, so one undo step |
 | `exporting.ts` | PNG, JPG, WebP, SVG, PDF and HTML export; the all-artboards PDF |
 | `common.ts` | Mixed-value helper (`common`/`MIXED`), selection ctx, CSS parsers |
 
@@ -39,6 +40,16 @@ Code: `src/renderer/src/editor/inspector/`. Every edit goes through store action
   - Wrap: "No wrap" is `whiteSpace:'pre'`; "Balance" and "Pretty" set `textWrap`.
   - Keep words: `wordBreak:'keep-all'`.
   - Truncation: `textOverflow: ellipsis` plus `-webkit-box` line clamp.
+- **Type details popover (OpenType):**
+  - Figures (lining/oldstyle), figure spacing (proportional/tabular), slashed zero and fractions share one `fontVariantNumeric`. Each control swaps only its own keyword, e.g. `oldstyle-nums tabular-nums slashed-zero`.
+  - Ligatures off is `fontVariantLigatures: none`. Capitals is `fontVariantCaps` (small caps, all small caps).
+  - Features is free text for `fontFeatureSettings`. `ss01, cv11 off` is normalised to `"ss01" 1, "cv11" 0`.
+- **Variable axes:** `fontVariationSettings`, e.g. `"wdth" 87, "opsz" 32`. The Text section shows a slider and field for each axis of the font, plus any axis already set. `wght` is never written there, because the weight menu drives `fontWeight`. Axes come from:
+  - Local fonts: the `fvar` table of the font file, read through `queryLocalFonts()` blobs.
+  - Google fonts: a table in `fonts.ts` (`GOOGLE_VARIABLE`, e.g. Inter opsz 14–32, Roboto wdth 75–100). Those families are also loaded with their extra axes, because the css2 API pins axes that aren't requested.
+  - Anything else (system aliases, Google fonts outside the table): "Add axis" in Type details adds a standard axis (wdth 25–200, opsz 6–144, slnt −90–0, ital 0–1) or a custom 4-letter tag.
+  "−" on an axis row removes it from the CSS (back to the font default).
+- **Reordering:** the fill, shadow and filter lists keep their CSS order: the top fill row is the top `backgroundImage` layer, the first shadow row is first in `boxShadow`, and filters apply top to bottom. Drop and inner shadows share `boxShadow`, so each section reorders its rows among the slots they already use.
 - **Underline:** `textDecorationLine`, `textDecorationThickness`, `textUnderlineOffset`, `textDecorationColor`.
 - **Stroke:** `WebkitTextStrokeWidth` and `WebkitTextStrokeColor`, with `paintOrder: 'stroke fill'`.
 - **Selection colors:** literal colours are grouped by their `#RRGGBB(AA)` form (so `#fff`, `white` and `rgb(255,255,255)` are one row); `var(--x)` is its own row when the token resolves to a colour. Only style keys that can hold colours are scanned (`color`, `background*`, `border*`/`outline*` colours, `boxShadow`, `textShadow`, …), `url()` is skipped. Shown when a selected node has children, or the selection uses 2+ colours. Rows are keyed by position so a picker drag keeps its row; live drags coalesce (`insp:selcolors:<ids>`).

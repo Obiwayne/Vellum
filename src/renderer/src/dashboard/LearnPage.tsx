@@ -56,6 +56,18 @@ const GROUPS: { title: string; items: [string, string][] }[] = [
     ]
   },
   {
+    title: 'Text',
+    items: [
+      ['Bold', 'Ctrl+B'],
+      ['Italic', 'Ctrl+I'],
+      ['Underline', 'Ctrl+U'],
+      ['Font size up / down', 'Ctrl+Shift+. / Ctrl+Shift+,'],
+      ['Font weight up / down', 'Ctrl+Alt+. / Ctrl+Alt+,'],
+      ['Letter spacing up / down', 'Alt+. / Alt+,'],
+      ['Line height up / down', 'Alt+Shift+. / Alt+Shift+,']
+    ]
+  },
+  {
     title: 'App',
     items: [
       ['New file', 'Ctrl+N'],
