@@ -20,7 +20,7 @@ const ICON = { size: 20, strokeWidth: 1.5 }
 export const TOOL_GROUPS: ToolDef[][] = [
   [
     { tool: 'move', label: 'Move', shortcut: 'V', icon: <MousePointer2 {...ICON} /> },
-    { tool: 'pan', label: 'Pan', shortcut: 'Space', icon: <Hand {...ICON} /> }
+    { tool: 'pan', label: 'Pan', shortcut: 'H', icon: <Hand {...ICON} /> }
   ],
   [
     { tool: 'frame', label: 'Frame', shortcut: 'F', icon: <Scan {...ICON} /> },

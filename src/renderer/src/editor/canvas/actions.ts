@@ -145,6 +145,13 @@ export function toggleClip(docId: string): void {
   S().updateStyles(docId, sel, { overflow: clipped ? null : 'clip' })
 }
 
+/** Number keys: opacity 0–1 for the selection (1 removes the property, like the inspector). */
+export function setOpacity(docId: string, value: number): void {
+  const sel = selectionOf(docId)
+  if (!sel.length) return
+  S().updateStyles(docId, sel, { opacity: value >= 1 ? null : value })
+}
+
 export type ZOrder = 'front' | 'back' | 'forward' | 'backward'
 
 export function reorder(docId: string, how: ZOrder): void {
@@ -200,9 +207,10 @@ export function nudge(docId: string, dx: number, dy: number): void {
           p.children.splice(i, 1)
           p.children.splice(j, 0, id)
         } else {
-          ops.detachAnchors(d, id)
-          n.x += dx
-          n.y += dy
+          ops.editPlain(d, id, (m) => {
+            m.x += dx
+            m.y += dy
+          })
         }
       }
     },

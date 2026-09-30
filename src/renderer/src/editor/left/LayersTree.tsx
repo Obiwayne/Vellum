@@ -21,6 +21,13 @@ interface DropTarget {
 
 /** Expanded layers per doc survive tab switches / panel remounts. */
 const expandedByDoc = new Map<string, Set<string>>()
+const COLLAPSE_EVENT = 'layers:collapse-all'
+
+/** Collapse every layer of the doc (Alt+L). */
+export function collapseAllLayers(docId: string): void {
+  expandedByDoc.get(docId)?.clear()
+  window.dispatchEvent(new CustomEvent(COLLAPSE_EVENT, { detail: docId }))
+}
 
 export function NodeIcon({ node }: { node: CNode }): JSX.Element {
   switch (node.type) {
@@ -126,6 +133,14 @@ export function LayersTree({ docId }: { docId: string }): JSX.Element | null {
   const expanded = expandedByDoc.get(docId)!
   const page = doc?.pages.find((p) => p.id === pageId) ?? doc?.pages[0]
   const selSet = useMemo(() => new Set(selection ?? []), [selection])
+
+  useEffect(() => {
+    const on = (e: Event): void => {
+      if ((e as CustomEvent<string>).detail === docId) force((n) => n + 1)
+    }
+    window.addEventListener(COLLAPSE_EVENT, on)
+    return () => window.removeEventListener(COLLAPSE_EVENT, on)
+  }, [docId])
 
   // auto-expand ancestors of the selection, then scroll the first selected row into view
   useEffect(() => {

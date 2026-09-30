@@ -14,8 +14,9 @@ import { clampZoom, registerViewport } from './camera'
 import { clientToWorld, contains, intersects, measure, rectFromPoints, registerWorld, union } from './geometry'
 import { containerAt, drillNode, nodeIdFromTarget, pickNode } from './selection'
 import * as A from './actions'
-import { canvasMenu, nodeMenu } from './menus'
+import { canvasMenu, layersMenu, nodeMenu } from './menus'
 import { toast } from './toast'
+import { applyCropKeys, clampToImage, cropStart, cropStyle, type CropStart } from './crop'
 import './canvas.css'
 import { useDocFonts } from './useDocFonts'
 import { CommentsLayer } from '../comments/CommentsLayer'
@@ -158,6 +159,7 @@ type Gesture =
       target: string | null
       index?: number
       delta: Pt
+      constraints: Map<string, ops.Constraints>
     }
   | {
       kind: 'resize'
@@ -168,6 +170,8 @@ type Gesture =
       orig: Map<string, Pt>
       bounds: WorldRect
       snap: SnapTargets
+      constraints: Map<string, ops.Constraints>
+      crop: CropStart | null
     }
   | { kind: 'draw'; tool: 'frame' | 'rect' | 'shader'; startClient: Pt; start: Pt; parent: string; rect: WorldRect | null }
 
@@ -423,6 +427,8 @@ export function CanvasView({ docId }: { docId: string }): JSX.Element | null {
     }
 
     if (e.button === 2) {
+      // Ctrl+right-click lists the layers under the pointer without changing the selection
+      if (e.ctrlKey || e.metaKey) return
       const deepest = nodeIdFromTarget(e.target)
       const pick = deepest ? pickNode(d, deepest, ed.selection, e.ctrlKey || e.metaKey) : null
       if (pick && !ed.selection.includes(pick)) s.select(docId, [pick])
@@ -537,7 +543,8 @@ export function CanvasView({ docId }: { docId: string }): JSX.Element | null {
       snap: { xs: [], ys: [] },
       exclude: new Set(),
       target: null,
-      delta: { x: 0, y: 0 }
+      delta: { x: 0, y: 0 },
+      constraints: new Map()
     }
     beginListeners()
   }
@@ -567,13 +574,11 @@ export function CanvasView({ docId }: { docId: string }): JSX.Element | null {
       ids = dups
       d = getStore().docs[docId]
     }
-    // right/bottom-anchored nodes move by x/y from where they are drawn
-    const anchored = ids.filter((id) => {
-      const a = ops.anchoredAxes(d.nodes[id])
-      return !ops.isFlowChild(d, id) && (a.x || a.y)
-    })
+    // constrained / anchored nodes move by x/y from where they are drawn; their constraints are
+    // written back on release
+    const anchored = ids.filter((id) => ops.canConstrain(d, id) && ops.needsDetach(d.nodes[id]))
     if (anchored.length) {
-      s.mutate(docId, 'Move', (dd) => anchored.forEach((id) => ops.detachAnchors(dd, id)))
+      s.mutate(docId, 'Move', (dd) => anchored.forEach((id) => g.constraints.set(id, ops.detachAnchors(dd, id))))
       d = getStore().docs[docId]
     }
     g.ids = ids
@@ -827,6 +832,8 @@ export function CanvasView({ docId }: { docId: string }): JSX.Element | null {
       if (hasN) y1 = y2 - 1
       else y2 = y1 + 1
     }
+    const crop = g.crop && e.ctrlKey ? g.crop : null
+    if (crop) [x1, y1, x2, y2] = clampToImage(crop, x1, y1, x2, y2)
     const sx = (x2 - x1) / (B.width || 1)
     const sy = (y2 - y1) / (B.height || 1)
     const nb = { x: x1, y: y1, width: x2 - x1, height: y2 - y1 }
@@ -849,6 +856,8 @@ export function CanvasView({ docId }: { docId: string }): JSX.Element | null {
           n.x = snapPixel(o.x + (nx - r0.x))
           n.y = snapPixel(o.y + (ny - r0.y))
         }
+        // crop: the picture stays put while the box changes (back to the original crop without Ctrl)
+        if (g.crop) applyCropKeys(n.style, crop ? cropStyle(crop, x1, y1, x2, y2) : g.crop.orig)
       }
     })
     setTransient({ gesturing: true, guides })
@@ -905,6 +914,7 @@ export function CanvasView({ docId }: { docId: string }): JSX.Element | null {
             }
           }
         }
+        if (g.constraints.size) s.mutate(docId, 'Move', (dd) => g.constraints.forEach((c, id) => ops.restoreConstraints(dd, id, c)))
       } finally {
         history.end(docId)
       }
@@ -913,7 +923,11 @@ export function CanvasView({ docId }: { docId: string }): JSX.Element | null {
     }
 
     if (g.kind === 'resize') {
-      history.end(docId)
+      try {
+        if (g.constraints.size) s.mutate(docId, 'Resize', (dd) => g.constraints.forEach((c, id) => ops.restoreConstraints(dd, id, c)))
+      } finally {
+        history.end(docId)
+      }
       setTransient({})
       return
     }
@@ -958,19 +972,29 @@ export function CanvasView({ docId }: { docId: string }): JSX.Element | null {
     e.stopPropagation()
     e.preventDefault()
     const s = getStore()
-    const d = s.docs[docId]
+    let d = s.docs[docId]
     const sel = s.editors[docId]?.selection ?? []
     const ids = ops.topmostOnly(d, sel).filter((id) => d.nodes[id] && !d.nodes[id].locked)
     const rects = new Map<string, WorldRect>()
-    const orig = new Map<string, Pt>()
     for (const id of ids) {
       const r = measure(id, docId)
       if (r) rects.set(id, r)
-      orig.set(id, { x: d.nodes[id].x, y: d.nodes[id].y })
     }
     const bounds = union([...rects.values()])
     if (!bounds) return
     history.begin(docId, 'Resize')
+    // constrained nodes resize as plain px boxes; their constraints are written back on release
+    const constraints = new Map<string, ops.Constraints>()
+    const anchored = ids.filter((id) => ops.canConstrain(d, id) && ops.needsDetach(d.nodes[id]))
+    if (anchored.length) {
+      s.mutate(docId, 'Resize', (dd) => anchored.forEach((id) => constraints.set(id, ops.detachAnchors(dd, id))))
+      d = getStore().docs[docId]
+    }
+    const orig = new Map(ids.map((id) => [id, { x: d.nodes[id].x, y: d.nodes[id].y }]))
+    // a single image can be cropped: Ctrl while dragging
+    const one = ids.length === 1 ? d.nodes[ids[0]] : undefined
+    const oneRect = one ? rects.get(one.id) : undefined
+    const crop = one?.type === 'image' && oneRect ? cropStart(one, oneRect) : null
     gesture.current = {
       kind: 'resize',
       handle,
@@ -979,7 +1003,9 @@ export function CanvasView({ docId }: { docId: string }): JSX.Element | null {
       rects,
       orig,
       bounds,
-      snap: snapTargets(d, docId, ids)
+      snap: snapTargets(d, docId, ids),
+      constraints,
+      crop
     }
     beginListeners()
   }
@@ -1058,6 +1084,13 @@ export function CanvasView({ docId }: { docId: string }): JSX.Element | null {
     const s = getStore()
     const sel = s.editors[docId]?.selection ?? []
     const at = { x: e.clientX, y: e.clientY }
+    if (e.ctrlKey || e.metaKey) {
+      const layers = layersMenu(docId, at)
+      if (layers.length) {
+        ctx.open(e, layers)
+        return
+      }
+    }
     ctx.open(e, sel.length ? nodeMenu(docId, at) : canvasMenu(docId))
   }
 

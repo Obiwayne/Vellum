@@ -2,7 +2,7 @@
 import { useState } from 'react'
 import { Button, Section } from '../../ui'
 import { activePage, useStore } from '../../model/store'
-import { isFlex, isGrid } from '../../model/ops'
+import { canConstrain, isFlex, isGrid } from '../../model/ops'
 import { useCtx } from './common'
 import { TopBar } from './TopBar'
 import { ColorInput } from './ColorInput'
@@ -11,7 +11,8 @@ import { LayoutSection } from './LayoutSection'
 import { FlexSection } from './FlexSection'
 import { GridItemSection, GridSection } from './GridSection'
 import { ModeSection } from './ModeSection'
-import { BlendingSection, RadiusSection } from './BasicSections'
+import { BlendingSection, ImageSection, RadiusSection } from './BasicSections'
+import { ConstraintsSection } from './ConstraintsSection'
 import { FillSection } from './FillSection'
 import {
   BorderSection,
@@ -56,11 +57,13 @@ function SelectionInspector({ docId, ids }: { docId: string; ids: string[] }): J
   const allFlex = ctx.nodes.every((n) => isFlex(n))
   const allGrid = ctx.nodes.every((n) => isGrid(n))
   const allGridItems = ctx.nodes.every((n) => n.parent && isGrid(doc?.nodes[n.parent]) && n.style.position !== 'absolute')
+  const constrainable = ctx.nodes.every((n) => doc && canConstrain(doc, n.id))
   const key = ids.join(',')
   if (allText)
     return (
       <div key={key}>
         <LayoutSection ctx={ctx} />
+        {constrainable && <ConstraintsSection ctx={ctx} />}
         {allGridItems && <GridItemSection ctx={ctx} />}
         <BlendingSection ctx={ctx} />
         <FillSection ctx={ctx} text />
@@ -75,10 +78,12 @@ function SelectionInspector({ docId, ids }: { docId: string; ids: string[] }): J
   return (
     <div key={key}>
       <LayoutSection ctx={ctx} />
+      {constrainable && <ConstraintsSection ctx={ctx} />}
       {allGridItems && <GridItemSection ctx={ctx} />}
       {allFlex && <FlexSection ctx={ctx} />}
       {allGrid && <GridSection ctx={ctx} />}
       {ctx.nodes.every((n) => n.type === 'frame') && <ModeSection ctx={ctx} />}
+      {ctx.nodes.every((n) => n.type === 'image') && <ImageSection ctx={ctx} />}
       <RadiusSection ctx={ctx} />
       <BlendingSection ctx={ctx} />
       <FillSection ctx={ctx} />

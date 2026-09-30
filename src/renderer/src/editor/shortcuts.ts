@@ -6,6 +6,7 @@ import { isPopoverOpen } from '../ui'
 import type { Tool } from '../model/types'
 import * as A from './canvas/actions'
 import { zoomIn, zoomOut, zoomTo100, zoomToFit, zoomToSelection } from './canvas/camera'
+import { collapseAllLayers } from './left/LayersTree'
 
 function isTextTarget(el: EventTarget | null): boolean {
   if (!(el instanceof HTMLElement)) return false
@@ -15,6 +16,7 @@ function isTextTarget(el: EventTarget | null): boolean {
 
 const TOOL_KEYS: Record<string, Tool> = {
   KeyV: 'move',
+  KeyH: 'pan',
   KeyF: 'frame',
   KeyR: 'rect',
   KeyP: 'pen',
@@ -68,6 +70,7 @@ export function installCanvasShortcuts(docId: string): () => void {
       else handled = false
     } else if (alt) {
       if (code === 'KeyC') A.toggleClip(docId)
+      else if (code === 'KeyL' && !shift) collapseAllLayers(docId)
       else handled = false
     } else if (shift) {
       if (code === 'KeyF') A.frameSelection(docId)
@@ -86,6 +89,7 @@ export function installCanvasShortcuts(docId: string): () => void {
       else handled = false
     } else {
       if (TOOL_KEYS[code]) s.setTool(docId, TOOL_KEYS[code])
+      else if (/^(Digit|Numpad)\d$/.test(code)) numberKey(docId, Number(code.slice(-1)))
       else if (key === 'Escape') {
         if (ed.tool !== 'move') s.setTool(docId, 'move')
         else if (sel.length) A.selectParent(docId)
@@ -113,6 +117,21 @@ export function installCanvasShortcuts(docId: string): () => void {
   }
   window.addEventListener('keydown', onKey, true)
   return () => window.removeEventListener('keydown', onKey, true)
+}
+
+/**
+ * 1–9 set the selection's opacity to 10–90%, 0 to 100%. With "Zoom using number keys" on, 0, 1
+ * and 2 zoom instead (like Shift+0/1/2).
+ */
+function numberKey(docId: string, digit: number): void {
+  const s = getStore()
+  if (s.prefs['canvas.zoomNumberKeys'] === true && digit <= 2) {
+    if (digit === 0) zoomTo100(docId)
+    else if (digit === 1) zoomToFit(docId)
+    else zoomToSelection(docId)
+    return
+  }
+  A.setOpacity(docId, digit === 0 ? 1 : digit / 10)
 }
 
 function nudgeKey(docId: string, key: string, step: number): void {
