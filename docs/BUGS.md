@@ -54,9 +54,9 @@
 ## [content agent] write_html / set_text_content: backslashes in text are treated as escape sequences
 - **FIXED** — Vellum stores text literally: write_html and set_text_content never interpret backslash escapes, only real newline characters in the (decoded) string break lines, and `&nbsp;`/entities are decoded by the HTML parser as in a browser. The mangling seen here happened before the call reached Vellum: the build script had the path in a JS string literal (`'C:\nonexistent\TikFinity.exe'` written with single backslashes), so JavaScript turned `\n` into a newline and dropped the other backslashes. Regression checks (regress.mjs §7) pin the literal behaviour.
 - Tools: write_html (insert-children) and set_text_content on file hNTr3_YXd6KI, page p-4-0 (Settings: "TikFinity program" path, About data folder).
-- Args: text `C:\nonexistent\TikFinity.exe` and `C:\Users\wayne\AppData\Roaming\GiftDeck` (single literal backslashes in the JSON string values, i.e. `"C:\nonexistent\TikFinity.exe"` in the args file).
+- Args: text `C:\nonexistent\TikFinity.exe` and `C:\Users\someone\AppData\Roaming\ExampleApp` (single literal backslashes in the JSON string values, i.e. `"C:\nonexistent\TikFinity.exe"` in the args file).
 - Expected (browser): the backslashes are literal characters; text reads `C:\nonexistent\TikFinity.exe`.
-- Actual: `\n` becomes a newline and other backslashes vanish: stored textContent `C:\n onexistentTikFinity.exe` / `C:UserswayneAppDataRoamingGiftDeck` (get_node_info). Same result through set_text_content.
+- Actual: `\n` becomes a newline and other backslashes vanish: stored textContent `C:\n onexistentTikFinity.exe` / `C:UserssomeoneAppDataRoamingExampleApp` (get_node_info). Same result through set_text_content.
 - Workaround: in write_html use the entity `&#92;` for each backslash; in set_text_content double every backslash (`C:\\nonexistent` in the JSON) — the stored text then has single backslashes.
 
 ## [setup-dialogs agent] write_html: an element whose only content is `&nbsp;` (or empty) becomes a 0×0 Frame, not a one-line Text

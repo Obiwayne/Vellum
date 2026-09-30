@@ -5,20 +5,20 @@ The MCP server lets Claude Code (or any MCP client) design inside the running Ve
 ## Setup
 
 ```
-cd F:\Vellum\mcp
+cd <path-to-Vellum>\mcp
 npm install
 npm run build                     # tsc → mcp/dist/index.js
-claude mcp add vellum -- node F:/Vellum/mcp/dist/index.js
+claude mcp add vellum -- node <path-to-Vellum>/mcp/dist/index.js
 ```
 
-Start Vellum with `npm run dev` in `F:\Vellum` (or run the built app). The MCP server can start before the app does: it connects on the first tool call and reconnects if the app restarts.
+Start Vellum with `npm run dev` in `<path-to-Vellum>` (or run the built app). The MCP server can start before the app does: it connects on the first tool call and reconnects if the app restarts.
 
 | Env var | Default | Purpose |
 |---|---|---|
 | `VELLUM_PORT` | `29170` | Bridge WebSocket port. The app and the MCP server must use the same value. `CANVAS_PORT` (the pre-rename name) is still accepted as a fallback. |
 | `VELLUM_EXPORT_DIR` | `%USERPROFILE%\Downloads\Vellum` | Default output folder for `export` (`CANVAS_EXPORT_DIR` is still accepted). |
 
-To use a non-default port: `claude mcp add vellum -e VELLUM_PORT=29174 -- node F:/Vellum/mcp/dist/index.js`
+To use a non-default port: `claude mcp add vellum -e VELLUM_PORT=29174 -- node <path-to-Vellum>/mcp/dist/index.js`
 
 ## Response format
 
@@ -26,7 +26,7 @@ Every file-scoped tool returns two text blocks:
 1. A header: `{"file":{"id","name"},"contentHash":{"tokens"}}`
 2. The body (JSON, or plain text for `get_jsx` and the css/tailwind forms of `get_tokens`).
 
-`get_screenshot` returns the header, an `image/png` block and `{nodeId,width,height}`. Errors come back as `isError: true` with a message. If the app isn't reachable, the message is: *"Vellum app is not running — start it with npm run dev (or the built app) in F:\Vellum"*.
+`get_screenshot` returns the header, an `image/png` block and `{nodeId,width,height}`. Errors come back as `isError: true` with a message. If the app isn't reachable, the message is: *"Vellum app is not running — start it with npm run dev (or the built app) in <path-to-Vellum>"*.
 
 The server's `instructions` tell the model to load `get_guide({topic:"vellum-mcp-instructions"})` first. `"canvas-mcp-instructions"` (the pre-rename topic) is accepted as an alias.
 

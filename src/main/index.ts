@@ -10,8 +10,6 @@ import appIcon from '../../resources/icon.ico?asset'
 let mainWindow: BrowserWindow | null = null
 
 function createWindow(): void {
-  // groups taskbar entries under Vellum's own identity (and icon) instead of Electron's
-  if (process.platform === 'win32') app.setAppUserModelId('com.vellum.app')
   const win = new BrowserWindow({
     width: 1440,
     height: 900,
@@ -90,6 +88,9 @@ function registerWindowIpc(): void {
   ipcMain.on(IPC.quit, () => app.quit())
   ipcMain.on(IPC.openExternal, (_e, url: string) => {
     if (typeof url === 'string' && /^https?:/.test(url)) void shell.openExternal(url)
+  })
+  ipcMain.on(IPC.mcpEntry, (e) => {
+    e.returnValue = join(app.getAppPath(), 'mcp', 'dist', 'index.js').split('\\').join('/')
   })
   ipcMain.handle(IPC.readClipboardMedia, () => readClipboardMedia())
   ipcMain.handle(IPC.renderHtml, (_e, args: { html: string; scale?: number }) => renderHtml(args))

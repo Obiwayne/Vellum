@@ -1,8 +1,9 @@
 // Scaled-down live DOM preview of a doc's first page (no data-node-id, so the canvas resolver never sees it).
-import { memo, useLayoutEffect, useRef, useState, type CSSProperties } from 'react'
+import { memo, useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from 'react'
 import { computeNodeStyle } from '../model/html'
 import { numericSize } from '../model/ops'
 import type { Doc } from '../model/types'
+import { loadDocFonts } from '../editor/canvas/useDocFonts'
 
 const CONTENT_DEFAULTS: CSSProperties = {
   fontFamily: 'system-ui, sans-serif',
@@ -45,8 +46,28 @@ function ThumbNode({ doc, id, top }: { doc: Doc; id: string; top?: { x: number; 
 }
 
 /** Approximate world bounds of the first page's top-level nodes (fit-content sizes are measured after render). */
-function modelBounds(doc: Doc, rootId: string): { x: number; y: number; w: number; h: number } | null {
-  const tops = (doc.nodes[rootId]?.children ?? []).map((id) => doc.nodes[id]).filter((n) => n && n.visible)
+function subtreeSize(doc: Doc, id: string): number {
+  const n = doc.nodes[id]
+  return n ? 1 + n.children.reduce((t, c) => t + subtreeSize(doc, c), 0) : 0
+}
+
+/** Top-level nodes of the page to preview: in order, as many as fit the node budget (always at least one). */
+function previewTops(doc: Doc, rootId: string): string[] {
+  const out: string[] = []
+  let total = 0
+  for (const id of doc.nodes[rootId]?.children ?? []) {
+    const n = doc.nodes[id]
+    if (!n || !n.visible) continue
+    const size = subtreeSize(doc, id)
+    if (out.length && total + size > MAX_NODES) break
+    out.push(id)
+    total += size
+  }
+  return out
+}
+
+function modelBounds(doc: Doc, ids: string[]): { x: number; y: number; w: number; h: number } | null {
+  const tops = ids.map((id) => doc.nodes[id]).filter((n) => n && n.visible)
   if (!tops.length) return null
   let x0 = Infinity
   let y0 = Infinity
@@ -68,8 +89,12 @@ export const Thumbnail = memo(function Thumbnail({ doc }: { doc: Doc }): JSX.Ele
   const box = useRef<HTMLDivElement | null>(null)
   const world = useRef<HTMLDivElement | null>(null)
   const [fit, setFit] = useState<{ scale: number; dx: number; dy: number } | null>(null)
-  const bounds = page ? modelBounds(doc, page.rootId) : null
-  const tooBig = Object.keys(doc.nodes).length > MAX_NODES
+  const tops = page ? previewTops(doc, page.rootId) : []
+  const bounds = modelBounds(doc, tops)
+  const tooBig = tops.length === 1 && subtreeSize(doc, tops[0]) > MAX_NODES * 3
+
+  // web fonts used by the doc (Inter etc.) so the preview matches the canvas
+  useEffect(() => loadDocFonts(doc.nodes, doc.tokens), [doc.nodes, doc.tokens])
 
   // measure the rendered content (handles fit-content) and scale it into the box
   useLayoutEffect(() => {
@@ -108,7 +133,6 @@ export const Thumbnail = memo(function Thumbnail({ doc }: { doc: Doc }): JSX.Ele
 
   const vars: Record<string, string> = {}
   for (const t of doc.tokens) vars[t.name] = t.value
-  const root = doc.nodes[page.rootId]
   return (
     <div className="db-thumb" ref={box} style={{ background: page.background }}>
       <div
@@ -121,7 +145,7 @@ export const Thumbnail = memo(function Thumbnail({ doc }: { doc: Doc }): JSX.Ele
           visibility: fit ? 'visible' : 'hidden'
         }}
       >
-        {root.children.map((id) => {
+        {tops.map((id) => {
           const n = doc.nodes[id]
           return n ? <ThumbNode key={id} doc={doc} id={id} top={{ x: n.x, y: n.y }} /> : null
         })}

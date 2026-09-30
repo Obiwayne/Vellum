@@ -26,6 +26,7 @@ const api: CanvasApi = {
   loadIndex: () => ipcRenderer.invoke(IPC.loadIndex),
   saveIndex: (index) => ipcRenderer.invoke(IPC.saveIndex, index),
   userDataPath: () => ipcRenderer.invoke(IPC.userDataPath),
+  mcpEntry: ipcRenderer.sendSync(IPC.mcpEntry) as string,
 
   capturePage: (rect) => ipcRenderer.invoke(IPC.capturePage, rect),
   renderHtml: (args) => ipcRenderer.invoke(IPC.renderHtml, args),

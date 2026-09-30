@@ -15,7 +15,7 @@ You MUST load the full guide before other Vellum tools: get_guide({ topic: "vell
 - When done creating or editing, you MUST call finish_working_on_nodes.
 - Never show raw node IDs to the user.
 - Export to the user's codebase: use get_jsx and get_computed_styles for exact values — never read sizes or colors from screenshots.
-- If a tool says the Vellum app is not running, ask the user to start Vellum (npm run dev in F:\\Vellum, or the built app).`
+- If a tool says the Vellum app is not running, ask the user to start Vellum (Vellum.cmd or the Vellum shortcut, or npm run dev in the Vellum folder).`
 
 const MAIN_GUIDE = `# Vellum MCP — working guide
 

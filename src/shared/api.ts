@@ -70,6 +70,8 @@ export interface CanvasApi {
   loadIndex(): Promise<IndexData | null>
   saveIndex(index: IndexData): Promise<void>
   userDataPath(): Promise<string>
+  /** absolute path of the MCP server entry (mcp/dist/index.js), forward slashes */
+  mcpEntry: string
   // capture: rect in CSS px of the window's web contents; returns PNG base64 (no data: prefix)
   capturePage(rect?: Rect): Promise<string>
   // rasterise a standalone HTML document offscreen; returns PNG base64 + pixel size
@@ -108,6 +110,7 @@ export const IPC = {
   loadIndex: 'fs:loadIndex',
   saveIndex: 'fs:saveIndex',
   userDataPath: 'fs:userDataPath',
+  mcpEntry: 'app:mcpEntry',
   capturePage: 'win:capturePage',
   renderHtml: 'win:renderHtml',
   readClipboardMedia: 'clip:readMedia',

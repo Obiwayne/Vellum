@@ -12,7 +12,7 @@ const CONNECT_TIMEOUT_MS = 2500
 const DEFAULT_CALL_TIMEOUT_MS = 60_000
 
 export const NOT_RUNNING =
-  'Vellum app is not running — start it with npm run dev (or the built app) in F:\\Vellum' +
+  'Vellum app is not running — open the Vellum app (Vellum.cmd or the Vellum shortcut, or npm run dev in the Vellum folder)' +
   (PORT_ENV ? ` (expected on port ${VELLUM_PORT})` : '')
 
 interface Pending {

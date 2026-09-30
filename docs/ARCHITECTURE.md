@@ -15,7 +15,7 @@ consistent menus and shortcuts. The product name is "Vellum".
 
 ## Folder layout
 ```
-F:\Vellum
+<path-to-Vellum>
   package.json               electron-vite app
   electron.vite.config.ts
   src/main/                  Electron main: window, menu IPC, file storage, bridge WS server
@@ -120,7 +120,7 @@ Persistence: every doc is saved (debounced 500ms) as JSON to `%APPDATA%/Vellum/f
 - `get_screenshot`/`export` use `webContents.capturePage` on an offscreen render of the node (renderer provides rect),
   or render the node's HTML in a hidden BrowserWindow. PNG base64 returned.
 - `mcp/` exposes the design tools listed in docs/MCP.md. Registered in Claude Code as
-  `claude mcp add vellum -- node F:/Vellum/mcp/dist/index.js`.
+  `claude mcp add vellum -- node <path-to-Vellum>/mcp/dist/index.js`.
 - While the agent works on nodes they appear in `workingNodes` → canvas outlines them in teal with a label, and the
   canvas shows the orange inset glow; `finish_working_on_nodes` clears it.
 

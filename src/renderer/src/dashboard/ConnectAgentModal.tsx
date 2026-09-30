@@ -2,7 +2,9 @@ import { useState } from 'react'
 import { Check, Copy } from 'lucide-react'
 import { Button, Modal } from '../ui'
 
-export const MCP_COMMAND = 'claude mcp add vellum -- node F:/Vellum/mcp/dist/index.js'
+/** Where this copy of Vellum's MCP server lives (resolved by the main process). */
+export const MCP_ENTRY = window.canvasApi?.mcpEntry ?? '<path-to-Vellum>/mcp/dist/index.js'
+export const MCP_COMMAND = `claude mcp add vellum -- node ${MCP_ENTRY}`
 
 const PROMPTS = [
   'Create a basic Hello World frame in Vellum',

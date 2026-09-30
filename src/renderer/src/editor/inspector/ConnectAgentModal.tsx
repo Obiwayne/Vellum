@@ -1,8 +1,7 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import { Box, Check, Code2, Copy, Ellipsis, Hexagon, Plus, Minus, Sparkle } from 'lucide-react'
 import { Button, IconButton, Modal } from '../../ui'
-
-const MCP_ENTRY = 'F:/Vellum/mcp/dist/index.js'
+import { MCP_ENTRY } from '../../dashboard/ConnectAgentModal'
 
 // ---- bridge activity (any MCP request reaching the renderer counts as "connected")
 let lastBridgeRequest = 0

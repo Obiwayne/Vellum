@@ -2,31 +2,60 @@
 
 <h1 align="center">Vellum</h1>
 
-A free, local-first design tool for Windows where **designs are real HTML/CSS**, with a built-in
-**MCP server so Claude (or any MCP-capable agent) can design in it** while you watch.
+<p align="center">
+  A free, local-first design tool where <b>designs are real HTML/CSS</b> —<br />
+  with a built-in <b>MCP server so Claude can design in it</b> while you watch.
+</p>
 
-It gives you an infinite canvas, artboards, flex layout, design tokens and a dark, compact editor UI.
-There are no accounts, teams or billing — everything stays on your machine.
+<p align="center">
+  <img src="docs/screenshots/editor.png" alt="Vellum editor with a selected app screen, the layers panel and the inspector" />
+</p>
+
+Vellum gives you an infinite canvas, artboards, flex layout, design tokens and a compact dark editor.
+There are no accounts, teams or subscriptions: your files stay on your machine as plain JSON.
+
+Everything on the canvas is an HTML element with CSS styles, so what you design is exactly what a browser
+renders, and it exports cleanly to HTML, JSX or images. That also makes it a natural fit for AI agents:
+Claude writes HTML into the canvas through Vellum's MCP server, screenshots its own work and refines it.
+
+## Screenshots
+
+The design shown here is a complete rebuild of a real desktop app, [MayhemDeck](https://github.com/Obiwayne/MayhemDeck):
+its design system, component sheets and every screen and dialog (85 artboards), made in Vellum by Claude through the MCP server.
+
+<table>
+  <tr>
+    <td width="50%"><img src="docs/screenshots/design-system.png" alt="Design system page: cover, colour, typography and spacing artboards" /><p align="center"><sub>Design system page</sub></p></td>
+    <td width="50%"><img src="docs/screenshots/components.png" alt="Component sheets with every state" /><p align="center"><sub>Component sheets with every state</sub></p></td>
+  </tr>
+  <tr>
+    <td width="50%"><img src="docs/screenshots/editor-games.png" alt="A full-length screen selected, with flex layout in the inspector" /><p align="center"><sub>Full-length screen with flex layout</sub></p></td>
+    <td width="50%"><img src="docs/screenshots/dashboard.png" alt="Dashboard with live file thumbnails" /><p align="center"><sub>Dashboard with live thumbnails</sub></p></td>
+  </tr>
+</table>
 
 ## Features
 
-- **Canvas** — infinite pan/zoom (2%–25600%), artboards, frames, rectangles, text, pen paths, images and SVG;
+- **Canvas** — infinite pan and zoom (2%–25600%), artboards, frames, rectangles, text, pen paths, images and SVG;
   selection handles, marquee select, snapping guides, drag-to-reorder inside flex layouts, inline text editing.
+- **Images** — paste screenshots and copied images with `Ctrl+V` (including image files copied in File Explorer),
+  or drag image files straight onto the canvas; they land where you drop them.
 - **Inspector** — layout (X/Y, rotation, Fixed/Fit/Fill sizing, device size presets), flex (direction,
   alignment grid, gap, padding, wrap), radius, opacity and blend modes, solid/gradient/image fills,
   outline, border, shadows, inner shadows, filters, full typography with a font picker, export (PNG/SVG/HTML).
-- **Layers & pages** — layers tree with drag-and-drop, show/hide, lock, rename; multiple pages per file.
+- **Layers & pages** — layers tree with drag-and-drop, show/hide, lock and rename; multiple pages per file.
 - **Theme tokens** — CSS custom-property tokens (colours, type, spacing, radii…) with a starter theme;
   use them anywhere as `var(--token)`.
-- **Dashboard** — recents, files, archive, search, grid/list views, live thumbnails.
-- **Undo/redo**, copy/paste (including HTML from other apps), copy as HTML/JSX/CSS, keyboard shortcuts throughout.
+- **Dashboard** — recents, files, archive, search, grid/list views and live thumbnails.
+- **Editing** — undo/redo, copy/paste (including HTML from other apps), copy as HTML/JSX/CSS,
+  right-click menus and keyboard shortcuts throughout.
 - **MCP server** — 32 tools (`write_html`, `update_styles`, `get_screenshot`, `get_jsx`, tokens, pages, export…).
-  Nodes an agent is working on are outlined live on the canvas.
+  Layers an agent is working on are outlined live on the canvas.
 
 ## Requirements
 
-- Windows 10/11
-- Node.js 22+ and npm
+- Windows 10 or 11
+- [Node.js](https://nodejs.org) 22+ and npm
 
 ## Getting started
 
@@ -38,9 +67,15 @@ cd mcp && npm install && npm run build && cd ..
 npm run dev
 ```
 
-Or just double-click **`Vellum.cmd`** — it installs and builds on first run, then opens the app and closes its console.
-For a launcher with no console at all, run `powershell -ExecutionPolicy Bypass -File scripts\make-shortcuts.ps1` once:
-it creates a **Vellum** shortcut (with the app icon) in the project folder and on your Desktop.
+Or just double-click **`Vellum.cmd`**: the first time it installs and builds everything, then it opens the app
+and closes its console.
+
+For a launcher with no console at all, run this once — it creates a **Vellum** shortcut with the app icon in the
+project folder and on your Desktop:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts\make-shortcuts.ps1
+```
 
 | Command | What it does |
 |---|---|
@@ -54,14 +89,16 @@ Your files are saved as JSON in `%APPDATA%\Vellum\files`.
 ## Let Claude design in Vellum
 
 1. Start Vellum.
-2. Register the MCP server with Claude Code (use the path where you cloned the repo):
+2. Register the MCP server with Claude Code. The exact command for your copy is shown in the app under
+   **Connect your agent**; it looks like this:
    ```bash
    claude mcp add vellum -- node C:/path/to/Vellum/mcp/dist/index.js
    ```
 3. Start a new Claude Code session and ask, for example:
    *"Create a pricing card for a coffee subscription in Vellum."*
 
-The server talks to the running app over `ws://127.0.0.1:29170` (override with `VELLUM_PORT`).
+The MCP server is started by Claude Code in the background — you only need the Vellum app open.
+It talks to the app over `ws://127.0.0.1:29170` (change it with the `VELLUM_PORT` environment variable).
 See [`docs/MCP.md`](docs/MCP.md) for the full tool list and troubleshooting.
 
 ## Keyboard shortcuts (highlights)
@@ -72,7 +109,7 @@ See [`docs/MCP.md`](docs/MCP.md) for the full tool list and troubleshooting.
 | Frame · Rectangle · Pen · Text | `F` · `R` · `P` · `T` |
 | Add / wrap in flex | `Shift+A` |
 | Zoom to 100% · fit · selection | `Shift+0` · `Shift+1` · `Shift+2` |
-| Duplicate · Delete | `Ctrl+D` · `Delete` |
+| Copy · Paste · Duplicate · Delete | `Ctrl+C` · `Ctrl+V` · `Ctrl+D` · `Delete` |
 | Undo · Redo | `Ctrl+Z` · `Ctrl+Shift+Z` |
 | Bring to front · Send to back | `]` · `[` |
 
@@ -81,11 +118,13 @@ The full list is on the **Learn** page in the app's dashboard.
 ## Project structure
 
 ```
-src/main/        Electron main process: window, file storage, MCP bridge, offscreen rendering
+src/main/        Electron main process: window, file storage, clipboard, MCP bridge, offscreen rendering
 src/preload/     Safe API exposed to the renderer
 src/renderer/    React UI: shell, dashboard, editor (canvas, toolbar, inspector, left panel), model/store
 mcp/             MCP server (stdio) + tests (mcp/test/regress.mjs)
-docs/            Architecture and component docs
+resources/       App icon (SVG, PNG, ICO)
+scripts/         Helper scripts (desktop shortcuts)
+docs/            Architecture, component docs and screenshots
 ```
 
 Built with Electron, electron-vite, React, TypeScript, zustand and immer.

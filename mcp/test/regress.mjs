@@ -171,7 +171,7 @@ try {
     const i = await info(t)
     check('write_html keeps backslashes literally', i.textContent === path, i.textContent)
     check('no line break from "\\n" in the text (one line)', near(i.height, 18), i.height)
-    const other = 'C:\\Users\\wayne\\AppData\\Roaming\\GiftDeck'
+    const other = 'C:\\Users\\someone\\AppData\\Roaming\\ExampleApp'
     await call('set_text_content', { fileId, updates: [{ nodeId: t, textContent: other }] })
     check('set_text_content keeps backslashes literally', (await info(t)).textContent === other, (await info(t)).textContent)
     await call('set_text_content', { fileId, updates: [{ nodeId: t, textContent: 'a\\tb\nc' }] })
