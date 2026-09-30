@@ -16,23 +16,8 @@ import {
   type RGBA
 } from './color'
 
-// ------------------------------------------------------------------------------------------------
-// Eyedropper (Chromium EyeDropper API)
-
-interface EyeDropperCtor {
-  new (): { open(): Promise<{ sRGBHex: string }> }
-}
-export async function pickScreenColor(): Promise<string | null> {
-  const ED = (window as unknown as { EyeDropper?: EyeDropperCtor }).EyeDropper
-  if (!ED) return null
-  try {
-    const r = await new ED().open()
-    const c = parseColor(r.sRGBHex)
-    return c ? formatColor(c) : null
-  } catch {
-    return null
-  }
-}
+export { pickScreenColor } from './eyedropper'
+import { pickScreenColor } from './eyedropper'
 
 // ------------------------------------------------------------------------------------------------
 // Swatch

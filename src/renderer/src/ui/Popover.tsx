@@ -1,5 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
+import { isEyedropperActive } from './eyedropper'
 
 export type Placement =
   | 'bottom-start'
@@ -133,7 +134,7 @@ export function Popover({
     stack.push(order.current)
     const mine = order.current
     const down = (e: PointerEvent): void => {
-      if (!closeOnOutside) return
+      if (!closeOnOutside || isEyedropperActive()) return
       const t = e.target as Node
       if (ref.current?.contains(t)) return
       if (anchor instanceof HTMLElement && anchor.contains(t)) return
@@ -144,7 +145,7 @@ export function Popover({
       onCloseRef.current()
     }
     const key = (e: KeyboardEvent): void => {
-      if (e.key === 'Escape' && stack[stack.length - 1] === mine) {
+      if (e.key === 'Escape' && stack[stack.length - 1] === mine && !isEyedropperActive()) {
         e.stopPropagation()
         e.preventDefault()
         onCloseRef.current()

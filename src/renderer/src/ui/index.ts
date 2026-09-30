@@ -22,3 +22,4 @@ export {
 } from './ColorPicker'
 export * from './color'
 export { formatShortcut, matchShortcut } from './shortcut'
+export { isEyedropperActive } from './eyedropper'

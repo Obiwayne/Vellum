@@ -2,7 +2,7 @@
 // for the mounted doc. Runs in the capture phase so editor keys (e.g. Ctrl+Shift+R = Paste to
 // replace) win over app shortcuts; it skips text inputs, open menus/popovers and modals.
 import { getStore } from '../model/store'
-import { isPopoverOpen } from '../ui'
+import { isEyedropperActive, isPopoverOpen } from '../ui'
 import type { Tool } from '../model/types'
 import * as A from './canvas/actions'
 import * as T from './textStyle'
@@ -34,7 +34,7 @@ export function installCanvasShortcuts(docId: string): () => void {
     if (e.defaultPrevented) return
     if (getStore().activeTab !== docId) return
     if (isTextTarget(e.target) || isTextTarget(document.activeElement)) return
-    if (isPopoverOpen() || document.querySelector('.c-modal-overlay')) return
+    if (isPopoverOpen() || isEyedropperActive() || document.querySelector('.c-modal-overlay')) return
     const s = getStore()
     const ed = s.editors[docId]
     if (!ed) return
