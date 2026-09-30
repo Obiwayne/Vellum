@@ -59,6 +59,8 @@ function buildNodeMenu(docId: string, at: { x: number; y: number }): MenuEntry[]
       submenu: [
         { label: 'Copy as HTML', onSelect: () => A.copyAs(docId, 'html') },
         { label: 'Copy as JSX', onSelect: () => A.copyAs(docId, 'jsx') },
+        { label: 'Copy as React', shortcut: 'Alt+R', onSelect: () => A.copyAs(docId, 'react') },
+        { label: 'Copy as Tailwind', shortcut: 'Alt+T', onSelect: () => A.copyAs(docId, 'tailwind') },
         { label: 'Copy as CSS', onSelect: () => A.copyAs(docId, 'css') }
       ]
     },
@@ -114,6 +116,8 @@ export function canvasMenu(docId: string): MenuEntry[] {
     sep,
     { label: 'Next artboard', shortcut: 'N', onSelect: () => A.nextArtboard(docId, 1) },
     { label: 'Previous artboard', shortcut: 'Shift+N', onSelect: () => A.nextArtboard(docId, -1) },
+    sep,
+    { label: 'Export PDF of all artboards…', onSelect: () => void A.exportPagePdf(docId) },
     sep,
     { label: 'Cursor chat', shortcut: '/', disabled: true },
     { label: 'Hide UI', shortcut: '.', onSelect: () => A.toggleHideUI() }

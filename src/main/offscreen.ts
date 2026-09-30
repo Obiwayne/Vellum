@@ -1,6 +1,7 @@
 // Offscreen HTML rasteriser for MCP screenshots/exports. The MCP server sends a complete HTML
 // document (node markup + tokens + font links) through the bridge as `main:render_png`; we load it
 // in a hidden offscreen BrowserWindow, wait for fonts/images, measure the node and capture it.
+// `main:render_pdf` prints the same kind of document to PDF instead (one page per node).
 // Works regardless of whether the node is visible, zoomed or on another page in the editor.
 // The document is served from memory through the `vellum-render:` scheme on the window's own
 // in-memory session, so design content never touches the disk.
@@ -79,7 +80,7 @@ export interface RenderArgs {
   html: string
   /** device pixels per CSS pixel (default 1) */
   scale?: number
-  format?: 'png' | 'jpeg'
+  format?: 'png' | 'jpeg' | 'webp'
   quality?: number
   /** clamp the longest output side (scale is reduced to fit) */
   maxDimension?: number
@@ -262,11 +263,128 @@ async function renderOnce(args: RenderArgs): Promise<RenderResult> {
       img = nativeImage.createFromBitmap(out, { width: W, height: H })
     }
     if (img.isEmpty()) img = nativeImage.createEmpty()
+    if (args.format === 'webp') {
+      const base64 = await encodeWebp(w, img, args.quality ?? 92)
+      return { base64, width: W, height: H, cssWidth, cssHeight }
+    }
     const buf = args.format === 'jpeg' ? img.toJPEG(args.quality ?? 92) : img.toPNG()
     return { base64: buf.toString('base64'), width: W, height: H, cssWidth, cssHeight }
   } finally {
     docs.delete(docId)
   }
+}
+
+/**
+ * nativeImage has no WebP encoder: Chromium's canvas does. The PNG goes into the (still loaded)
+ * render page as a data: image (allowed by its CSP, and data: images don't taint the canvas).
+ */
+async function encodeWebp(w: BrowserWindow, img: NativeImage, quality: number): Promise<string> {
+  const png = img.toPNG().toString('base64')
+  const url = (await w.webContents.executeJavaScript(
+    `(async () => {
+      const img = new Image();
+      img.src = 'data:image/png;base64,${png}';
+      await img.decode();
+      const c = document.createElement('canvas');
+      c.width = img.naturalWidth; c.height = img.naturalHeight;
+      c.getContext('2d').drawImage(img, 0, 0);
+      return c.toDataURL('image/webp', ${quality / 100});
+    })()`,
+    true
+  )) as string
+  if (!url.startsWith('data:image/webp;base64,')) throw new Error('render: WebP encoding failed')
+  return url.slice('data:image/webp;base64,'.length)
+}
+
+// ------------------------------------------------------------------------------------------------
+// PDF
+
+export interface PdfResult {
+  base64: string
+  /** page sizes in CSS px, in order */
+  pages: { width: number; height: number }[]
+}
+
+/**
+ * Every `.__vellum_page` element in the document becomes one PDF page, sized to the node inside it
+ * (its first element child); a document without pages is a single page around `#__canvas_wrap`.
+ * Each page gets its own named `@page` rule, so artboards of different sizes keep their sizes.
+ */
+const PAGINATE = `
+(async () => {
+  const deadline = new Promise((r) => setTimeout(r, 6000));
+  const imgs = Array.from(document.images).map((img) =>
+    img.complete ? null : new Promise((r) => { img.onload = img.onerror = r; }));
+  await Promise.race([Promise.all([document.fonts.ready, ...imgs]), deadline]);
+  await Promise.race([document.fonts.ready, deadline]);
+  await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+  let pages = Array.from(document.querySelectorAll('.__vellum_page'));
+  if (!pages.length) pages = [document.getElementById('__canvas_wrap') || document.body];
+  const sizes = pages.map((p) => {
+    const r = (p.firstElementChild || p).getBoundingClientRect();
+    return { width: Math.max(1, Math.round(r.width)), height: Math.max(1, Math.round(r.height)) };
+  });
+  let css = 'html,body{margin:0!important;padding:0!important}*{print-color-adjust:exact;-webkit-print-color-adjust:exact}';
+  pages.forEach((p, i) => {
+    const s = sizes[i];
+    // PDF pages come out in whole points (Chromium rounds up, and paints only inside the CSS page
+    // box), so the page is sized in whole points too and the sub-pixel strip past the node gets
+    // the node's own fill instead of white (390px → 293pt = 390.67px)
+    const wpt = Math.ceil(s.width * 0.75), hpt = Math.ceil(s.height * 0.75);
+    css += '@page vp' + i + '{size:' + wpt + 'pt ' + hpt + 'pt;margin:0}';
+    p.style.page = 'vp' + i;
+    p.style.width = wpt / 0.75 + 'px';
+    p.style.height = hpt / 0.75 + 'px';
+    p.style.overflow = 'hidden';
+    p.style.position = 'relative';
+    p.style.breakAfter = i < pages.length - 1 ? 'page' : 'auto';
+    p.style.breakInside = 'avoid';
+    const bg = getComputedStyle(p.firstElementChild || p).backgroundColor;
+    if (bg && !/^(transparent|rgba\\(.*,\\s*0\\))$/.test(bg)) p.style.backgroundColor = bg;
+  });
+  const st = document.createElement('style');
+  st.textContent = css;
+  document.head.appendChild(st);
+  await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+  return sizes;
+})()
+`
+
+async function renderPdfOnce(html: string): Promise<PdfResult> {
+  ensureScheme()
+  const w = getWindow()
+  const docId = `r${++seq}`
+  docs.set(docId, html)
+  try {
+    w.setContentSize(MEASURE_VIEWPORT, MEASURE_VIEWPORT)
+    await w.loadURL(`${SCHEME}://${docId}/`)
+    docs.delete(docId)
+    const pages = (await w.webContents.executeJavaScript(PAGINATE, true)) as PdfResult['pages']
+    const buf = await w.webContents.printToPDF({
+      printBackground: true,
+      preferCSSPageSize: true,
+      margins: { top: 0, bottom: 0, left: 0, right: 0 },
+      displayHeaderFooter: false,
+      generateTaggedPDF: true
+    })
+    return { base64: buf.toString('base64'), pages }
+  } finally {
+    docs.delete(docId)
+  }
+}
+
+/** Serialised with the raster renders (same hidden window). */
+export function renderPdf(raw: unknown): Promise<PdfResult> {
+  const a = (raw && typeof raw === 'object' ? raw : {}) as Record<string, unknown>
+  if (typeof a.html !== 'string' || !a.html) return Promise.reject(new Error('render: missing html'))
+  if (a.html.length > MAX_HTML) return Promise.reject(new Error('render: html is too large'))
+  const html = a.html
+  const run = queue.then(
+    () => renderPdfOnce(html),
+    () => renderPdfOnce(html)
+  )
+  queue = run.catch(() => undefined)
+  return run
 }
 
 const num = (v: unknown, min: number, max: number): number | undefined =>
@@ -281,7 +399,7 @@ function cleanArgs(raw: unknown): RenderArgs {
   return {
     html: a.html,
     scale: num(a.scale, 0.01, 16),
-    format: a.format === 'jpeg' ? 'jpeg' : 'png',
+    format: a.format === 'jpeg' || a.format === 'webp' ? a.format : 'png',
     quality: num(a.quality, 1, 100),
     maxDimension: num(a.maxDimension, 1, MAX_TEXTURE),
     measureOnly: a.measureOnly === true,
@@ -316,6 +434,8 @@ export async function handleMainTool(tool: string, args: Record<string, unknown>
   switch (tool) {
     case 'main:render_png':
       return renderHtml(args)
+    case 'main:render_pdf':
+      return renderPdf(args)
     case 'main:ping':
       return { pong: true }
     default:

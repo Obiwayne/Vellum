@@ -5,7 +5,7 @@ import { pathToFileURL } from 'url'
 import { IPC, type Rect } from '@shared/api'
 import { clearCachesIfProtected, migrateLegacyUserData, registerStorageIpc } from './storage'
 import { startBridge } from './bridge'
-import { cleanStaleRenderTemp, disposeRenderer, registerRenderScheme, renderHtml } from './offscreen'
+import { cleanStaleRenderTemp, disposeRenderer, registerRenderScheme, renderHtml, renderPdf } from './offscreen'
 import appIcon from '../../resources/icon.ico?asset'
 
 let mainWindow: BrowserWindow | null = null
@@ -169,6 +169,10 @@ function registerWindowIpc(): void {
   ipcMain.handle(IPC.renderHtml, (e, args: unknown) => {
     if (!trustedSender(e)) throw new Error('Not allowed')
     return renderHtml(args)
+  })
+  ipcMain.handle(IPC.renderPdf, (e, args: unknown) => {
+    if (!trustedSender(e)) throw new Error('Not allowed')
+    return renderPdf(args)
   })
   ipcMain.handle(IPC.capturePage, async (e, rect?: Rect) => {
     if (!trustedSender(e)) throw new Error('Not allowed')

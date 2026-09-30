@@ -17,7 +17,7 @@ Code: `src/renderer/src/editor/inspector/`. Every edit goes through store action
 | `SelectionColorsSection.tsx` + `colors.ts` | Selection colors: every distinct colour in the selection and its descendants (styles, gradients, shadows, borders, SVG `fill`/`stroke`/`stop-color`, `var(--token)` refs) with a use count; editing a row replaces it everywhere in one undo step |
 | `OtherStylesSection.tsx` | Other styles: `property: value` rows for every style key no other section edits (`handledStyleKeys`), add (+ with a name field) / edit / remove |
 | `TextSection.tsx` + `fonts.ts` | Font picker, weight, size, line height, letter spacing, align, vertical align, Formatting popover, Underline, Stroke |
-| `exporting.ts` | PNG, SVG and HTML export |
+| `exporting.ts` | PNG, JPG, WebP, SVG, PDF and HTML export; the all-artboards PDF |
 | `common.ts` | Mixed-value helper (`common`/`MIXED`), selection ctx, CSS parsers |
 
 ## CSS mapping
@@ -46,6 +46,6 @@ Code: `src/renderer/src/editor/inspector/`. Every edit goes through store action
 ## Notes
 - **Fonts:** the font list uses `queryLocalFonts()`. If that is unavailable, it falls back to a curated list of Windows fonts. Google Fonts are fetched and registered through the `FontFace` API, because the renderer CSP blocks remote stylesheets. Loading happens when a font is picked, when it scrolls into view in the picker, and when a selected text uses it. Vellum content that uses a Google font on a fresh start only renders correctly after something loads the font. The canvas could call `loadGoogleFont` for the families in the doc.
 - **Zoom menu:** it calls `editor/canvas/camera.ts`. Its toggles are stored as the prefs `canvas.*`, such as `canvas.pixelGrid`, `canvas.snapToPixel`, `canvas.invertZoom`, `canvas.scrollWheelZooms` and `canvas.layoutGuides`.
-- **Export:** PNG uses `canvasApi.capturePage` on the node's rect on screen, then resamples it to 1x, 2x or 3x. Only the visible part is captured. TODO: switch to an offscreen or bridge export when one exists. SVG is HTML inside a `<foreignObject>`. HTML is a standalone document that includes the tokens. Export rows are held for the session only.
+- **Export:** PNG, JPG and WebP go through `canvasApi.renderHtml` (the main process's hidden offscreen window), so the whole node renders at 1x, 2x or 3x at any zoom, even off screen. A new row is PNG 2x (then 3x, then 1x). JPG is flattened onto the artboard's fill (or the page background when the artboard has none); WebP keeps transparency. PDF goes through `canvasApi.renderPdf` (`webContents.printToPDF`): vector, text stays selectable, and the page is the node's size with no margins. SVG is HTML inside a `<foreignObject>`. HTML is a standalone document that includes the tokens. Files are saved through the browser download (Electron shows a save dialog). Export rows are held for the session only.
 - **Connect modal status:** the status line counts any bridge request seen by the renderer as "connected".
 - **Keyboard shortcuts:** Shift+A and Alt+C are shown as labels only. The shortcuts themselves belong to `editor/shortcuts.ts`.

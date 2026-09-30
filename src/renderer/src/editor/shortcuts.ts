@@ -68,6 +68,8 @@ export function installCanvasShortcuts(docId: string): () => void {
       else handled = false
     } else if (alt) {
       if (code === 'KeyC') A.toggleClip(docId)
+      else if (code === 'KeyT' && !shift) A.copyAs(docId, 'tailwind')
+      else if (code === 'KeyR' && !shift) A.copyAs(docId, 'react')
       else handled = false
     } else if (shift) {
       if (code === 'KeyF') A.frameSelection(docId)

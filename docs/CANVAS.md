@@ -38,6 +38,8 @@ The canvas code lives in `src/renderer/src/editor/canvas/`. The toolbar is in `e
   - Icons (Shift+I, `editor/toolbar/IconPicker.tsx`) searches the bundled Lucide set (loaded on first open) and inserts the icon as an SVG layer through `insertSvgMarkup`, with the chosen size, stroke and colour baked in. Enter inserts the first match; Shift+click keeps the picker open.
   - After you create something, the tool returns to Move.
 - **Context menus** (`menus.ts`) cover the node menu and empty-canvas menu, and every item works. "Cursor chat" is disabled.
+  - "Copy as..." offers HTML, JSX (inline styles), React (a component with inline styles), Tailwind (JSX with the same classes as `get_jsx`; tokens stay as `bg-primary` / `p-(--gap)` references) and CSS. Each copy shows a toast.
+  - The empty-canvas menu (and File in the hamburger menu) has "Export PDF of all artboards…": one PDF of the current page, one page per visible artboard, each page the size of its artboard (`actions.exportPagePdf`).
 - **Agent working state**: nodes in `workingNodes` get a teal outline with a "Claude" tag.
 - **World-rect resolver**: still registered through `ops.setWorldRectResolver`, and it measures `[data-node-id]`.
 
@@ -52,7 +54,7 @@ The canvas code lives in `src/renderer/src/editor/canvas/`. The toolbar is in `e
 | Structure | Shift+F (frame selection), Shift+A (add flex, or wrap in flex), Alt+C (clip content) |
 | Order | ] and [ (front / back), Ctrl+] and Ctrl+[ (forward / backward) |
 | Visibility | Ctrl+Shift+H (show/hide), Ctrl+Shift+L (lock/unlock) |
-| Other | Ctrl+L (copy link), N / Shift+N (next / previous artboard), `.` (Hide UI) |
+| Other | Ctrl+L (copy link), Alt+T (copy as Tailwind), Alt+R (copy as React), N / Shift+N (next / previous artboard), `.` (Hide UI) |
 | Zoom | + / = and -, Shift+0 (100%), Shift+1 (fit), Shift+2 (selection), Ctrl+0 |
 | Prefs | Shift+' (pixel grid), Ctrl+Shift+' (snap to pixel) |
 

@@ -11,7 +11,7 @@ import { delimiter, dirname, isAbsolute, join, relative, resolve } from 'node:pa
 import { VellumBridge } from './bridge.js'
 import { GUIDES, GUIDE_TOPICS_DESCRIPTION, SERVER_INSTRUCTIONS } from './guide.js'
 import { fontFamilyInfo, prefetchFonts } from './fonts.js'
-import { buildDocument, buildExportHtml, buildSvg, type RenderPayload } from './render.js'
+import { buildDocument, buildExportHtml, buildPdfDocument, buildSvg, type RenderPayload } from './render.js'
 
 const bridge = new VellumBridge()
 
@@ -87,7 +87,7 @@ const SCREENSHOT_MAX_BYTES = 4_900_000
 
 async function rasterize(
   payload: RenderPayload,
-  opts: { scale?: number; format?: 'png' | 'jpeg'; maxDimension?: number; measureOnly?: boolean; background?: string }
+  opts: { scale?: number; format?: 'png' | 'jpeg' | 'webp'; maxDimension?: number; measureOnly?: boolean; background?: string }
 ): Promise<Rendered> {
   const html = await buildDocument(payload)
   return bridge.call<Rendered>('main:render_png', { html, ...opts }, 90_000)
@@ -203,7 +203,15 @@ async function writeNew(dir: string, base: string, ext: string, data: string | B
   throw new Error('Too many files with that name in the export folder')
 }
 
-type ExportFormat = 'png' | 'jpg' | 'svg' | 'html' | 'jsx'
+type ExportFormat = 'png' | 'jpg' | 'webp' | 'svg' | 'html' | 'jsx' | 'pdf'
+const EXPORT_FORMATS = ['png', 'jpg', 'webp', 'svg', 'html', 'jsx', 'pdf'] as const
+
+/** Print nodes to one PDF through the app (`main:render_pdf`): one page per node, each sized to it. */
+async function renderPdf(payloads: RenderPayload[]): Promise<{ data: Buffer; pages: { width: number; height: number }[] }> {
+  const html = await buildPdfDocument(payloads)
+  const res = await bridge.call<{ base64: string; pages: { width: number; height: number }[] }>('main:render_pdf', { html }, 90_000)
+  return { data: Buffer.from(res.base64, 'base64'), pages: res.pages }
+}
 
 async function exportNode(
   fileIdArg: string | undefined,
@@ -214,6 +222,11 @@ async function exportNode(
 ): Promise<{ nodeId: string; name: string; format: string; path: string; width?: number; height?: number }> {
   const { payload } = await renderPayload({ fileId: fileIdArg, nodeId })
   const base = safeName(payload.name)
+  if (fmt === 'pdf') {
+    const pdf = await renderPdf([payload])
+    const path = await writeNew(dir, base, 'pdf', pdf.data)
+    return { nodeId, name: payload.name, format: fmt, path, width: pdf.pages[0]?.width, height: pdf.pages[0]?.height }
+  }
   if (fmt === 'html') {
     const path = await writeNew(dir, base, 'html', await buildExportHtml(payload))
     return { nodeId, name: payload.name, format: fmt, path }
@@ -235,9 +248,10 @@ async function exportNode(
   const s = resolveScale(scale ?? '1x', measured.cssWidth, measured.cssHeight)
   const img = await rasterize(payload, {
     scale: s,
-    format: fmt === 'jpg' ? 'jpeg' : 'png',
+    format: fmt === 'jpg' ? 'jpeg' : fmt === 'webp' ? 'webp' : 'png',
     maxDimension: 16000,
-    background: fmt === 'jpg' ? '#FFFFFF' : undefined
+    // JPG has no alpha: flatten onto the artboard's fill (or the page background)
+    background: fmt === 'jpg' ? payload.background || '#FFFFFF' : undefined
   })
   const path = await writeNew(dir, base, fmt, Buffer.from(img.base64, 'base64'))
   return { nodeId, name: payload.name, format: fmt, path, width: img.width, height: img.height }
@@ -634,7 +648,7 @@ server.registerTool(
 )
 
 const exportSetting = z.object({
-  format: z.enum(['png', 'jpg', 'svg', 'html', 'jsx']),
+  format: z.enum(EXPORT_FORMATS),
   scale: z.union([z.string(), z.number()]).optional().describe('"1x", "2x", "512w", "512h", "720p" or a number')
 })
 
@@ -645,13 +659,13 @@ server.registerTool(
 Pass either:
 - nodeId (+ format, scale), or
 - nodes: { [nodeId]: [{format, scale}] } ([] = PNG 1x), or
-- pageId alone (or nothing) to export every artboard on that page.
-Formats: png (default), jpg, svg (HTML in foreignObject), html (standalone page), jsx (React component).`,
+- pageId alone (or nothing) to export every artboard on that page. With format "pdf" this writes ONE multi-page PDF (one page per artboard, each page sized to its artboard).
+Formats: png (default), jpg (flattened onto the artboard/page background), webp, svg (HTML in foreignObject), html (standalone page), jsx (React component), pdf (vector, selectable text, page = node size; scale is ignored).`,
     inputSchema: {
       fileId,
       pageId: z.string().optional(),
       nodeId: z.string().optional(),
-      format: z.enum(['png', 'jpg', 'svg', 'html', 'jsx']).optional(),
+      format: z.enum(EXPORT_FORMATS).optional(),
       scale: z.union([z.string(), z.number()]).optional(),
       nodes: z.record(z.string(), z.array(exportSetting)).optional(),
       outputDir: z.string().max(1024).optional().describe('Subfolder of the export folder (relative), or an absolute folder inside an allowed export root.')
@@ -674,6 +688,16 @@ Formats: png (default), jpg, svg (HTML in foreignObject), html (standalone page)
         header = info.__header
         const artboards = ((info.body as { artboards?: { id: string }[] }).artboards ?? []).map((a) => a.id)
         if (!artboards.length) throw new Error('Nothing to export: the page has no artboards')
+        if (args.format === 'pdf') {
+          // all artboards of the page in one PDF
+          const b = info.body as { fileName?: string; pageName?: string }
+          const payloads = []
+          for (const id of artboards) payloads.push((await renderPayload({ fileId: args.fileId, nodeId: id })).payload)
+          const pdf = await renderPdf(payloads)
+          const path = await writeNew(dir, safeName(`${b.fileName ?? 'Vellum'} - ${b.pageName ?? 'Page'}`), 'pdf', pdf.data)
+          const exported = [{ nodeIds: artboards, name: b.pageName, format: 'pdf', path, pages: pdf.pages }]
+          return { content: [text(asText(header)), text(asText({ outputDir: dir, exported }))] }
+        }
         for (const id of artboards) jobs.push({ nodeId: id, format: args.format ?? 'png', scale: args.scale })
       }
       const exported = []
