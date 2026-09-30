@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer, type IpcRendererEvent } from 'electron'
-import { IPC, type BridgeRequest, type CanvasApi } from '@shared/api'
+import { IPC, type BridgeRequest, type CanvasApi, type UpdateStatus } from '@shared/api'
 
 const api: CanvasApi = {
   platform: process.platform,
@@ -38,6 +38,16 @@ const api: CanvasApi = {
     newRecoveryKey: (cur) => ipcRenderer.invoke(IPC.profNewRecoveryKey, cur),
     remove: (id, pw) => ipcRenderer.invoke(IPC.profRemove, id, pw),
     saveRecoveryKey: (name, key) => ipcRenderer.invoke(IPC.profSaveRecoveryKey, name, key)
+  },
+  updates: {
+    status: () => ipcRenderer.invoke(IPC.updStatus),
+    check: () => ipcRenderer.invoke(IPC.updCheck),
+    install: () => ipcRenderer.invoke(IPC.updInstall),
+    onStatus: (cb) => {
+      const h = (_e: IpcRendererEvent, s: UpdateStatus): void => cb(s)
+      ipcRenderer.on(IPC.updChanged, h)
+      return () => ipcRenderer.removeListener(IPC.updChanged, h)
+    }
   },
   mcpEntry: ipcRenderer.sendSync(IPC.mcpEntry) as string,
 

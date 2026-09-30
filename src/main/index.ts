@@ -6,6 +6,7 @@ import { pathToFileURL } from 'url'
 import { IPC, type Rect } from '@shared/api'
 import { clearCachesIfProtected, migrateLegacyUserData, registerStorageIpc } from './storage'
 import { startBridge } from './bridge'
+import { startUpdater } from './updater'
 import { cleanStaleRenderTemp, disposeRenderer, registerRenderScheme, renderHtml, renderPdf } from './offscreen'
 import appIcon from '../../resources/icon.ico?asset'
 
@@ -238,6 +239,7 @@ if (!gotLock) {
     cleanStaleRenderTemp()
     void clearCachesIfProtected()
     startBridge(() => mainWindow)
+    startUpdater(() => mainWindow, trustedSender)
     createWindow()
     app.on('activate', () => {
       if (BrowserWindow.getAllWindows().length === 0) createWindow()

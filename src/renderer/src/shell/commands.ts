@@ -2,6 +2,7 @@
 import type { MenuEntry } from '../ui/Menu'
 import { DASHBOARD, activeDocId, getStore } from '../model/store'
 import { exportPagePdf } from '../editor/canvas/actions'
+import { openUpdates } from './updates'
 
 const api = (): Window['canvasApi'] | undefined => window.canvasApi
 
@@ -127,11 +128,11 @@ export function appMenu(): MenuEntry[] {
     {
       label: 'Help',
       submenu: [
-        { label: 'Check for Updates…', disabled: true },
+        { label: 'Check for Updates…', onSelect: () => openUpdates() },
         { type: 'separator' },
         { label: 'Documentation', onSelect: () => undefined },
         { label: 'Video Tutorials', onSelect: () => undefined },
-        { label: 'Release Notes', onSelect: () => undefined },
+        { label: 'Release Notes', onSelect: () => window.canvasApi?.openExternal('https://github.com/Obiwayne/Vellum/commits') },
         { type: 'separator' },
         { label: 'Community', onSelect: () => undefined },
         { type: 'separator' },

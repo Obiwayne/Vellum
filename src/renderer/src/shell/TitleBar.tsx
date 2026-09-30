@@ -3,6 +3,7 @@ import { Copy, File, LayoutGrid, Menu as MenuIcon, Minus, Plus, Square, X } from
 import { Menu, type MenuEntry } from '../ui'
 import { DASHBOARD, useStore } from '../model/store'
 import { appMenu, commands } from './commands'
+import { UpdateBadge } from './updates'
 import './titlebar.css'
 
 function WindowButtons(): JSX.Element {
@@ -104,6 +105,7 @@ export function TitleBar(): JSX.Element {
           <Plus size={16} strokeWidth={1.5} />
         </button>
       </nav>
+      <UpdateBadge />
       <WindowButtons />
     </header>
   )

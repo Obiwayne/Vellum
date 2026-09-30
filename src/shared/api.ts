@@ -72,6 +72,34 @@ export interface ProfilesApi {
   saveRecoveryKey(profileName: string, recoveryKey: string): Promise<ProfileResult<{ path?: string }>>
 }
 
+/** State of the git-based updater (src/main/updater.ts). */
+export interface UpdateStatus {
+  state: 'idle' | 'checking' | 'up-to-date' | 'available' | 'installing' | 'error' | 'unsupported'
+  /** short hash of the running version */
+  current?: string
+  /** short hash of the newest version on GitHub */
+  latest?: string
+  /** commits on GitHub that this copy doesn't have yet (newest first, at most 30) */
+  commits: { hash: string; subject: string; date: number }[]
+  /** how many commits behind (may be more than commits.length) */
+  behind: number
+  /** files edited locally: an update would overwrite them, so it is refused */
+  dirty: string[]
+  /** the install step being run, or why it failed / is unsupported */
+  message?: string
+  checkedAt?: number
+  /** true when running under `npm run dev`: after an update, restart the dev server yourself */
+  dev: boolean
+}
+
+export interface UpdatesApi {
+  status(): Promise<UpdateStatus>
+  check(): Promise<UpdateStatus>
+  /** pull, install packages, rebuild and restart */
+  install(): Promise<UpdateStatus>
+  onStatus(cb: (status: UpdateStatus) => void): () => void
+}
+
 export interface Rect {
   x: number
   y: number
@@ -115,6 +143,7 @@ export interface CanvasApi {
   saveIndex(index: IndexData): Promise<void>
   userDataPath(): Promise<string>
   profiles: ProfilesApi
+  updates: UpdatesApi
   /** absolute path of the MCP server entry (mcp/dist/index.js), forward slashes */
   mcpEntry: string
   // capture: rect in CSS px of the window's web contents; returns PNG base64 (no data: prefix)
@@ -181,5 +210,9 @@ export const IPC = {
   profRemovePassword: 'profiles:removePassword',
   profNewRecoveryKey: 'profiles:newRecoveryKey',
   profRemove: 'profiles:remove',
-  profSaveRecoveryKey: 'profiles:saveRecoveryKey'
+  profSaveRecoveryKey: 'profiles:saveRecoveryKey',
+  updStatus: 'updates:status',
+  updCheck: 'updates:check',
+  updInstall: 'updates:install',
+  updChanged: 'updates:changed'
 } as const
