@@ -38,7 +38,9 @@ cd mcp && npm install && npm run build && cd ..
 npm run dev
 ```
 
-Or just double-click **`Vellum.cmd`** — it installs, builds and launches on first run.
+Or just double-click **`Vellum.cmd`** — it installs and builds on first run, then opens the app and closes its console.
+For a launcher with no console at all, run `powershell -ExecutionPolicy Bypass -File scripts\make-shortcuts.ps1` once:
+it creates a **Vellum** shortcut (with the app icon) in the project folder and on your Desktop.
 
 | Command | What it does |
 |---|---|

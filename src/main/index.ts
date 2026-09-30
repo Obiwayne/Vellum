@@ -1,4 +1,5 @@
 import { app, BrowserWindow, ipcMain, shell } from 'electron'
+import { readClipboardMedia } from './clipboard'
 import { join } from 'path'
 import { IPC, type Rect } from '@shared/api'
 import { migrateLegacyUserData, registerStorageIpc } from './storage'
@@ -90,6 +91,7 @@ function registerWindowIpc(): void {
   ipcMain.on(IPC.openExternal, (_e, url: string) => {
     if (typeof url === 'string' && /^https?:/.test(url)) void shell.openExternal(url)
   })
+  ipcMain.handle(IPC.readClipboardMedia, () => readClipboardMedia())
   ipcMain.handle(IPC.renderHtml, (_e, args: { html: string; scale?: number }) => renderHtml(args))
   ipcMain.handle(IPC.capturePage, async (e, rect?: Rect) => {
     const r = rect

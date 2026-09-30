@@ -73,11 +73,20 @@ export interface CanvasApi {
   // capture: rect in CSS px of the window's web contents; returns PNG base64 (no data: prefix)
   capturePage(rect?: Rect): Promise<string>
   // rasterise a standalone HTML document offscreen; returns PNG base64 + pixel size
+  // images on the system clipboard: a bitmap (screenshots, "Copy image") and/or image files copied in Explorer
+  readClipboardMedia(): Promise<ClipboardMedia>
   renderHtml(args: { html: string; scale?: number }): Promise<{ base64: string; width: number; height: number }>
   // bridge (MCP)
   onBridgeRequest(cb: (req: BridgeRequest) => void): () => void
   bridgeRespond(res: BridgeResponse): void
   bridgePort(): Promise<number>
+}
+
+export interface ClipboardMedia {
+  /** PNG data URL of a bitmap on the clipboard */
+  image?: string
+  /** image files copied in the file manager: raster files as data URLs, SVG files as markup */
+  files: Array<{ name: string; dataUrl?: string; svg?: string }>
 }
 
 export const IPC = {
@@ -101,6 +110,7 @@ export const IPC = {
   userDataPath: 'fs:userDataPath',
   capturePage: 'win:capturePage',
   renderHtml: 'win:renderHtml',
+  readClipboardMedia: 'clip:readMedia',
   bridgeRequest: 'bridge:request',
   bridgeRespond: 'bridge:respond',
   bridgePort: 'bridge:port'

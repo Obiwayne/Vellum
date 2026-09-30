@@ -1047,6 +1047,20 @@ export function CanvasView({ docId }: { docId: string }): JSX.Element | null {
       }}
       onDoubleClick={onDoubleClick}
       onContextMenu={onContextMenu}
+      onDragOver={(e) => {
+        const types = [...e.dataTransfer.types]
+        if (types.includes('Files') || types.includes('text/uri-list') || types.includes('text/html')) {
+          e.preventDefault()
+          e.dataTransfer.dropEffect = 'copy'
+        }
+      }}
+      onDrop={(e) => {
+        e.preventDefault()
+        const { clientX, clientY } = e
+        void A.dropMedia(docId, e.dataTransfer, clientX, clientY).then((ok) => {
+          if (!ok) toast('Drop image files (PNG, JPG, GIF, WebP, SVG…) to add them')
+        })
+      }}
     >
       <div
         ref={world}

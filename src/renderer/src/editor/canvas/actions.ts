@@ -4,7 +4,8 @@ import * as ops from '../../model/ops'
 import { nodeToHtml, nodeToJsx, styleToCss } from '../../model/html'
 import type { CNode, Doc, Style, WorldRect } from '../../model/types'
 import { centerOn, visibleWorldRect, zoomToRect } from './camera'
-import { intersects, measure, union } from './geometry'
+import { clientToWorld, intersects, measure, union } from './geometry'
+import { containerAt } from './selection'
 import { toast } from './toast'
 
 // ------------------------------------------------------------------------------------------------
@@ -469,22 +470,46 @@ const blobToDataUrl = (b: Blob): Promise<string> =>
     r.readAsDataURL(b)
   })
 
+/** HTML that is just an image wrapper (what browsers put next to the bitmap on "Copy image"). */
+const isImageOnlyHtml = (html: string): boolean =>
+  /<img[\s>]/i.test(html) &&
+  html
+    .replace(/<(img|meta|br|\/?(html|body|head|span|div|p|a|picture|source))\b[^>]*>/gi, '')
+    .replace(/<!--[\s\S]*?-->/g, '')
+    .trim() === ''
+
 export async function paste(docId: string, mode: PasteMode = 'normal'): Promise<void> {
-  const sys = await readSystemClipboard()
+  const [sys, media] = await Promise.all([
+    readSystemClipboard(),
+    window.canvasApi?.readClipboardMedia?.().catch(() => undefined) ?? Promise.resolve(undefined)
+  ])
   const norm = (t: string | undefined): string => (t ?? '').replace(/\s+/g, '')
+  const hasMedia = !!(media?.image || media?.files.length || sys.image)
+  const sysEmpty = sys.text === undefined && sys.html === undefined && !hasMedia
+  // our own copy is still on the clipboard when its text matches (or the clipboard couldn't be read)
   const useInternal =
-    clip && ((sys.text === undefined && sys.html === undefined) || norm(sys.text) === norm(clip.plain) || norm(sys.html).includes(norm(clip.plain)))
+    clip && (sysEmpty || (!!clip.plain && (norm(sys.text) === norm(clip.plain) || norm(sys.html).includes(norm(clip.plain)))))
   if (useInternal && clip) {
     pasteInternal(docId, clip, mode)
     return
   }
-  if (sys.image && !sys.html) {
-    const src = await blobToDataUrl(sys.image)
-    await insertImage(docId, src, 'Image', mode)
+  // image files copied in File Explorer
+  if (media?.files.length) {
+    await insertMedia(docId, media.files.map((f) => ({ name: f.name, src: f.dataUrl, svg: f.svg })), { mode })
+    return
+  }
+  // a bitmap: screenshots, "Copy image" in a browser or another app
+  const bitmap = media?.image ?? (sys.image ? await blobToDataUrl(sys.image) : undefined)
+  if (bitmap && (!sys.html || isImageOnlyHtml(sys.html))) {
+    await insertMedia(docId, [{ name: 'Image', src: bitmap }], { mode })
     return
   }
   const html = sys.html ?? (sys.text && /^\s*</.test(sys.text) ? sys.text : undefined)
   if (html) {
+    if (/^\s*<svg[\s>]/i.test(html)) {
+      insertSvgMarkup(docId, html)
+      return
+    }
     pasteExternal(docId, mode, (parentId, index) => S().insertHtml(docId, parentId, html, index))
     return
   }
@@ -602,21 +627,133 @@ const loadImageSize = (src: string): Promise<{ w: number; h: number }> =>
     img.src = src
   })
 
-export async function insertImage(docId: string, src: string, name: string, mode: PasteMode = 'normal'): Promise<void> {
-  let { w, h } = await loadImageSize(src)
-  const max = 800
-  if (w > max || h > max) {
-    const k = max / Math.max(w, h)
-    w = Math.round(w * k)
-    h = Math.round(h * k)
-  }
-  const parentId = mode === 'normal' ? insertParent(docId) : rootOf(docId)
-  let id = ''
-  S().transact(docId, 'Insert image', () => {
-    id = S().createNode(docId, { type: 'image', name, attrs: { src, alt: name }, style: { width: w, height: h, objectFit: 'cover' } }, parentId)
-    S().mutate(docId, 'Place', (d) => centerTopLevel(docId, d, [id], [{ w, h }]))
+export interface MediaItem {
+  name: string
+  /** image URL (data: or http[s]:) */
+  src?: string
+  /** SVG markup */
+  svg?: string
+}
+
+/**
+ * Insert images/SVGs. With `at` (client coordinates, e.g. a drop point) they go into the frame under
+ * that point — appended when it's a flex frame, positioned at the point otherwise — or onto the page
+ * centred on the point. Without `at` they go into the selected frame / the visible area.
+ * Several items are laid out side by side with a 40px gap.
+ */
+export async function insertMedia(
+  docId: string,
+  items: MediaItem[],
+  opts: { mode?: PasteMode; at?: { clientX: number; clientY: number } } = {}
+): Promise<string[]> {
+  const doc = docOf(docId)
+  if (!doc || !items.length) return []
+  const sized = await Promise.all(
+    items.map(async (it) => {
+      if (it.svg) return { it, w: 0, h: 0 }
+      let { w, h } = await loadImageSize(it.src ?? '')
+      const max = 800
+      if (w > max || h > max) {
+        const k = max / Math.max(w, h)
+        w = Math.round(w * k)
+        h = Math.round(h * k)
+      }
+      return { it, w, h }
+    })
+  )
+  const at = opts.at
+  const parentId = at
+    ? containerAt(docId, at.clientX, at.clientY)
+    : opts.mode && opts.mode !== 'normal'
+      ? rootOf(docId)
+      : insertParent(docId)
+  const created: string[] = []
+  S().transact(docId, items.length > 1 ? 'Insert images' : 'Insert image', () => {
+    for (const { it, w, h } of sized) {
+      if (it.svg) {
+        const m = it.svg.replace(/^[\s\S]*?(?=<svg[\s>])/i, '')
+        if (/<svg[\s>]/i.test(m)) created.push(...S().insertHtml(docId, parentId, m))
+      } else if (it.src) {
+        created.push(
+          S().createNode(
+            docId,
+            { type: 'image', name: it.name, attrs: { src: it.src, alt: it.name }, style: { width: w, height: h, objectFit: 'cover' } },
+            parentId
+          )
+        )
+      }
+    }
+    S().mutate(docId, 'Place', (d) => {
+      const sizes = created.map((id) => {
+        const st = d.nodes[id]?.style
+        return { w: ops.numericSize(st?.width) ?? 24, h: ops.numericSize(st?.height) ?? 24 }
+      })
+      if (!at) {
+        // side by side, centred in the visible area as a group
+        const total = sizes.reduce((t, z) => t + z.w, 0) + 40 * (sizes.length - 1)
+        const vis = visibleWorldRect(docId)
+        if (!vis) return
+        let x = vis.x + vis.width / 2 - total / 2
+        created.forEach((id, i) => {
+          const n = d.nodes[id]
+          if (n && ops.isTopLevel(d, id)) {
+            n.x = Math.round(x)
+            n.y = Math.round(vis.y + vis.height / 2 - sizes[i].h / 2)
+          }
+          x += sizes[i].w + 40
+        })
+        return
+      }
+      const parent = d.nodes[parentId]
+      if (parent && parent.type === 'frame' && ops.isFlex(parent)) return // flex lays them out
+      const p = clientToWorld(at.clientX, at.clientY, docId)
+      const origin = parent && parent.type === 'frame' ? measure(parentId, docId) : null
+      let x = p.x - (origin?.x ?? 0) - sizes[0].w / 2
+      created.forEach((id, i) => {
+        const n = d.nodes[id]
+        if (!n) return
+        n.x = Math.round(x)
+        n.y = Math.round(p.y - (origin?.y ?? 0) - sizes[i].h / 2)
+        x += sizes[i].w + 40
+      })
+    })
   })
-  if (id) S().select(docId, [id])
+  if (created.length) S().select(docId, created)
+  return created
+}
+
+export async function insertImage(docId: string, src: string, name: string, mode: PasteMode = 'normal'): Promise<void> {
+  await insertMedia(docId, [{ name, src }], { mode })
+}
+
+const IMAGE_EXT = /\.(png|jpe?g|gif|webp|bmp|avif|ico|svg)$/i
+
+/** Files / images dropped onto the canvas (from File Explorer or a browser). Returns true when handled. */
+export async function dropMedia(docId: string, dt: DataTransfer, clientX: number, clientY: number): Promise<boolean> {
+  const files = [...dt.files].filter((f) => f.type.startsWith('image/') || IMAGE_EXT.test(f.name))
+  const items: MediaItem[] = []
+  for (const f of files) {
+    const name = f.name.replace(/\.[^.]+$/, '') || 'Image'
+    if (f.type === 'image/svg+xml' || /\.svg$/i.test(f.name)) items.push({ name, svg: await f.text() })
+    else items.push({ name, src: await blobToDataUrl(f) })
+  }
+  if (!items.length) {
+    // an image dragged out of a web page: use its URL
+    const html = dt.getData('text/html')
+    const fromHtml = /<img[^>]+src="([^"]+)"/i.exec(html)?.[1]?.replace(/&amp;/g, '&')
+    const uri = dt
+      .getData('text/uri-list')
+      .split(/\r?\n/)
+      .find((l) => l && !l.startsWith('#'))
+    const src = fromHtml ?? uri
+    if (src && /^(https?:|data:image\/)/i.test(src)) {
+      const file = decodeURIComponent(src.split(/[?#]/)[0].split('/').pop() ?? '').replace(/\.[^.]+$/, '')
+      items.push({ name: src.startsWith('data:') || !file ? 'Image' : file, src })
+    }
+  }
+  if (!items.length) return false
+  await insertMedia(docId, items, { at: { clientX, clientY } })
+  return true
 }
 
 /** Opens a file picker and inserts the chosen image as a data URL. */
