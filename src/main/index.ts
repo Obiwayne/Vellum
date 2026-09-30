@@ -1,5 +1,6 @@
 import { app, BrowserWindow, ipcMain, session, shell } from 'electron'
 import { readClipboardMedia } from './clipboard'
+import { existsSync } from 'fs'
 import { join } from 'path'
 import { pathToFileURL } from 'url'
 import { IPC, type Rect } from '@shared/api'
@@ -63,6 +64,24 @@ function hardenDefaultSession(): void {
   })
 }
 
+const APP_ID = 'app.vellum.desktop'
+
+// Pinning a running window to the taskbar would otherwise pin the bare electron.exe (with its own icon).
+// Point the pin at the Vellum launcher and icon instead.
+function setTaskbarDetails(win: BrowserWindow): void {
+  if (process.platform !== 'win32') return
+  const launcher = join(app.getAppPath(), 'scripts', 'launch.vbs')
+  win.setAppDetails({
+    appId: APP_ID,
+    appIconPath: appIcon,
+    appIconIndex: 0,
+    relaunchDisplayName: 'Vellum',
+    ...(existsSync(launcher)
+      ? { relaunchCommand: `"${join(process.env.WINDIR ?? 'C:\\Windows', 'System32', 'wscript.exe')}" "${launcher}"` }
+      : {})
+  })
+}
+
 function createWindow(): void {
   const win = new BrowserWindow({
     width: 1440,
@@ -88,6 +107,7 @@ function createWindow(): void {
     }
   })
   mainWindow = win
+  setTaskbarDetails(win)
 
   win.on('ready-to-show', () => win.show())
   const notify = (): void => {
@@ -211,7 +231,7 @@ if (!gotLock) {
   })
 
   app.whenReady().then(() => {
-    app.setAppUserModelId('app.vellum.desktop')
+    app.setAppUserModelId(APP_ID)
     hardenDefaultSession()
     registerWindowIpc()
     registerStorageIpc()
