@@ -18,18 +18,28 @@ import {
   X,
   AlignVerticalSpaceAround,
   CaseSensitive,
-  Baseline
+  Baseline,
+  Ligature,
+  Plus
 } from 'lucide-react'
-import { Field, IconButton, Popover, Section, Segmented, Select } from '../../ui'
+import { Field, IconButton, Popover, Section, Segmented, Select, Slider } from '../../ui'
 import type { CNode } from '../../model/types'
+import { applyStylePatch } from '../../model/ops'
 import { common, co, fv, isMixed, px, type Ctx } from './common'
 import { ColorInput } from './ColorInput'
 import {
+  STANDARD_AXES,
+  axisLabel,
   buildCatalogue,
   familyName,
+  fontAxes,
+  formatVariation,
   isGoogleFont,
   loadGoogleFont,
+  parseVariation,
   queryLocalFamilies,
+  type AxisValue,
+  type FontAxis,
   type FontEntry
 } from './fonts'
 
@@ -44,14 +54,14 @@ export const WEIGHTS: Array<{ value: string; label: string }> = [
   { value: '800', label: 'Extra Bold' },
   { value: '900', label: 'Black' }
 ]
-const weightOf = (n: CNode): string => {
+export const weightOf = (n: CNode): string => {
   const w = n.style.fontWeight
   if (w === 'bold') return '700'
   if (w === undefined || w === 'normal') return '400'
   return String(Math.round(Number(w) / 100) * 100 || 400)
 }
-const fontSizeOf = (n: CNode): number => px(n.style.fontSize, 16)
-function lineHeightOf(n: CNode): number | 'Auto' {
+export const fontSizeOf = (n: CNode): number => px(n.style.fontSize, 16)
+export function lineHeightOf(n: CNode): number | 'Auto' {
   const v = n.style.lineHeight
   if (v === undefined || v === 'normal') return 'Auto'
   if (typeof v === 'number') return Math.round(v * fontSizeOf(n) * 100) / 100
@@ -60,7 +70,7 @@ function lineHeightOf(n: CNode): number | 'Auto' {
   if (/^\d*\.?\d+$/.test(s)) return Math.round(parseFloat(s) * fontSizeOf(n) * 100) / 100
   return px(s, 20)
 }
-function letterSpacingPct(n: CNode): number {
+export function letterSpacingPct(n: CNode): number {
   const v = n.style.letterSpacing
   if (v === undefined || v === 'normal') return 0
   const s = String(v).trim()
@@ -305,13 +315,277 @@ function FormattingPopover({ ctx, open, anchor, onClose }: { ctx: Ctx; open: boo
   )
 }
 
+// ------------------------------------------------------------------------------------------ OpenType features
+/** fontVariantNumeric keywords by group: at most one per group, written in this order. */
+const NUMERIC_GROUPS = {
+  figures: ['lining-nums', 'oldstyle-nums'],
+  spacing: ['proportional-nums', 'tabular-nums'],
+  fractions: ['diagonal-fractions', 'stacked-fractions'],
+  ordinal: ['ordinal'],
+  zero: ['slashed-zero']
+}
+type NumericGroup = keyof typeof NUMERIC_GROUPS
+const NUMERIC_ORDER = Object.values(NUMERIC_GROUPS).flat()
+const numericOf = (v: string | number | undefined): string[] =>
+  String(v ?? '')
+    .split(/\s+/)
+    .filter((t) => t && t !== 'normal')
+/** A node's keyword from one group ('auto' when none). */
+const numericIn = (n: CNode, g: NumericGroup): string => numericOf(n.style.fontVariantNumeric).find((t) => NUMERIC_GROUPS[g].includes(t)) ?? 'auto'
+/** Swap one group's keyword and keep the rest: oldstyle + tabular → 'oldstyle-nums tabular-nums'. */
+export function withNumeric(v: string | number | undefined, g: NumericGroup, token: string): string | null {
+  const list = numericOf(v).filter((t) => !NUMERIC_GROUPS[g].includes(t))
+  if (token !== 'auto') list.push(token)
+  const rank = (t: string): number => (NUMERIC_ORDER.includes(t) ? NUMERIC_ORDER.indexOf(t) : 99)
+  list.sort((a, b) => rank(a) - rank(b))
+  return list.length ? list.join(' ') : null
+}
+/** 'ss01, "cv11" 0' → '"ss01" 1, "cv11" 0' (anything else is kept as typed). */
+function normalizeFeatures(s: string): string | null {
+  const parts = s.split(',').map((p) => p.trim()).filter(Boolean)
+  if (!parts.length || s.trim() === 'normal') return null
+  return parts
+    .map((p) => {
+      const m = /^["']?([\w ]{4})["']?(?:\s+(\d+|on|off))?$/.exec(p)
+      if (!m) return p
+      return `"${m[1]}" ${m[2] === 'off' ? 0 : !m[2] || m[2] === 'on' ? 1 : m[2]}`
+    })
+    .join(', ')
+}
+
+/** Write one variation axis (null removes it) on every selected node, keeping the other axes in order. */
+function setAxis(ctx: Ctx, tag: string, value: number | null, live = false): void {
+  ctx.each(
+    'Variable axis',
+    (n) => {
+      const list = parseVariation(n.style.fontVariationSettings)
+      const i = list.findIndex((a) => a.tag === tag)
+      const next: AxisValue[] =
+        value === null ? list.filter((a) => a.tag !== tag) : i < 0 ? [...list, { tag, value }] : list.map((a, j) => (j === i ? { tag, value } : a))
+      applyStylePatch(n.style, { fontVariationSettings: formatVariation(next) })
+    },
+    live ? co(ctx, `axis:${tag}`) : undefined
+  )
+}
+
+function TypeDetailsPopover({
+  ctx,
+  axes,
+  open,
+  anchor,
+  onClose
+}: {
+  ctx: Ctx
+  axes: FontAxis[] | null
+  open: boolean
+  anchor: HTMLElement | null
+  onClose: () => void
+}): JSX.Element {
+  const [tag, setTag] = useState('')
+  const figures = common(ctx.nodes, (n) => numericIn(n, 'figures'))
+  const spacing = common(ctx.nodes, (n) => numericIn(n, 'spacing'))
+  const fractions = common(ctx.nodes, (n) => numericIn(n, 'fractions') !== 'auto')
+  const zero = common(ctx.nodes, (n) => numericIn(n, 'zero') !== 'auto')
+  const liga = common(ctx.nodes, (n) => n.style.fontVariantLigatures !== 'none')
+  const caps = common(ctx.nodes, (n) => String(n.style.fontVariantCaps ?? 'normal'))
+  const features = common(ctx.nodes, (n) => String(n.style.fontFeatureSettings ?? ''))
+  const used = parseVariation(ctx.nodes[0]?.style.fontVariationSettings).map((a) => a.tag)
+  const setNumeric = (g: NumericGroup, token: string): void =>
+    ctx.each('Number style', (n) => applyStylePatch(n.style, { fontVariantNumeric: withNumeric(n.style.fontVariantNumeric, g, token) }))
+  const addAxis = (t: string): void => setAxis(ctx, t, axes?.find((a) => a.tag === t)?.def ?? STANDARD_AXES[t]?.def ?? 0)
+  const onOff = [
+    { value: 'off', label: 'Off' },
+    { value: 'on', label: 'On' }
+  ]
+  return (
+    <Popover open={open} onClose={onClose} anchor={anchor} placement="left-start" offset={12}>
+      <div className="insp-fmt">
+        <div className="insp-pop__head" style={{ margin: 0 }}>
+          <span style={{ flex: 1 }}>Type details</span>
+          <IconButton icon={<X size={14} />} label="Close" onClick={onClose} />
+        </div>
+        <div style={{ height: 6 }} />
+        <div className="insp-fmt__row">
+          <span>Figures</span>
+          <Select<string>
+            size="sm"
+            value={isMixed(figures) ? null : figures}
+            placeholder="Mixed"
+            options={[
+              { value: 'auto', label: 'Default' },
+              { value: 'lining-nums', label: 'Lining' },
+              { value: 'oldstyle-nums', label: 'Oldstyle' }
+            ]}
+            onChange={(v) => setNumeric('figures', v)}
+          />
+        </div>
+        <div className="insp-fmt__row">
+          <span>Figure spacing</span>
+          <Select<string>
+            size="sm"
+            value={isMixed(spacing) ? null : spacing}
+            placeholder="Mixed"
+            options={[
+              { value: 'auto', label: 'Default' },
+              { value: 'proportional-nums', label: 'Proportional' },
+              { value: 'tabular-nums', label: 'Tabular' }
+            ]}
+            onChange={(v) => setNumeric('spacing', v)}
+          />
+        </div>
+        <div className="insp-fmt__row">
+          <span>Slashed zero</span>
+          <Segmented size="sm" value={isMixed(zero) ? null : zero ? 'on' : 'off'} options={onOff} onChange={(v) => setNumeric('zero', v === 'on' ? 'slashed-zero' : 'auto')} />
+        </div>
+        <div className="insp-fmt__row">
+          <span>Fractions</span>
+          <Segmented
+            size="sm"
+            value={isMixed(fractions) ? null : fractions ? 'on' : 'off'}
+            options={onOff}
+            onChange={(v) => setNumeric('fractions', v === 'on' ? 'diagonal-fractions' : 'auto')}
+          />
+        </div>
+        <div className="insp-fmt__row">
+          <span>Ligatures</span>
+          <Segmented size="sm" value={isMixed(liga) ? null : liga ? 'on' : 'off'} options={onOff} onChange={(v) => ctx.set({ fontVariantLigatures: v === 'on' ? null : 'none' })} />
+        </div>
+        <div className="insp-fmt__row">
+          <span>Capitals</span>
+          <Select<string>
+            size="sm"
+            value={isMixed(caps) ? null : caps}
+            placeholder="Mixed"
+            options={[
+              { value: 'normal', label: 'Normal' },
+              { value: 'small-caps', label: 'Small caps' },
+              { value: 'all-small-caps', label: 'All small caps' }
+            ]}
+            onChange={(v) => ctx.set({ fontVariantCaps: v === 'normal' ? null : v })}
+          />
+        </div>
+        <div className="insp-fmt__row">
+          <span>Features</span>
+          <Field
+            size="sm"
+            type="text"
+            mono
+            value={isMixed(features) ? null : features}
+            placeholder={isMixed(features) ? 'Mixed' : '"ss01" 1, "cv11" 1'}
+            title="font-feature-settings"
+            style={{ width: 154 }}
+            onChange={(v) => ctx.set({ fontFeatureSettings: normalizeFeatures(String(v)) })}
+          />
+        </div>
+        <div className="insp-fmt__row">
+          <span>Add axis</span>
+          <div style={{ display: 'flex', gap: 4, width: 154 }}>
+            <Select<string>
+              size="sm"
+              value={null}
+              placeholder="Axis"
+              style={{ flex: 1, minWidth: 0 }}
+              menuMinWidth={150}
+              options={Object.keys(STANDARD_AXES)
+                .filter((t) => t !== 'wght')
+                .map((t) => ({ value: t, label: `${axisLabel(t)} (${t})`, disabled: used.includes(t) }))}
+              onChange={addAxis}
+            />
+            <Field size="sm" type="text" mono value={tag} placeholder="Tag" title="Custom axis tag, e.g. GRAD" style={{ width: 48 }} onChange={(v) => setTag(String(v).trim().slice(0, 4))} />
+            <IconButton
+              icon={<Plus size={14} />}
+              label="Add custom axis"
+              disabled={!/^[A-Za-z0-9]{4}$/.test(tag) || used.includes(tag)}
+              onClick={() => {
+                addAxis(tag)
+                setTag('')
+              }}
+            />
+          </div>
+        </div>
+        <div style={{ height: 6 }} />
+      </div>
+    </Popover>
+  )
+}
+
+// ------------------------------------------------------------------------------------------ Variable axes
+/** Detected axes of a family (null while loading or when unknown). */
+function useFontAxes(family: string | null): FontAxis[] | null {
+  const [got, setGot] = useState<{ family: string; axes: FontAxis[] | null } | null>(null)
+  useEffect(() => {
+    if (!family) return
+    let live = true
+    void fontAxes(family).then((axes) => live && setGot({ family, axes }))
+    return () => {
+      live = false
+    }
+  }, [family])
+  return got && got.family === family ? got.axes : null
+}
+
+const AXIS_ROW = { display: 'grid', gridTemplateColumns: '36px minmax(0,1fr) 58px 24px', gap: 6, alignItems: 'center' } as const
+
+/** One slider + field per axis of the font (wght stays with the weight menu) plus any axis already set. */
+function VariableAxes({ ctx, axes }: { ctx: Ctx; axes: FontAxis[] | null }): JSX.Element | null {
+  const settings = common(ctx.nodes, (n) => parseVariation(n.style.fontVariationSettings))
+  const set = isMixed(settings) ? parseVariation(ctx.nodes[0]?.style.fontVariationSettings) : settings
+  const rows = (axes ?? []).filter((a) => a.tag !== 'wght')
+  for (const s of set)
+    if (!rows.some((r) => r.tag === s.tag))
+      rows.push(STANDARD_AXES[s.tag] ?? { tag: s.tag, min: Math.min(0, s.value), max: Math.max(100, s.value), def: 0 })
+  if (!rows.length) return null
+  return (
+    <>
+      {rows.map((a) => {
+        const cur = set.find((s) => s.tag === a.tag)
+        const detected = Boolean(axes?.some((x) => x.tag === a.tag))
+        const v = cur?.value ?? a.def
+        const span = a.max - a.min
+        return (
+          <div key={a.tag} style={AXIS_ROW}>
+            <span style={{ color: 'var(--text-3)' }} title={`${axisLabel(a.tag)} (${a.tag})`}>
+              {a.tag}
+            </span>
+            <Slider
+              value={Math.min(a.max, Math.max(a.min, v))}
+              min={a.min}
+              max={a.max}
+              step={span <= 2 ? 0.01 : span < 50 ? 0.1 : 1}
+              fill
+              onChange={(x) => setAxis(ctx, a.tag, x, true)}
+            />
+            <Field
+              value={isMixed(settings) ? null : v}
+              placeholder="Mixed"
+              title={axisLabel(a.tag)}
+              min={detected ? a.min : undefined}
+              max={detected ? a.max : undefined}
+              onChange={(x) => typeof x === 'number' && setAxis(ctx, a.tag, x)}
+              onScrub={(x) => setAxis(ctx, a.tag, x, true)}
+            />
+            {cur ? (
+              <IconButton icon={<Minus size={14} />} label={detected ? 'Reset axis' : 'Remove axis'} onClick={() => setAxis(ctx, a.tag, null)} />
+            ) : (
+              <span />
+            )}
+          </div>
+        )
+      })}
+    </>
+  )
+}
+
 // ------------------------------------------------------------------------------------------ Text section
 export function TextSection({ ctx }: { ctx: Ctx }): JSX.Element {
   const famRef = useRef<HTMLButtonElement | null>(null)
   const optRef = useRef<HTMLButtonElement | null>(null)
+  const detRef = useRef<HTMLButtonElement | null>(null)
   const [fontsOpen, setFontsOpen] = useState(false)
   const [fmtOpen, setFmtOpen] = useState(false)
+  const [detOpen, setDetOpen] = useState(false)
   const family = common(ctx.nodes, (n) => familyName(n.style.fontFamily))
+  const axes = useFontAxes(isMixed(family) ? null : family)
   const weight = common(ctx.nodes, weightOf)
   const size = common(ctx.nodes, fontSizeOf)
   const lh = common(ctx.nodes, lineHeightOf)
@@ -335,7 +609,10 @@ export function TextSection({ ctx }: { ctx: Ctx }): JSX.Element {
     <Section
       title="Text"
       actions={
-        <IconButton ref={optRef} icon={<SlidersHorizontal size={14} />} label="Formatting" active={fmtOpen} onClick={() => setFmtOpen((o) => !o)} />
+        <>
+          <IconButton ref={detRef} icon={<Ligature size={14} />} label="Type details" active={detOpen} onClick={() => setDetOpen((o) => !o)} />
+          <IconButton ref={optRef} icon={<SlidersHorizontal size={14} />} label="Formatting" active={fmtOpen} onClick={() => setFmtOpen((o) => !o)} />
+        </>
       }
     >
       <button ref={famRef} type="button" className="c-select" onClick={() => setFontsOpen((o) => !o)}>
@@ -412,6 +689,7 @@ export function TextSection({ ctx }: { ctx: Ctx }): JSX.Element {
           onChange={setVAlign}
         />
       </div>
+      <VariableAxes ctx={ctx} axes={axes} />
       <FontPicker
         open={fontsOpen}
         anchor={famRef.current}
@@ -423,6 +701,7 @@ export function TextSection({ ctx }: { ctx: Ctx }): JSX.Element {
         }}
       />
       <FormattingPopover ctx={ctx} open={fmtOpen} anchor={optRef.current} onClose={() => setFmtOpen(false)} />
+      <TypeDetailsPopover ctx={ctx} axes={axes} open={detOpen} anchor={detRef.current} onClose={() => setDetOpen(false)} />
     </Section>
   )
 }

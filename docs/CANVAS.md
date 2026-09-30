@@ -30,7 +30,7 @@ The canvas code lives in `src/renderer/src/editor/canvas/`. The toolbar is in `e
 - **Resize** works from corners and edges, and for multi-selections. Shift keeps the aspect ratio, and Alt resizes from the centre.
 - **Tools**
   - Frame (F), Rectangle (R) and Shaders (S) are drag-to-create; S makes a gradient "Shader" frame. A click without a drag creates a 100×100 node. The new node becomes a child of the frame under the pointer, and is appended when that frame is flex.
-  - Text (T): click, then type. Esc or clicking away commits, and an empty new text node is removed.
+  - Text (T): click, then type. Esc or clicking away commits, and an empty new text node is removed. New text copies the typography of the text most recently selected or edited in that doc (font, size, weight, style, line height, letter spacing, colour, align, case, decoration, OpenType/variation settings, stroke; never size or position). This "last text style" is kept in memory per doc (`editor/textStyle.ts`); without one, the usual defaults apply.
   - Pen (P): click points, then Enter, Esc or double-click to finish. Clicking the first point closes the path. Shift snaps angles to 45°. The result is an SVG `<path>` with a 1.5px black stroke.
   - Comment (C): click a layer (or empty canvas) and type; Enter posts, Shift+Enter adds a line, Esc cancels and a second Esc leaves the tool. The numbered pin is attached to the exact layer under the pointer (highlighted while hovering) and follows it. Click a pin for its thread: reply, resolve/reopen, delete. The left panel's Comments tab lists threads (Open / Resolved / All); clicking one jumps to it. Shift+C toggles pins. Threads are saved in the file (`Doc.comments`) and are not part of undo history. Agents read and answer them through the MCP comment tools.
   - Create image (Ctrl+Shift+I) opens a file picker and inserts the image as a data URL.
@@ -49,6 +49,7 @@ The canvas code lives in `src/renderer/src/editor/canvas/`. The toolbar is in `e
 | Edit | Delete / Backspace, arrows (1) / Shift+arrows (10), Ctrl+D, Ctrl+C / X / V |
 | Paste variants | Ctrl+Shift+V (paste on top), Ctrl+Shift+R (paste to replace) |
 | Styles | Ctrl+Alt+C / Ctrl+Alt+V |
+| Text (text layers selected; `editor/textStyle.ts`) | Ctrl+B bold (700 ↔ 400), Ctrl+I italic, Ctrl+U underline; Ctrl+Shift+. / , font size ±1; Ctrl+Alt+. / , weight ±100; Alt+. / , letter spacing ±0.01em; Alt+Shift+. / , line height ±1px (from Auto: 1.2 × size). Each press is one undo step. With no text selected the keys do nothing here, so they fall through |
 | Structure | Shift+F (frame selection), Shift+A (add flex, or wrap in flex), Alt+C (clip content) |
 | Order | ] and [ (front / back), Ctrl+] and Ctrl+[ (forward / backward) |
 | Visibility | Ctrl+Shift+H (show/hide), Ctrl+Shift+L (lock/unlock) |

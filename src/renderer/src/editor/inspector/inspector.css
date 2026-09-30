@@ -222,6 +222,49 @@
   flex-direction: column;
   gap: 8px;
 }
+
+/* drag to reorder (reorder.tsx) */
+.insp-grip {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 12px;
+  height: 24px;
+  flex-shrink: 0;
+  color: var(--text-4);
+  cursor: grab;
+  touch-action: none;
+}
+.insp-grip:hover {
+  color: var(--text-2);
+}
+.insp-grip:active {
+  cursor: grabbing;
+}
+.insp-dragging {
+  opacity: 0.5;
+}
+.insp-drop-before,
+.insp-drop-after {
+  position: relative;
+}
+.insp-drop-before::before,
+.insp-drop-after::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 2px;
+  border-radius: 1px;
+  background: var(--accent);
+  pointer-events: none;
+}
+.insp-drop-before::before {
+  top: -5px;
+}
+.insp-drop-after::after {
+  bottom: -5px;
+}
 .insp-gradbar {
   position: relative;
   height: 24px;

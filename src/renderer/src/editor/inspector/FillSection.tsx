@@ -4,6 +4,7 @@ import { Button, Field, IconButton, Section, Select } from '../../ui'
 import { common, co, isMixed, type Ctx } from './common'
 import { gradientCss, midColor, readFills, writeFills, type Fill, type Stop } from './fills'
 import { ColorInput } from './ColorInput'
+import { moveItem, useReorder } from './reorder'
 
 type Kind = Fill['kind']
 type Grad = Extract<Fill, { kind: 'gradient' }>
@@ -164,6 +165,7 @@ export function FillSection({ ctx, text }: { ctx: Ctx; text?: boolean }): JSX.El
   const fillsM = common(ctx.nodes, (n) => readFills(n.style, text))
   const key = ctx.ids.join(',')
   const [, force] = useState(0)
+  const reorder = useReorder()
   const hidden = hiddenStore.get(key) ?? []
 
   const setFills = (next: Fill[], live = false): void =>
@@ -208,6 +210,14 @@ export function FillSection({ ctx, text }: { ctx: Ctx; text?: boolean }): JSX.El
     force((n) => n + 1)
   }
 
+  // drag to reorder: hidden fills keep their new row position, visible ones are written in order
+  const moveRow = (from: number, to: number): void => {
+    const next = moveItem(rows, from, to)
+    hiddenStore.set(key, next.flatMap((r, i) => (r.visible ? [] : [{ index: i, fill: r.fill }])))
+    setFills(next.filter((r) => r.visible).map((r) => r.fill))
+    force((n) => n + 1)
+  }
+
   const replace = (realIndex: number, f: Fill, live = false): void => {
     const next = [...fills]
     next[realIndex] = f
@@ -240,8 +250,9 @@ export function FillSection({ ctx, text }: { ctx: Ctx; text?: boolean }): JSX.El
         rows.map((row, ri) => {
           const { fill, visible, realIndex } = row
           return (
-            <div className="insp-fillblock" key={ri}>
+            <div {...reorder.row(ri, 'insp-fillblock')} key={ri}>
               <div className="insp-filltabs">
+                {rows.length > 1 && reorder.grip(ri, moveRow)}
                 <KindTabs kind={fill.kind} text={text} onChange={(k) => visible && void changeKind(realIndex, fill, k)} />
                 <div className="insp-flex1" />
                 <IconButton

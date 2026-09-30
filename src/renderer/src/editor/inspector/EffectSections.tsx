@@ -19,6 +19,7 @@ import {
 } from './common'
 import { ColorInput } from './ColorInput'
 import { exportNode, type ExportFormat } from './exporting'
+import { moveItem, useReorder } from './reorder'
 
 const Mixed = ({ what }: { what: string }): JSX.Element => <div className="insp-mixed">Mixed {what} — click + to replace</div>
 
@@ -227,6 +228,7 @@ export function ShadowSection({ ctx, inset, text }: { ctx: Ctx; inset?: boolean;
   const prop = text ? 'textShadow' : 'boxShadow'
   const title = inset ? 'Inner shadow' : 'Shadow'
   const all = common(ctx.nodes, (n) => parseShadows(n.style[prop]))
+  const reorder = useReorder()
   const commit = (list: Shadow[], live = false): void =>
     ctx.set({ [prop]: formatShadows(list, text) }, live ? co(ctx, prop + String(inset)) : undefined)
   const def: Shadow = { inset: Boolean(inset), x: 0, y: 2, blur: 3, spread: 0, color: '#00000033' }
@@ -244,6 +246,17 @@ export function ShadowSection({ ctx, inset, text }: { ctx: Ctx; inset?: boolean;
       all.map((s, j) => (j === i ? { ...s, ...patch } : s)),
       live
     )
+  // drop and inner shadows share one list: reorder this kind among the slots it already occupies
+  const move = (from: number, to: number): void => {
+    const order = moveItem(
+      mine.map(({ s }) => s),
+      from,
+      to
+    )
+    const next = [...all]
+    mine.forEach(({ i }, k) => (next[i] = order[k]))
+    commit(next)
+  }
   const fields: Array<[keyof Shadow, JSX.Element | string, string]> = [
     ['x', 'X', 'X'],
     ['y', 'Y', 'Y'],
@@ -252,9 +265,10 @@ export function ShadowSection({ ctx, inset, text }: { ctx: Ctx; inset?: boolean;
   ]
   return (
     <Section title={title} onAdd={add} addLabel={`Add ${title.toLowerCase()}`}>
-      {mine.map(({ s, i }) => (
-        <div key={i} className="insp-fillblock">
+      {mine.map(({ s, i }, k) => (
+        <div key={i} {...reorder.row(k, 'insp-fillblock')}>
           <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
+            {mine.length > 1 && reorder.grip(k, move)}
             <div style={{ flex: 1, minWidth: 0, display: 'grid', gridTemplateColumns: `repeat(${fields.length}, minmax(0,1fr))`, gap: 4 }}>
               {fields.map(([k, label, tip]) => (
                 <Field
@@ -302,9 +316,12 @@ const sliderRange = (fn: string): [number, number] => {
 export function FiltersSection({ ctx }: { ctx: Ctx }): JSX.Element {
   const addBtn = useRef<HTMLButtonElement | null>(null)
   const [open, setOpen] = useState(false)
+  const reorder = useReorder()
   const val = common(ctx.nodes, (n) => parseFilters(n.style.filter))
   const list = isMixed(val) ? [] : val
   const commit = (l: FilterFn[], live = false): void => ctx.set({ filter: formatFilters(l) }, live ? co(ctx, 'filter') : undefined)
+  // filter functions apply in order, so the order is part of the look
+  const grips = list.length > 1
   const items: MenuEntry[] = [
     ...Object.entries(FILTER_DEFS).map(([fn, d]) => ({
       label: d.label,
@@ -328,7 +345,12 @@ export function FiltersSection({ ctx }: { ctx: Ctx }): JSX.Element {
         const [lo, hi] = sliderRange(f.fn)
         const set = (v: number, live: boolean): void => commit(list.map((x, j) => (j === i ? { ...x, value: v } : x)), live)
         return (
-          <div key={f.fn + i} style={{ display: 'grid', gridTemplateColumns: '92px minmax(0,1fr) 58px 24px', gap: 6, alignItems: 'center' }}>
+          <div
+            key={f.fn + i}
+            {...reorder.row(i)}
+            style={{ display: 'grid', gridTemplateColumns: `${grips ? '12px 84px' : '92px'} minmax(0,1fr) 58px 24px`, gap: 6, alignItems: 'center' }}
+          >
+            {grips && reorder.grip(i, (from, to) => commit(moveItem(list, from, to)))}
             <Select<string>
               value={f.fn}
               options={Object.entries(FILTER_DEFS).map(([fn, dd]) => ({ value: fn, label: dd.label }))}

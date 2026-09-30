@@ -8,6 +8,7 @@ import type { Doc, WorldRect } from '../../model/types'
 import { useContextMenu } from '../../ui'
 import { CANVAS_COMMAND_EVENT, type CanvasCommand } from '../../shell/commands'
 import { installCanvasShortcuts } from '../shortcuts'
+import { lastTextStyle, trackLastTextStyle } from '../textStyle'
 import { NodeView } from './NodeView'
 import { Overlay, SHADER_COLOR, SHADER_IMAGE, type Guide, type Handle, type Transient } from './Overlay'
 import { clampZoom, registerViewport } from './camera'
@@ -308,11 +309,13 @@ export function CanvasView({ docId }: { docId: string }): JSX.Element | null {
     window.addEventListener('keyup', up, true)
     window.addEventListener('blur', blur)
     const uninstall = installCanvasShortcuts(docId)
+    const untrack = trackLastTextStyle(docId)
     return () => {
       window.removeEventListener('keydown', down, true)
       window.removeEventListener('keyup', up, true)
       window.removeEventListener('blur', blur)
       uninstall()
+      untrack()
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [docId, finishPen])
@@ -445,9 +448,11 @@ export function CanvasView({ docId }: { docId: string }): JSX.Element | null {
         const parent = containerAt(docId, e.clientX, e.clientY)
         const flow = !ops.isPageRoot(d, parent) && ops.isFlowLayout(d.nodes[parent]?.style)
         const o = originFor(d, parent)
+        // new text continues in the typography of the last text selected or edited in this doc
+        const style = lastTextStyle(docId)
         const id = s.createNode(
           docId,
-          { type: 'text', text: '', x: flow ? 0 : Math.round(world0.x - o.x), y: flow ? 0 : Math.round(world0.y - o.y - 10) },
+          { type: 'text', text: '', ...(style ? { style } : {}), x: flow ? 0 : Math.round(world0.x - o.x), y: flow ? 0 : Math.round(world0.y - o.y - 10) },
           parent
         )
         A.textEditing.justCreated = id

@@ -48,20 +48,32 @@ export function familyName(css: string | number | undefined): string {
   return first
 }
 
+interface LocalFontData {
+  family: string
+  blob: () => Promise<Blob>
+}
+let localData: Promise<LocalFontData[] | null> | null = null
+/** Raw faces from the Local Font Access API (null when unavailable / denied). */
+function queryLocalData(): Promise<LocalFontData[] | null> {
+  if (localData) return localData
+  const q = (window as unknown as { queryLocalFonts?: () => Promise<LocalFontData[]> }).queryLocalFonts
+  if (!q) return Promise.resolve(null)
+  localData = q().catch((err) => {
+    console.warn('[inspector] queryLocalFonts unavailable:', err)
+    localData = null
+    return null
+  })
+  return localData
+}
+
 let localCache: string[] | null = null
 /** Local font families via the Local Font Access API (null when unavailable / denied). */
 export async function queryLocalFamilies(): Promise<string[] | null> {
   if (localCache) return localCache
-  const q = (window as unknown as { queryLocalFonts?: () => Promise<Array<{ family: string }>> }).queryLocalFonts
-  if (!q) return null
-  try {
-    const fonts = await q()
-    localCache = [...new Set(fonts.map((f) => f.family))].sort((a, b) => a.localeCompare(b))
-    return localCache.length ? localCache : null
-  } catch (err) {
-    console.warn('[inspector] queryLocalFonts unavailable:', err)
-    return null
-  }
+  const fonts = await queryLocalData()
+  if (!fonts) return null
+  localCache = [...new Set(fonts.map((f) => f.family))].sort((a, b) => a.localeCompare(b))
+  return localCache.length ? localCache : null
 }
 
 export function buildCatalogue(local: string[] | null): FontEntry[] {
@@ -80,7 +92,10 @@ export const isGoogleFont = (name: string): boolean => GOOGLE_FONTS.some((g) => 
 
 export async function fetchCss(name: string): Promise<string | null> {
   const fam = encodeURIComponent(name).replace(/%20/g, '+')
+  const va = GOOGLE_VARIABLE[name.toLowerCase()]
   const urls = [
+    // families with extra axes (wdth, opsz) are requested with them, or the API pins them to default
+    ...(va ? googleAxisUrls(fam, va) : []),
     `https://fonts.googleapis.com/css2?family=${fam}:ital,wght@0,100..900;1,100..900&display=swap`,
     `https://fonts.googleapis.com/css2?family=${fam}:wght@100..900&display=swap`,
     `https://fonts.googleapis.com/css2?family=${fam}:wght@400;700&display=swap`,
@@ -135,3 +150,126 @@ export function loadGoogleFont(name: string): Promise<boolean> {
   loaded.set(key, p)
   return p
 }
+
+// ------------------------------------------------------------------------------------------ Variable axes
+export interface FontAxis {
+  tag: string
+  min: number
+  max: number
+  def: number
+}
+
+/** Registered axes with their usual ranges, for fonts whose own axes can't be read. */
+export const STANDARD_AXES: Record<string, FontAxis & { label: string; step: number }> = {
+  wght: { tag: 'wght', label: 'Weight', min: 100, max: 900, def: 400, step: 1 },
+  wdth: { tag: 'wdth', label: 'Width', min: 25, max: 200, def: 100, step: 1 },
+  opsz: { tag: 'opsz', label: 'Optical size', min: 6, max: 144, def: 14, step: 1 },
+  slnt: { tag: 'slnt', label: 'Slant', min: -90, max: 0, def: 0, step: 1 },
+  ital: { tag: 'ital', label: 'Italic', min: 0, max: 1, def: 0, step: 1 }
+}
+export const axisLabel = (tag: string): string => STANDARD_AXES[tag]?.label ?? tag
+
+/**
+ * Axes of the curated Google fonts that have more than wght (and ital). The css2 API only serves
+ * the axes that are asked for, so these drive both the request and the inspector's sliders.
+ * Ranges match Google Fonts metadata (Inter also matches the bundled @fontsource-variable/inter).
+ */
+const GOOGLE_VARIABLE: Record<string, { ital: boolean; axes: FontAxis[] }> = {
+  inter: { ital: true, axes: [{ tag: 'opsz', min: 14, max: 32, def: 14 }, { tag: 'wght', min: 100, max: 900, def: 400 }] },
+  roboto: { ital: true, axes: [{ tag: 'wdth', min: 75, max: 100, def: 100 }, { tag: 'wght', min: 100, max: 900, def: 400 }] },
+  'open sans': { ital: true, axes: [{ tag: 'wdth', min: 75, max: 100, def: 100 }, { tag: 'wght', min: 300, max: 800, def: 400 }] },
+  'noto sans': { ital: true, axes: [{ tag: 'wdth', min: 62.5, max: 100, def: 100 }, { tag: 'wght', min: 100, max: 900, def: 400 }] },
+  'dm sans': { ital: true, axes: [{ tag: 'opsz', min: 9, max: 40, def: 14 }, { tag: 'wght', min: 100, max: 1000, def: 400 }] },
+  archivo: { ital: true, axes: [{ tag: 'wdth', min: 62, max: 125, def: 100 }, { tag: 'wght', min: 100, max: 900, def: 400 }] },
+  'instrument sans': { ital: true, axes: [{ tag: 'wdth', min: 75, max: 100, def: 100 }, { tag: 'wght', min: 400, max: 700, def: 400 }] },
+  'ibm plex sans': { ital: true, axes: [{ tag: 'wdth', min: 85, max: 100, def: 100 }, { tag: 'wght', min: 100, max: 700, def: 400 }] },
+  'bricolage grotesque': {
+    ital: false,
+    axes: [{ tag: 'opsz', min: 12, max: 96, def: 14 }, { tag: 'wdth', min: 75, max: 100, def: 100 }, { tag: 'wght', min: 200, max: 800, def: 400 }]
+  },
+  merriweather: {
+    ital: true,
+    axes: [{ tag: 'opsz', min: 18, max: 144, def: 18 }, { tag: 'wdth', min: 87, max: 112, def: 100 }, { tag: 'wght', min: 300, max: 900, def: 400 }]
+  }
+}
+
+/** css2 URLs asking for every axis (tags sorted as the API requires: ital, then a–z). */
+function googleAxisUrls(fam: string, va: { ital: boolean; axes: FontAxis[] }): string[] {
+  const axes = [...va.axes].sort((a, b) => (a.tag < b.tag ? -1 : 1))
+  const tags = axes.map((a) => a.tag).join(',')
+  const ranges = axes.map((a) => `${a.min}..${a.max}`).join(',')
+  const upright = `https://fonts.googleapis.com/css2?family=${fam}:${tags}@${ranges}&display=swap`
+  return va.ital ? [`https://fonts.googleapis.com/css2?family=${fam}:ital,${tags}@0,${ranges};1,${ranges}&display=swap`, upright] : [upright]
+}
+
+/** Axes from an OpenType `fvar` table: [] for a static font, null when the file can't be read. */
+export function parseFvar(buf: ArrayBuffer): FontAxis[] | null {
+  try {
+    const v = new DataView(buf)
+    const tag = (o: number): string => String.fromCharCode(v.getUint8(o), v.getUint8(o + 1), v.getUint8(o + 2), v.getUint8(o + 3))
+    const fixed = (o: number): number => Math.round((v.getInt32(o) / 65536) * 100) / 100
+    // a collection (.ttc): read the first font
+    const base = tag(0) === 'ttcf' ? v.getUint32(12) : 0
+    const count = v.getUint16(base + 4)
+    for (let i = 0; i < count; i++) {
+      const rec = base + 12 + i * 16
+      if (tag(rec) !== 'fvar') continue
+      const t = v.getUint32(rec + 8)
+      const first = t + v.getUint16(t + 4)
+      const n = v.getUint16(t + 8)
+      const size = v.getUint16(t + 10)
+      const axes: FontAxis[] = []
+      for (let a = 0; a < n; a++) {
+        const o = first + a * size
+        if (v.getUint16(o + 16) & 1) continue // hidden axis
+        axes.push({ tag: tag(o), min: fixed(o + 4), def: fixed(o + 8), max: fixed(o + 12) })
+      }
+      return axes
+    }
+    return []
+  } catch {
+    return null
+  }
+}
+
+const axesCache = new Map<string, Promise<FontAxis[] | null>>()
+/**
+ * Variation axes of a family: read from the local font file (`fvar`), or the table above for Google
+ * fonts. Null when unknown (system aliases, Google fonts outside the table, no local font access).
+ */
+export function fontAxes(name: string): Promise<FontAxis[] | null> {
+  const key = name.toLowerCase()
+  const hit = axesCache.get(key)
+  if (hit) return hit
+  const p = (async (): Promise<FontAxis[] | null> => {
+    if (SYSTEM_FONTS.some((f) => f.name === name)) return null
+    const local = (await queryLocalData())?.find((f) => f.family.toLowerCase() === key)
+    if (local) {
+      try {
+        return parseFvar(await (await local.blob()).arrayBuffer())
+      } catch (err) {
+        console.warn('[inspector] could not read font file', name, err)
+      }
+    }
+    return GOOGLE_VARIABLE[key]?.axes ?? null
+  })()
+  axesCache.set(key, p)
+  // unknown may just mean local font access wasn't ready yet: ask again next time
+  void p.then((a) => a === null && axesCache.delete(key))
+  return p
+}
+
+/** `"wdth" 87, "opsz" 32` ⇄ [{tag, value}] */
+export interface AxisValue {
+  tag: string
+  value: number
+}
+export function parseVariation(v: string | number | undefined): AxisValue[] {
+  const out: AxisValue[] = []
+  const re = /["'](.{4})["']\s+(-?\d*\.?\d+)/g
+  let m: RegExpExecArray | null
+  while ((m = re.exec(String(v ?? '')))) out.push({ tag: m[1], value: parseFloat(m[2]) })
+  return out
+}
+export const formatVariation = (list: AxisValue[]): string | null =>
+  list.length ? list.map((a) => `"${a.tag}" ${Math.round(a.value * 100) / 100}`).join(', ') : null
