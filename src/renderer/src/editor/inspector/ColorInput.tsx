@@ -1,7 +1,9 @@
 import { useState, type ReactNode } from 'react'
-import { ColorRow, Popover, parseColor, tokenRef } from '../../ui'
-import { useStore } from '../../model/store'
+import { Plus } from 'lucide-react'
+import { ColorRow, Popover, formatColor, parseColor, tokenRef } from '../../ui'
+import { getStore, useStore } from '../../model/store'
 import type { Token } from '../../model/types'
+import { normalizeName } from '../left/tokenUtils'
 
 export function resolveTokenValue(tokens: Token[], name: string, depth = 0): string | undefined {
   const t = tokens.find((x) => x.name === name)
@@ -11,7 +13,35 @@ export function resolveTokenValue(tokens: Token[], name: string, depth = 0): str
   return t.value
 }
 
-/** ColorRow wired to the doc's colour tokens (token picker popover sets `var(--token)`). */
+/** First free `--color-<n>` name. */
+export function nextColorTokenName(tokens: Token[]): string {
+  const names = new Set(tokens.map((t) => t.name))
+  let i = 1
+  while (names.has(`--color-${i}`)) i++
+  return `--color-${i}`
+}
+
+/**
+ * Turn a literal colour into a new colour token and point the field at it, as one undo step.
+ * `apply` writes `var(--name)` wherever the colour came from. Returns an error message, or null.
+ */
+export function addColorToken(docId: string, rawName: string, color: string, apply: (ref: string) => void): string | null {
+  const s = getStore()
+  const tokens = s.docs[docId]?.tokens ?? []
+  const name = normalizeName(rawName)
+  const c = parseColor(color)
+  if (!/^--[\w-]+$/.test(name)) return 'Invalid name'
+  if (tokens.some((t) => t.name === name)) return 'Name already used'
+  if (!c) return 'Not a colour'
+  // base value only: in files with theme modes every mode starts on the same colour
+  s.transact(docId, 'Add colour token', () => {
+    s.upsertTokens(docId, [{ name, value: formatColor(c) }])
+    apply(`var(${name})`)
+  })
+  return null
+}
+
+/** ColorRow wired to the doc's colour tokens (token picker popover sets `var(--token)`, or makes one). */
 export function ColorInput({
   docId,
   value,
@@ -30,9 +60,24 @@ export function ColorInput({
   const tokens = useStore((s) => s.docs[docId]?.tokens ?? [])
   const [anchor, setAnchor] = useState<HTMLElement | null>(null)
   const [q, setQ] = useState('')
+  /** draft name while creating a token from the literal colour (null = not naming) */
+  const [naming, setNaming] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(null)
   const colorTokens = tokens.filter((t) => parseColor(resolveTokenValue(tokens, t.name) ?? ''))
   const current = tokenRef(value)
   const shown = colorTokens.filter((t) => t.name.toLowerCase().includes(q.toLowerCase()))
+  const canAdd = !current && Boolean(parseColor(value))
+  const close = (): void => {
+    setAnchor(null)
+    setNaming(null)
+    setError(null)
+  }
+  const create = (): void => {
+    if (naming === null) return
+    const err = addColorToken(docId, naming, value, (ref) => onChange(ref, { live: false }))
+    if (err) setError(err)
+    else close()
+  }
   return (
     <>
       <ColorRow
@@ -41,12 +86,45 @@ export function ColorInput({
         showToken={showToken}
         showEyedropper={showEyedropper}
         resolveToken={(n) => resolveTokenValue(tokens, n)}
-        onTokenClick={(el) => setAnchor((a) => (a ? null : el))}
+        onTokenClick={(el) => (anchor ? close() : setAnchor(el))}
         trailing={trailing}
       />
-      <Popover open={Boolean(anchor)} onClose={() => setAnchor(null)} anchor={anchor} placement="left-start" offset={12}>
+      <Popover open={Boolean(anchor)} onClose={close} anchor={anchor} placement="left-start" offset={12}>
         <div className="insp-pop">
           <div className="insp-pop__head">Color tokens</div>
+          {canAdd &&
+            (naming === null ? (
+              <button type="button" className="insp-listitem" onClick={() => setNaming(nextColorTokenName(tokens))}>
+                <Plus size={14} />
+                Add as token
+              </button>
+            ) : (
+              <div className="insp-newtoken">
+                <div className={['c-field c-field--sm', error && 'insp-invalid'].filter(Boolean).join(' ')}>
+                  <input
+                    className="c-field__input c-field__input--mono"
+                    value={naming}
+                    autoFocus
+                    spellCheck={false}
+                    title={error ?? 'Token name'}
+                    onFocus={(e) => e.target.select()}
+                    onChange={(e) => {
+                      setNaming(e.target.value)
+                      setError(null)
+                    }}
+                    onKeyDown={(e) => {
+                      e.stopPropagation()
+                      if (e.key === 'Enter') create()
+                      if (e.key === 'Escape') setNaming(null)
+                    }}
+                  />
+                </div>
+                <button type="button" className="insp-newtoken__ok" onClick={create}>
+                  Add
+                </button>
+              </div>
+            ))}
+          {error && <div className="insp-newtoken__error">{error}</div>}
           {colorTokens.length > 8 && (
             <div className="c-field c-field--sm" style={{ marginBottom: 4 }}>
               <input
@@ -66,7 +144,7 @@ export function ColorInput({
                 className="insp-listitem insp-muted"
                 onClick={() => {
                   onChange(resolveTokenValue(tokens, current) ?? '#000000', { live: false })
-                  setAnchor(null)
+                  close()
                 }}
               >
                 Detach token
@@ -79,7 +157,7 @@ export function ColorInput({
                 className={['insp-listitem', current === t.name && 'on'].filter(Boolean).join(' ')}
                 onClick={() => {
                   onChange(`var(${t.name})`, { live: false })
-                  setAnchor(null)
+                  close()
                 }}
               >
                 <span className="c-swatch">
@@ -90,7 +168,7 @@ export function ColorInput({
             ))}
             {!colorTokens.length && (
               <div className="insp-muted" style={{ padding: '8px' }}>
-                No colour tokens yet. Add them in the Theme tab.
+                No colour tokens yet. Add this colour as one, or add them in the Theme tab.
               </div>
             )}
           </div>

@@ -14,6 +14,8 @@ Code: `src/renderer/src/editor/inspector/`. Every edit goes through store action
 | `BasicSections.tsx` | Radius (uniform or per corner), Blending (opacity, `mixBlendMode`, eye toggles `node.visible`) |
 | `FillSection.tsx` + `fills.ts` | Stacked fills: solid, linear/radial gradient, image |
 | `EffectSections.tsx` | Outline, Border (All or one side), Shadow / Inner shadow, Filters (slider + field per filter, presets in the + menu), Background blur (`backdropFilter`: blur + saturate), Guides/Video placeholders, Export |
+| `SelectionColorsSection.tsx` + `colors.ts` | Selection colors: every distinct colour in the selection and its descendants (styles, gradients, shadows, borders, SVG `fill`/`stroke`/`stop-color`, `var(--token)` refs) with a use count; editing a row replaces it everywhere in one undo step |
+| `OtherStylesSection.tsx` | Other styles: `property: value` rows for every style key no other section edits (`handledStyleKeys`), add (+ with a name field) / edit / remove |
 | `TextSection.tsx` + `fonts.ts` | Font picker, weight, size, line height, letter spacing, align, vertical align, Formatting popover, Underline, Stroke |
 | `exporting.ts` | PNG, SVG and HTML export |
 | `common.ts` | Mixed-value helper (`common`/`MIXED`), selection ctx, CSS parsers |
@@ -37,6 +39,9 @@ Code: `src/renderer/src/editor/inspector/`. Every edit goes through store action
   - Truncation: `textOverflow: ellipsis` plus `-webkit-box` line clamp.
 - **Underline:** `textDecorationLine`, `textDecorationThickness`, `textUnderlineOffset`, `textDecorationColor`.
 - **Stroke:** `WebkitTextStrokeWidth` and `WebkitTextStrokeColor`, with `paintOrder: 'stroke fill'`.
+- **Selection colors:** literal colours are grouped by their `#RRGGBB(AA)` form (so `#fff`, `white` and `rgb(255,255,255)` are one row); `var(--x)` is its own row when the token resolves to a colour. Only style keys that can hold colours are scanned (`color`, `background*`, `border*`/`outline*` colours, `boxShadow`, `textShadow`, …), `url()` is skipped. Shown when a selected node has children, or the selection uses 2+ colours. Rows are keyed by position so a picker drag keeps its row; live drags coalesce (`insp:selcolors:<ids>`).
+- **Other styles:** a key counts as handled only when its section applies to the node: text keys for text; fill, radius, outline, border, `boxShadow` for the rest; flex/grid keys and padding for flex/grid containers; `overflow` for frames and text; `backdropFilter` for frames and rects; `gridColumn`/`gridRow` inside a grid. Names are shown kebab-case; typed names accept `z-index`, `zIndex`, `-webkit-…` or `--custom` and are stored camelCase (`toCamel`). An empty value removes the key; plain numbers are stored as numbers (px unless unitless), as in HTML import.
+- **Add as token:** the token popover of every `ColorInput` (Fill, Border, Shadow, Selection colors, …) offers "Add as token" for a literal colour: name it (default first free `--color-<n>`), and `addColorToken` upserts the token (base value only, no mode overrides) and writes `var(--name)` back through the field's `onChange`, in one `transact` step. For Selection colors that replaces the colour everywhere in the selection.
 
 ## Notes
 - **Fonts:** the font list uses `queryLocalFonts()`. If that is unavailable, it falls back to a curated list of Windows fonts. Google Fonts are fetched and registered through the `FontFace` API, because the renderer CSP blocks remote stylesheets. Loading happens when a font is picked, when it scrolls into view in the picker, and when a selected text uses it. Vellum content that uses a Google font on a fresh start only renders correctly after something loads the font. The canvas could call `loadGoogleFont` for the families in the doc.
