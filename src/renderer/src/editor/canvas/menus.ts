@@ -1,21 +1,56 @@
-// Context menus for the canvas (node menu and empty-canvas menu).
+// Context menus for the canvas (node menu, empty-canvas menu, layers under the pointer).
+import { createElement } from 'react'
 import { formatShortcut, type MenuEntry } from '../../ui'
 import { getStore } from '../../model/store'
-import { isPageRoot } from '../../model/ops'
+import { ancestors, isPageRoot } from '../../model/ops'
+import { NodeIcon } from '../left/LayersTree'
 import * as A from './actions'
+import { getWorldEl } from './geometry'
 
 const sep = { type: 'separator' } as const
 
-/** Nodes stacked under a screen point (deepest first) for "Select layer…". */
+/** Nodes stacked under a screen point (topmost first, covered ones too) for "Select layer…". */
 function layersAt(docId: string, x: number, y: number): string[] {
   const doc = getStore().docs[docId]
-  if (!doc) return []
+  const world = getWorldEl()
+  if (!doc || !world) return []
   const out: string[] = []
   for (const el of document.elementsFromPoint(x, y)) {
-    const id = el.getAttribute('data-node-id')
+    if (!world.contains(el)) continue
+    // svg nodes hit on their inner shapes
+    const id = el.closest('[data-node-id]')?.getAttribute('data-node-id')
     if (id && doc.nodes[id] && !out.includes(id) && !isPageRoot(doc, id)) out.push(id)
   }
   return out
+}
+
+/**
+ * Ctrl+right-click: every layer under the pointer, deepest first, indented by depth, with its
+ * parent's name on the right. Choosing one selects it.
+ */
+export function layersMenu(docId: string, at: { x: number; y: number }): MenuEntry[] {
+  const s = getStore()
+  const doc = s.docs[docId]
+  if (!doc) return []
+  const sel = s.editors[docId]?.selection ?? []
+  const depth = new Map(layersAt(docId, at.x, at.y).map((id) => [id, ancestors(doc, id).length]))
+  const ids = [...depth.keys()].sort((a, b) => (depth.get(b) ?? 0) - (depth.get(a) ?? 0))
+  if (!ids.length) return []
+  const min = Math.min(...depth.values())
+  return [
+    { type: 'heading', label: 'Layers under the pointer' },
+    ...ids.map((id): MenuEntry => {
+      const n = doc.nodes[id]
+      const parent = n.parent && !isPageRoot(doc, n.parent) ? doc.nodes[n.parent]?.name : undefined
+      return {
+        label: n.name,
+        icon: createElement('span', { style: { display: 'flex', paddingLeft: ((depth.get(id) ?? min) - min) * 12 } }, createElement(NodeIcon, { node: n })),
+        shortcut: parent,
+        checked: sel.includes(id),
+        onSelect: () => s.select(docId, [id])
+      }
+    })
+  ]
 }
 
 export function nodeMenu(docId: string, at: { x: number; y: number }): MenuEntry[] {

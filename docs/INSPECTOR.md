@@ -10,8 +10,9 @@ Code: `src/renderer/src/editor/inspector/`. Every edit goes through store action
 | `LayoutSection.tsx` | X/Y/rotation, W/H with Fixed/Fit/Fill, rotate/flip, Add flex / Wrap in flex, Absolute position, Clip content, size presets (`SIZE_PRESETS`) |
 | `FlexSection.tsx` | 3×3 align grid, direction, wrap, gap, spacing menu, padding H/V or per side (`PaddingFields`, shared with Grid), remove, switch to grid |
 | `GridSection.tsx` | Grid: columns/rows (a number = equal `minmax(0, 1fr)` tracks, or any template text), column/row gap, align in cell (`alignItems`/`justifyItems`), padding, fill columns first / dense (`gridAutoFlow`), clip, switch to flex. Grid item: column/row span (`gridColumn`/`gridRow: span N`) |
+| `ConstraintsSection.tsx` | Constraints for positioned children of a frame: horizontal Left / Right / Left & right / Center / Scale, vertical Top / Bottom / Top & bottom / Center / Scale (`ops.setConstraint`, CSS in docs/CANVAS.md). W/H show a number for stretched/scaled sizes; Fixed/Fit/Fill drop that axis back to Left/Top |
 | `ModeSection.tsx` | Theme mode for frames (`attrs['data-mode']`), shown when the file has theme modes |
-| `BasicSections.tsx` | Radius (uniform or per corner), Blending (opacity, `mixBlendMode`, eye toggles `node.visible`) |
+| `BasicSections.tsx` | Radius (uniform or per corner), Blending (opacity, `mixBlendMode`, eye toggles `node.visible`), Image (Reset crop: removes `objectViewBox`/`objectPosition`, height back to the image's aspect) |
 | `FillSection.tsx` + `fills.ts` | Stacked fills: solid, linear/radial gradient, image |
 | `EffectSections.tsx` | Outline, Border (All or one side), Shadow / Inner shadow, Filters (slider + field per filter, presets in the + menu), Background blur (`backdropFilter`: blur + saturate), Guides/Video placeholders, Export |
 | `SelectionColorsSection.tsx` + `colors.ts` | Selection colors: every distinct colour in the selection and its descendants (styles, gradients, shadows, borders, SVG `fill`/`stroke`/`stop-color`, `var(--token)` refs) with a use count; editing a row replaces it everywhere in one undo step |

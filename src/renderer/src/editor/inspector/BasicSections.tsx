@@ -1,6 +1,9 @@
 import { useState } from 'react'
-import { Droplet, Eye, EyeOff, Grip, Scan, SquareRoundCorner } from 'lucide-react'
-import { Field, IconButton, Section, Select, Slider, type SelectEntry } from '../../ui'
+import { Crop, Droplet, Eye, EyeOff, Grip, Scan, SquareRoundCorner } from 'lucide-react'
+import { Button, Field, IconButton, Section, Select, Slider, type SelectEntry } from '../../ui'
+import { canConstrain, editPlain } from '../../model/ops'
+import type { CNode } from '../../model/types'
+import { naturalSize } from '../canvas/crop'
 import { common, co, fv, isMixed, readBox, writeBox, type Ctx } from './common'
 
 // ------------------------------------------------------------------------------------------ Radius
@@ -135,6 +138,38 @@ export function BlendingSection({ ctx }: { ctx: Ctx }): JSX.Element {
           options={BLEND_OPTIONS}
           onChange={(v) => ctx.set({ mixBlendMode: v === 'normal' ? null : v })}
         />
+      </div>
+    </Section>
+  )
+}
+
+// ------------------------------------------------------------------------------------------ Image
+/** Image crop (Ctrl+drag a resize handle on the canvas; see canvas/crop.ts). */
+export function ImageSection({ ctx }: { ctx: Ctx }): JSX.Element {
+  const cropped = ctx.nodes.some((n) => n.style.objectViewBox !== undefined)
+  // reset: the whole picture again, at the box's width and the image's own aspect ratio
+  const reset = (): void =>
+    ctx.each('Reset crop', (n, d) => {
+      delete n.style.objectViewBox
+      delete n.style.objectPosition
+      const nat = naturalSize(n.id)
+      const w = typeof n.style.width === 'number' ? n.style.width : null
+      if (!nat || w === null) return
+      const fit = (m: CNode): void => {
+        m.style.height = Math.round((w * nat.nh) / nat.nw)
+      }
+      if (canConstrain(d, n.id)) editPlain(d, n.id, fit)
+      else fit(n)
+    })
+  return (
+    <Section title="Image">
+      <div className="insp-g2">
+        <Button full icon={<Crop size={14} />} disabled={!cropped} onClick={reset}>
+          Reset crop
+        </Button>
+        <span className="insp-muted" style={{ alignSelf: 'center' }}>
+          {cropped ? 'Cropped' : 'Ctrl+drag a handle to crop'}
+        </span>
       </div>
     </Section>
   )

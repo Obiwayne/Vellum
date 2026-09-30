@@ -233,31 +233,180 @@ export function anchoredAxes(n: CNode): { x: boolean; y: boolean } {
   }
 }
 
-/**
- * Before moving a positioned node by x/y: turn left/top anchoring that isn't px (see anchoredAxes)
- * into plain x/y offsets using its measured position, so the move starts where the node is drawn.
- */
-export function detachAnchors(doc: Doc, id: string): void {
+// ---------------------------------------------------------------------------------------------
+// constraints
+//
+// How a positioned child (x/y inside a frame) follows its parent's size. Written as plain CSS, so
+// the canvas and every export behave the same. Per axis (horizontal shown; vertical uses
+// top/bottom/height, and parentW is the parent's padding box):
+//   start   left: x                                        (Left, the default)
+//   end     left: auto; right: parentW - x - w             (Right)
+//   both    left: x; right: parentW - x - w; width: auto   (Left & right)
+//   center  left: calc(50% ± |x - parentW / 2|px)          (Center)
+//   scale   left: x / parentW %; width: w / parentW %      (Scale)
+// 'end', 'center' and 'scale' keep left/top in the style (see anchoredAxes); 'start'/'both' use x/y.
+// Gestures edit nodes as plain px boxes: detachAnchors → change x/y/size → restoreConstraints.
+
+export type Constraint = 'start' | 'end' | 'both' | 'center' | 'scale'
+export type ConstraintAxis = 'h' | 'v'
+export interface Constraints {
+  h: Constraint
+  v: Constraint
+}
+
+const AXIS_KEYS = {
+  h: { start: 'left', end: 'right', size: 'width', pos: 'x' },
+  v: { start: 'top', end: 'bottom', size: 'height', pos: 'y' }
+} as const
+
+const isPct = (v: unknown): boolean => typeof v === 'string' && /%\s*$/.test(v)
+const round2 = (v: number): number => Math.round(v * 100) / 100
+const pct = (v: number): string => `${Math.round(v * 10000) / 100}%`
+
+/** Positioned child of a frame (not top-level, not in flow): the nodes constraints apply to. */
+export function canConstrain(doc: Doc, id: string): boolean {
   const n = doc.nodes[id]
-  if (!n?.parent || isFlowChild(doc, id) || isPageRoot(doc, n.parent)) return
+  return Boolean(n?.parent && !isPageRoot(doc, n.parent) && !isFlowChild(doc, id))
+}
+
+export function axisConstraint(n: CNode, axis: ConstraintAxis): Constraint {
+  const k = AXIS_KEYS[axis]
+  const start = n.style[k.start]
+  const end = n.style[k.end]
+  if (isPct(start) && isPct(n.style[k.size])) return 'scale'
+  if (start === '50%' || (typeof start === 'string' && /^calc\(\s*50%/.test(start))) return 'center'
+  if (end !== undefined && end !== '' && end !== 'auto') return start === 'auto' ? 'end' : 'both'
+  return 'start'
+}
+
+export const getConstraints = (n: CNode): Constraints => ({ h: axisConstraint(n, 'h'), v: axisConstraint(n, 'v') })
+
+/** Placed by something other than plain left/top px, so gestures detach it first (detachAnchors). */
+export function needsDetach(n: CNode): boolean {
   const a = anchoredAxes(n)
-  if (!a.x && !a.y) return
+  const c = getConstraints(n)
+  return a.x || a.y || c.h !== 'start' || c.v !== 'start'
+}
+
+function borders(p: CNode | undefined): { l: number; t: number; r: number; b: number } {
+  const w = (k: string): number => numericSize(p?.style[k] ?? p?.style.borderWidth) ?? 0
+  return { l: w('borderLeftWidth'), t: w('borderTopWidth'), r: w('borderRightWidth'), b: w('borderBottomWidth') }
+}
+
+/** A child box in its parent's padding box, plus that padding box's size. */
+interface Box {
+  x: number
+  y: number
+  w: number
+  h: number
+  pw: number
+  ph: number
+}
+
+/** Parent padding-box size, measured through the resolver. */
+function parentSize(doc: Doc, n: CNode): { pw: number; ph: number } | null {
+  const pr = n.parent ? resolver?.(doc.id, n.parent) : null
+  if (!pr || !n.parent) return null
+  const b = borders(doc.nodes[n.parent])
+  return { pw: pr.width - b.l - b.r, ph: pr.height - b.t - b.b }
+}
+
+/** Where the node is drawn (measured). */
+function measuredBox(doc: Doc, id: string): Box | null {
+  const n = doc.nodes[id]
+  if (!n?.parent) return null
   const r = resolver?.(doc.id, id)
   const pr = resolver?.(doc.id, n.parent)
-  if (!r || !pr) return
-  const p = doc.nodes[n.parent]
-  const bl = numericSize(p?.style.borderLeftWidth ?? p?.style.borderWidth) ?? 0
-  const bt = numericSize(p?.style.borderTopWidth ?? p?.style.borderWidth) ?? 0
-  if (a.x) {
-    n.x = Math.round(r.x - pr.x - bl)
-    delete n.style.left
-    delete n.style.right
+  const ps = parentSize(doc, n)
+  if (!r || !pr || !ps) return null
+  const b = borders(doc.nodes[n.parent])
+  return { x: r.x - pr.x - b.l, y: r.y - pr.y - b.t, w: r.width, h: r.height, ...ps }
+}
+
+/** Writes one axis of a constraint for a node occupying `box`, so it stays where it is. */
+function writeAxis(n: CNode, axis: ConstraintAxis, c: Constraint, box: Box): void {
+  const k = AXIS_KEYS[axis]
+  const s = n.style
+  const pos = axis === 'h' ? box.x : box.y
+  const size = axis === 'h' ? box.w : box.h
+  const ps = axis === 'h' ? box.pw : box.ph
+  delete s[k.start]
+  delete s[k.end]
+  // leaving Left & right / Scale: the stretched or relative size becomes a fixed one
+  if (c !== 'both' && c !== 'scale' && (s[k.size] === 'auto' || isPct(s[k.size]))) s[k.size] = round2(size)
+  n[k.pos] = round2(pos)
+  if (c === 'end') {
+    s[k.start] = 'auto'
+    s[k.end] = round2(ps - pos - size)
+  } else if (c === 'both') {
+    s[k.end] = round2(ps - pos - size)
+    s[k.size] = 'auto'
+  } else if (c === 'center') {
+    const off = round2(pos - ps / 2)
+    s[k.start] = `calc(50% ${off < 0 ? '-' : '+'} ${Math.abs(off)}px)`
+  } else if (c === 'scale' && ps > 0) {
+    s[k.start] = pct(pos / ps)
+    s[k.size] = pct(size / ps)
   }
-  if (a.y) {
-    n.y = Math.round(r.y - pr.y - bt)
-    delete n.style.top
-    delete n.style.bottom
-  }
+}
+
+/** Set one axis' constraint without moving the node (converted from its measured box). */
+export function setConstraint(doc: Doc, id: string, axis: ConstraintAxis, c: Constraint): void {
+  const n = doc.nodes[id]
+  if (!n || !canConstrain(doc, id)) return
+  const box = measuredBox(doc, id)
+  if (box) writeAxis(n, axis, c, box)
+}
+
+/**
+ * Before moving a positioned node by x/y: turn left/top anchoring that isn't px (see anchoredAxes)
+ * and any constraint other than Left/Top into plain x/y offsets and px sizes using its measured
+ * box, so the move starts where the node is drawn. Returns the constraints it had, for
+ * restoreConstraints once the edit is done.
+ */
+export function detachAnchors(doc: Doc, id: string): Constraints {
+  const n = doc.nodes[id]
+  if (!n?.parent || isFlowChild(doc, id) || isPageRoot(doc, n.parent)) return { h: 'start', v: 'start' }
+  const c = getConstraints(n)
+  const a = anchoredAxes(n)
+  const ax = a.x || c.h !== 'start'
+  const ay = a.y || c.v !== 'start'
+  if (!ax && !ay) return c
+  const box = measuredBox(doc, id)
+  if (!box) return c
+  // the stretched / relative size itself becomes px
+  if (c.h === 'both' || c.h === 'scale') n.style.width = round2(box.w)
+  if (c.v === 'both' || c.v === 'scale') n.style.height = round2(box.h)
+  if (ax) writeAxis(n, 'h', 'start', box)
+  if (ay) writeAxis(n, 'v', 'start', box)
+  return c
+}
+
+/**
+ * After editing a detached node (plain x/y and px size): write its constraints back for its new
+ * model box. A size that isn't px (fit-content text) is measured.
+ */
+export function restoreConstraints(doc: Doc, id: string, c: Constraints): void {
+  if (c.h === 'start' && c.v === 'start') return
+  const n = doc.nodes[id]
+  if (!n || !canConstrain(doc, id)) return
+  const ps = parentSize(doc, n)
+  const r = resolver?.(doc.id, id)
+  const w = numericSize(n.style.width) ?? r?.width
+  const h = numericSize(n.style.height) ?? r?.height
+  if (!ps || w === undefined || h === undefined) return
+  const box: Box = { x: n.x, y: n.y, w, h, ...ps }
+  if (c.h !== 'start') writeAxis(n, 'h', c.h, box)
+  if (c.v !== 'start') writeAxis(n, 'v', c.v, box)
+}
+
+/** Edit a positioned node as a plain px box (x/y/width/height), keeping its constraints. */
+export function editPlain(doc: Doc, id: string, fn: (n: CNode) => void): void {
+  const n = doc.nodes[id]
+  if (!n) return
+  const c = detachAnchors(doc, id)
+  fn(n)
+  restoreConstraints(doc, id, c)
 }
 
 export function indexInParent(doc: Doc, id: string): number {

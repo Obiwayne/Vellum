@@ -28,6 +28,9 @@ The canvas code lives in `src/renderer/src/editor/canvas/`. The toolbar is in `e
   - Dropping a node on a different frame reparents it. Artboards are never reparented by dragging.
   - Each drag or resize is a single undo step (`history.begin/end`).
 - **Resize** works from corners and edges, and for multi-selections. Shift keeps the aspect ratio, and Alt resizes from the centre.
+- **Image crop** (`crop.ts`): with one image selected, Ctrl+drag a handle to crop: the box changes, the picture stays put, and the box can't grow past the image. CSS: `objectViewBox: inset(t% r% b% l%)` (visible part, in % of the natural size) + `objectFit: cover` (or `fill` for a distorted image) + `objectPosition` at the crop's spot, a fallback for browsers without `object-view-box` (Chromium has it; others show the image cover-fitted around that spot). A normal resize afterwards scales the cropped picture. Inspector: Image → Reset crop. One drag is one undo step.
+- **Constraints** (`ops.ts` "constraints", inspector `ConstraintsSection.tsx`): positioned children of a frame get Left / Right / Left & right / Center / Scale (and Top / Bottom / …). Plain CSS: Right = `left:auto; right`, Left & right = `left + right; width:auto`, Center = `left: calc(50% + Npx)`, Scale = `left` and `width` in %. Choosing one converts from the measured box, so nothing moves. Move, nudge, resize and the X/Y/W/H fields detach the node to a px box (`detachAnchors`), edit it and write the constraint back (`restoreConstraints`, or `editPlain` for one-shot edits). Measurements use bounding rects, so rotated children convert approximately.
+- **Layers under the pointer**: Ctrl+right-click lists every layer under the pointer (covered ones too), deepest first, indented by depth with the parent's name on the right; choosing one selects it (`menus.ts` `layersMenu`).
 - **Tools**
   - Frame (F), Rectangle (R) and Shaders (S) are drag-to-create; S makes a gradient "Shader" frame. A click without a drag creates a 100×100 node. The new node becomes a child of the frame under the pointer, and is appended when that frame is flex.
   - Text (T): click, then type. Esc or clicking away commits, and an empty new text node is removed.
@@ -46,7 +49,7 @@ The canvas code lives in `src/renderer/src/editor/canvas/`. The toolbar is in `e
 ## Shortcuts (editor/shortcuts.ts, capture phase)
 | Area | Shortcuts |
 |---|---|
-| Tools | V, F, R, P, T, C, S |
+| Tools | V, H (Pan), F, R, P, T, C, S |
 | Selection | Esc (tool→Move, else select parent), Enter (select children / edit text), Shift+Enter (parent), Tab / Shift+Tab (siblings), Ctrl+A (select all siblings) |
 | Edit | Delete / Backspace, arrows (1) / Shift+arrows (10), Ctrl+D, Ctrl+C / X / V |
 | Paste variants | Ctrl+Shift+V (paste on top), Ctrl+Shift+R (paste to replace) |
@@ -54,6 +57,8 @@ The canvas code lives in `src/renderer/src/editor/canvas/`. The toolbar is in `e
 | Structure | Shift+F (frame selection), Shift+A (add flex, or wrap in flex), Alt+C (clip content) |
 | Order | ] and [ (front / back), Ctrl+] and Ctrl+[ (forward / backward) |
 | Visibility | Ctrl+Shift+H (show/hide), Ctrl+Shift+L (lock/unlock) |
+| Opacity | 1–9 (10–90%), 0 (100%); with the `canvas.zoomNumberKeys` pref on, 0 / 1 / 2 zoom like Shift+0/1/2 instead |
+| Layers | Alt+L (collapse all, `LayersTree.collapseAllLayers`) |
 | Other | Ctrl+L (copy link), Alt+T (copy as Tailwind), Alt+R (copy as React), N / Shift+N (next / previous artboard), `.` (Hide UI) |
 | Zoom | + / = and -, Shift+0 (100%), Shift+1 (fit), Shift+2 (selection), Ctrl+0 |
 | Prefs | Shift+' (pixel grid), Ctrl+Shift+' (snap to pixel) |

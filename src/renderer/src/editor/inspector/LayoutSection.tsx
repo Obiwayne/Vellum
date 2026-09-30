@@ -2,7 +2,8 @@ import { useRef, useState } from 'react'
 import { ChevronDown, FlipHorizontal2, FlipVertical2, RotateCwSquare } from 'lucide-react'
 import { Button, Checkbox, Field, IconButton, Menu, Section, type MenuEntry } from '../../ui'
 import { useStore } from '../../model/store'
-import { anchoredAxes, isFlowLayout } from '../../model/ops'
+import { axisConstraint, canConstrain, editPlain, isFlowLayout, setConstraint } from '../../model/ops'
+import type { CNode, Doc } from '../../model/types'
 import { common, co, displayPos, fv, inFlexParent, isMixed, measuredSize, sizeMode, type Ctx, type SizeMode } from './common'
 
 // ------------------------------------------------------------------------------------------ presets
@@ -28,22 +29,48 @@ const parseScale = (v: unknown): [number, number] => {
 }
 const fmtScale = (sx: number, sy: number): string | null => (sx === 1 && sy === 1 ? null : `${sx} ${sy}`)
 
+/** Width/height set by a Left & right / Scale constraint (shown as a fixed number). */
+const constrainedSize = (doc: Doc, n: CNode, axis: 'width' | 'height'): boolean => {
+  if (!canConstrain(doc, n.id)) return false
+  const c = axisConstraint(n, axis === 'width' ? 'h' : 'v')
+  return c === 'both' || c === 'scale'
+}
+
 // ------------------------------------------------------------------------------------------ W/H
 function SizeField({ ctx, axis }: { ctx: Ctx; axis: 'width' | 'height' }): JSX.Element {
   const btn = useRef<HTMLButtonElement | null>(null)
   const [open, setOpen] = useState(false)
   const { nodes, doc } = ctx
-  const mode = common(nodes, (n) => sizeMode(n.style[axis]))
+  const mode = common(nodes, (n) => (constrainedSize(doc, n, axis) ? 'fixed' : sizeMode(n.style[axis])))
   const num = common(nodes, (n) => measuredSize(doc, n, axis))
   const value = isMixed(mode) ? null : mode === 'fit' ? 'Fit' : mode === 'fill' ? 'Fill' : fv(num)
   const flexChild = nodes.some((n) => inFlexParent(doc, n))
   const setMode = (m: SizeMode): void => {
     if (m === 'fixed')
-      ctx.each('Fixed size', (n) => {
-        n.style[axis] = measuredSize(doc, n, axis) || 100
+      ctx.each('Fixed size', (n, d) => {
+        // a stretched / scaled size becomes px by dropping back to a Left/Top constraint
+        if (constrainedSize(d, n, axis)) setConstraint(d, n.id, axis === 'width' ? 'h' : 'v', 'start')
+        else n.style[axis] = measuredSize(doc, n, axis) || 100
       })
-    else ctx.set({ [axis]: m === 'fit' ? 'fit-content' : '100%' })
+    else
+      ctx.each(m === 'fit' ? 'Fit size' : 'Fill size', (n, d) => {
+        if (constrainedSize(d, n, axis)) setConstraint(d, n.id, axis === 'width' ? 'h' : 'v', 'start')
+        n.style[axis] = m === 'fit' ? 'fit-content' : '100%'
+      })
   }
+  // px size; constrained nodes keep their constraint (Right, Center… are rewritten for the new size)
+  const setSize = (v: number, live: boolean): void =>
+    ctx.each(
+      'Resize',
+      (n, d) => {
+        if (canConstrain(d, n.id))
+          editPlain(d, n.id, (m) => {
+            m.style[axis] = Math.max(0, v)
+          })
+        else n.style[axis] = Math.max(0, v)
+      },
+      live ? co(ctx, axis) : undefined
+    )
   const items: MenuEntry[] = [
     { label: 'Fixed', checked: mode === 'fixed', onSelect: () => setMode('fixed') },
     { label: 'Fit', checked: mode === 'fit', onSelect: () => setMode('fit') }
@@ -62,9 +89,9 @@ function SizeField({ ctx, axis }: { ctx: Ctx; axis: 'width' | 'height' }): JSX.E
           if (v === 'Fit') setMode('fit')
           else if (v === 'Fill') setMode('fill')
           else if (v === 'Fixed') setMode('fixed')
-          else if (typeof v === 'number') ctx.set({ [axis]: Math.max(0, v) })
+          else if (typeof v === 'number') setSize(v, false)
         }}
-        onScrub={(v) => ctx.set({ [axis]: Math.max(0, v) }, co(ctx, axis))}
+        onScrub={(v) => setSize(v, true)}
         trailing={
           <button ref={btn} type="button" className="insp-field-trail" onClick={() => setOpen((o) => !o)}>
             <ChevronDown size={14} />
@@ -101,12 +128,10 @@ export function LayoutSection({ ctx }: { ctx: Ctx }): JSX.Element {
       'Move',
       (n, d) => {
         if (inFlexParent(d, n) && n.style.position !== 'absolute') return
-        n[axis] = v
-        // an explicit X/Y replaces right/bottom ('auto' left/top) anchoring
-        if (anchoredAxes(n)[axis]) {
-          delete n.style[axis === 'x' ? 'left' : 'top']
-          delete n.style[axis === 'x' ? 'right' : 'bottom']
-        }
+        // constraints (Right, Center, Scale…) are kept and rewritten for the new position
+        editPlain(d, n.id, (m) => {
+          m[axis] = v
+        })
       },
       live ? co(ctx, axis) : undefined
     )

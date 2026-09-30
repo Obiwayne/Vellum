@@ -6,7 +6,8 @@ const GROUPS: { title: string; items: [string, string][] }[] = [
     title: 'Tools',
     items: [
       ['Move', 'V'],
-      ['Pan', 'Space'],
+      ['Pan', 'H'],
+      ['Pan while held', 'Space'],
       ['Frame', 'F'],
       ['Rectangle', 'R'],
       ['Pen', 'P'],
@@ -46,6 +47,10 @@ const GROUPS: { title: string; items: [string, string][] }[] = [
       ['Bring to front / Send to back', '] / ['],
       ['Show / hide', 'Ctrl+Shift+H'],
       ['Lock / unlock', 'Ctrl+Shift+L'],
+      ['Opacity 10% – 90% / 100%', '1 – 9 / 0'],
+      ['Crop an image', 'Ctrl+Drag handle'],
+      ['Collapse all layers', 'Alt+L'],
+      ['Layers under the pointer', 'Ctrl+Right-click'],
       ['Select parent', 'Esc'],
       ['Select children', 'Enter']
     ]

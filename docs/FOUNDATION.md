@@ -123,7 +123,7 @@ Camera convention: `screen = world * zoom + (camera.x, camera.y)`, relative to t
     - `<svg>` becomes `svg`. `node.svg` holds the inner markup, `attrs` holds viewBox and the other attributes, and width/height come from the attributes or the viewBox.
     - Everything else becomes `frame`.
     - A block container (no display) with flow children is turned into `display:flex; flex-direction:column` (stretch) so it looks like browser block flow; if every flow child is inline-level (span, img, button…) it becomes a wrapping baseline row that follows `text-align`.
-    - `htmlToNodes(html, doc, {topLevel})`: only roots written into a page root use left/top as world x/y. Elsewhere `position:absolute` keeps px left/top as x/y, and a missing left/top is stored as `'auto'` so right/bottom anchoring works (`ops.anchoredAxes`, `ops.detachAnchors` before moving).
+    - `htmlToNodes(html, doc, {topLevel})`: only roots written into a page root use left/top as world x/y. Elsewhere `position:absolute` keeps px left/top as x/y, and a missing left/top is stored as `'auto'` so right/bottom anchoring works (`ops.anchoredAxes`). Such nodes read as Right/Bottom constraints (`ops.getConstraints`); gestures keep them through `ops.detachAnchors` + `ops.restoreConstraints` (see docs/CANVAS.md).
     - `data-name` sets the layer name.
     - The original tag is kept as `attrs.tag`. It is used on export and never emitted as an attribute.
   - Inline style parsing: unitless numbers become numbers, other units stay strings, and `width`/`height` in px become numbers.
