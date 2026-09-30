@@ -1,9 +1,10 @@
 import { useRef, useState } from 'react'
-import { Eye, EyeOff, ImagePlus, Minus, Plus, RotateCw } from 'lucide-react'
+import { Crosshair, Eye, EyeOff, ImagePlus, Minus, Plus, RotateCw } from 'lucide-react'
 import { Button, Field, IconButton, Section, Select } from '../../ui'
 import { common, co, isMixed, type Ctx } from './common'
 import { gradientCss, midColor, readFills, writeFills, type Fill, type Stop } from './fills'
 import { ColorInput } from './ColorInput'
+import { isGradientTarget, setGradientTarget, useGradientEdit } from '../canvas/gradientEdit'
 
 type Kind = Fill['kind']
 type Grad = Extract<Fill, { kind: 'gradient' }>
@@ -52,14 +53,22 @@ function KindTabs({ kind, onChange, text }: { kind: Kind; onChange: (k: Kind) =>
 function GradientEditor({
   ctx,
   fill,
+  index,
   onChange
 }: {
   ctx: Ctx
   fill: Grad
+  /** fill layer index, for on-canvas editing (single selection only) */
+  index: number
   onChange: (f: Grad, live: boolean) => void
 }): JSX.Element {
   const bar = useRef<HTMLDivElement | null>(null)
   const [sel, setSel] = useState(0)
+  const single = ctx.ids.length === 1 && index >= 0
+  const onCanvas = useGradientEdit((s) => single && isGradientTarget(s.target, ctx.docId, ctx.ids[0], index))
+  const editOnCanvas = (): void => {
+    if (single && !onCanvas) setGradientTarget({ docId: ctx.docId, nodeId: ctx.ids[0], index })
+  }
   const drag = useRef<{ i: number; moved: boolean } | null>(null)
   const posAt = (clientX: number): number => {
     const r = bar.current?.getBoundingClientRect()
@@ -91,6 +100,7 @@ function GradientEditor({
             onPointerDown={(e) => {
               e.stopPropagation()
               e.currentTarget.setPointerCapture(e.pointerId)
+              editOnCanvas()
               setSel(i)
               drag.current = { i, moved: false }
             }}
@@ -123,6 +133,14 @@ function GradientEditor({
             style={{ width: 76 }}
             onChange={(v) => typeof v === 'number' && onChange({ ...fill, angle: ((v % 360) + 360) % 360 }, false)}
             onScrub={(v) => onChange({ ...fill, angle: ((v % 360) + 360) % 360 }, true)}
+          />
+        )}
+        {single && (
+          <IconButton
+            icon={<Crosshair size={14} />}
+            label="Edit on canvas"
+            active={onCanvas}
+            onClick={() => (onCanvas ? setGradientTarget(null) : editOnCanvas())}
           />
         )}
         <IconButton
@@ -270,7 +288,7 @@ export function FillSection({ ctx, text }: { ctx: Ctx; text?: boolean }): JSX.El
                 )}
                 {fill.kind === 'gradient' && (
                   <div className="insp-fillblock">
-                    <GradientEditor ctx={ctx} fill={fill} onChange={(f, live) => replace(realIndex, f, live)} />
+                    <GradientEditor ctx={ctx} fill={fill} index={realIndex} onChange={(f, live) => replace(realIndex, f, live)} />
                   </div>
                 )}
                 {fill.kind === 'image' && (

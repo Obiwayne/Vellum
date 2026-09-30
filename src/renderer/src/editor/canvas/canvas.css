@@ -207,3 +207,87 @@ body.cv-hide-ui .ed-canvas {
 .cv-svg-textarea:focus {
   box-shadow: 0 0 0 1px var(--accent);
 }
+
+/* Padding + gap handles (flex/grid frames) */
+.cv-sp-pad {
+  position: absolute;
+  background: repeating-linear-gradient(-45deg, rgba(255, 62, 108, 0.45) 0 1px, transparent 1px 5px), rgba(255, 62, 108, 0.08);
+  pointer-events: none;
+}
+.cv-sp-pad--on,
+.cv-sp-gap--on {
+  background-color: rgba(255, 62, 108, 0.2);
+}
+.cv-sp-gap {
+  position: absolute;
+  background: rgba(255, 62, 108, 0.12);
+  pointer-events: none;
+}
+.cv-sp-handle {
+  position: absolute;
+  box-sizing: border-box;
+  border-radius: 3px;
+  background: #FF3E6C;
+  border: 1px solid #fff;
+  pointer-events: auto;
+}
+.cv-sp-handle:hover,
+.cv-sp-handle--on {
+  background: #fff;
+  border-color: #FF3E6C;
+}
+.cv-badge--spacing {
+  background: #FF3E6C;
+}
+
+/* Gradient handles */
+.cv-grad {
+  position: absolute;
+  inset: 0;
+  overflow: visible;
+  pointer-events: none;
+}
+.cv-grad__line {
+  stroke: #fff;
+  stroke-width: 1.5;
+}
+.cv-grad__line--shadow {
+  stroke: rgba(0, 0, 0, 0.45);
+  stroke-width: 3.5;
+}
+.cv-grad__hit {
+  stroke: transparent;
+  stroke-width: 10;
+  pointer-events: stroke;
+  cursor: copy;
+}
+.cv-grad__shape {
+  fill: none;
+  stroke: #fff;
+  stroke-width: 1;
+  stroke-dasharray: 4 3;
+  filter: drop-shadow(0 0 1px rgba(0, 0, 0, 0.6));
+}
+.cv-grad__end {
+  fill: #fff;
+  stroke: var(--accent);
+  stroke-width: 1.5;
+  pointer-events: all;
+  cursor: grab;
+}
+.cv-grad__end--ew {
+  cursor: ew-resize;
+}
+.cv-grad__end--ns {
+  cursor: ns-resize;
+}
+.cv-grad__end--move {
+  cursor: move;
+}
+.cv-grad__stop {
+  stroke: #fff;
+  stroke-width: 2;
+  filter: drop-shadow(0 0 1.5px rgba(0, 0, 0, 0.6));
+  pointer-events: all;
+  cursor: pointer;
+}

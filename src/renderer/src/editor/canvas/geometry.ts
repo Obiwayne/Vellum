@@ -1,7 +1,7 @@
 // DOM measurement helpers for the canvas. The world container is registered by CanvasView; all
 // rects here are in WORLD coordinates (camera independent).
 import { getStore } from '../../model/store'
-import type { WorldRect } from '../../model/types'
+import type { Camera, WorldRect } from '../../model/types'
 
 let worldEl: HTMLElement | null = null
 let worldDocId: string | null = null
@@ -42,6 +42,14 @@ export function clientToWorld(clientX: number, clientY: number, docId = worldDoc
   const w = worldEl.getBoundingClientRect()
   return { x: (clientX - w.left) / cam.zoom, y: (clientY - w.top) / cam.zoom }
 }
+
+/** World rect → screen rect (relative to the viewport). */
+export const toScreen = (r: WorldRect, cam: Camera): WorldRect => ({
+  x: r.x * cam.zoom + cam.x,
+  y: r.y * cam.zoom + cam.y,
+  width: r.width * cam.zoom,
+  height: r.height * cam.zoom
+})
 
 export function union(rects: Array<WorldRect | null | undefined>): WorldRect | null {
   const rs = rects.filter((r): r is WorldRect => Boolean(r))

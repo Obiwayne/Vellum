@@ -12,7 +12,7 @@ Code: `src/renderer/src/editor/inspector/`. Every edit goes through store action
 | `GridSection.tsx` | Grid: columns/rows (a number = equal `minmax(0, 1fr)` tracks, or any template text), column/row gap, align in cell (`alignItems`/`justifyItems`), padding, fill columns first / dense (`gridAutoFlow`), clip, switch to flex. Grid item: column/row span (`gridColumn`/`gridRow: span N`) |
 | `ModeSection.tsx` | Theme mode for frames (`attrs['data-mode']`), shown when the file has theme modes |
 | `BasicSections.tsx` | Radius (uniform or per corner), Blending (opacity, `mixBlendMode`, eye toggles `node.visible`) |
-| `FillSection.tsx` + `fills.ts` | Stacked fills: solid, linear/radial gradient, image |
+| `FillSection.tsx` + `fills.ts` | Stacked fills: solid, linear/radial gradient, image. The crosshair button on a gradient ("Edit on canvas") shows its handles on the canvas (see CANVAS.md) |
 | `EffectSections.tsx` | Outline, Border (All or one side), Shadow / Inner shadow, Filters (slider + field per filter, presets in the + menu), Background blur (`backdropFilter`: blur + saturate), Guides/Video placeholders, Export |
 | `TextSection.tsx` + `fonts.ts` | Font picker, weight, size, line height, letter spacing, align, vertical align, Formatting popover, Underline, Stroke |
 | `exporting.ts` | PNG, SVG and HTML export |
@@ -20,6 +20,7 @@ Code: `src/renderer/src/editor/inspector/`. Every edit goes through store action
 
 ## CSS mapping
 - **Fills:** the bottom solid fill goes to `backgroundColor`. Every other fill layer goes to `backgroundImage`, and a stacked solid becomes `linear-gradient(c, c)`. Image fills also set `backgroundSize`, `backgroundPosition: center` and `backgroundRepeat: no-repeat`. For text, the fill is `color`.
+- **Radial gradients:** the shape/size and `at` position are kept as written (`radial-gradient(at 20% 25%, …)` stays that way). A new radial gradient is `radial-gradient(circle, …)`.
 - **Fill eye toggle:** hiding a fill removes it from the CSS. It is remembered only for this session.
 - **Rotation and flips:** rotation is the CSS `rotate: 'Ndeg'` property. Flips are `scale: '-1 1'`.
 - **Radius and padding:** both are written as shorthands. Any longhands are removed.
