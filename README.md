@@ -1,4 +1,6 @@
-# Vellum
+<p align="center"><img src="resources/icon.svg" width="112" alt="Vellum icon" /></p>
+
+<h1 align="center">Vellum</h1>
 
 A free, local-first design tool for Windows where **designs are real HTML/CSS**, with a built-in
 **MCP server so Claude (or any MCP-capable agent) can design in it** while you watch.

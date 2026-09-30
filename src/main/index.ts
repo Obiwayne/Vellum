@@ -4,10 +4,13 @@ import { IPC, type Rect } from '@shared/api'
 import { migrateLegacyUserData, registerStorageIpc } from './storage'
 import { startBridge } from './bridge'
 import { disposeRenderer, renderHtml } from './offscreen'
+import appIcon from '../../resources/icon.ico?asset'
 
 let mainWindow: BrowserWindow | null = null
 
 function createWindow(): void {
+  // groups taskbar entries under Vellum's own identity (and icon) instead of Electron's
+  if (process.platform === 'win32') app.setAppUserModelId('com.vellum.app')
   const win = new BrowserWindow({
     width: 1440,
     height: 900,
@@ -17,6 +20,7 @@ function createWindow(): void {
     backgroundColor: '#2A2A2A',
     show: false,
     title: 'Vellum',
+    icon: appIcon,
     autoHideMenuBar: true,
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
