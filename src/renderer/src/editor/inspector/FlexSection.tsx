@@ -7,6 +7,7 @@ import {
   PanelLeftRightDashed,
   PanelTopBottomDashed,
   Scan,
+  Shuffle,
   SlidersHorizontal,
   WrapText
 } from 'lucide-react'
@@ -54,9 +55,6 @@ export function FlexSection({ ctx }: { ctx: Ctx }): JSX.Element {
   const jc = norm(n0.style.justifyContent)
   const wrap = common(nodes, (n) => n.style.flexWrap === 'wrap')
   const gap = common(nodes, (n) => (typeof n.style.gap === 'number' ? n.style.gap : parseFloat(String(n.style.gap ?? 0)) || 0))
-  const pad = common(nodes, (n) => readBox(n.style, 'padding'))
-  const padV = isMixed(pad) ? null : pad
-  const [perSide, setPerSide] = useState(() => Boolean(padV && (padV[0] !== padV[2] || padV[1] !== padV[3])))
   const clip = common(nodes, (n) => n.style.overflow === 'clip' || n.style.overflow === 'hidden')
 
   // grid coordinates of the active cell(s)
@@ -74,7 +72,6 @@ export function FlexSection({ ctx }: { ctx: Ctx }): JSX.Element {
     ctx.set({ alignItems: VAL[cross], justifyContent: spaced ? n0.style.justifyContent : VAL[main] })
   }
 
-  const setPad = (v: number[], live = false): void => ctx.set(writeBox('padding', v), live ? co(ctx, 'pad') : undefined)
   const spacingItems: MenuEntry[] = [
     { label: 'Packed', checked: !spaced, onSelect: () => ctx.set({ justifyContent: 'start' }) },
     { label: 'Space between', checked: jc === 'between', onSelect: () => ctx.set({ justifyContent: 'space-between' }) },
@@ -89,6 +86,15 @@ export function FlexSection({ ctx }: { ctx: Ctx }): JSX.Element {
         useStore.getState().transact(docId, 'Remove flex', () => ids.forEach((id) => useStore.getState().removeFlex(docId, id)))
       }
       removeLabel="Remove flex"
+      actions={
+        <IconButton
+          icon={<Shuffle size={14} />}
+          label="Switch to grid"
+          onClick={() =>
+            useStore.getState().transact(docId, 'Switch to grid', () => ids.forEach((id) => useStore.getState().switchLayout(docId, id, 'grid')))
+          }
+        />
+      }
     >
       <div className="insp-flex">
         <div className="insp-aligngrid">
@@ -148,54 +154,7 @@ export function FlexSection({ ctx }: { ctx: Ctx }): JSX.Element {
           onClick={() => setSpacingOpen((o) => !o)}
         />
       </div>
-      {!perSide ? (
-        <div className="insp-g2i">
-          <Field
-            label={<PanelLeftRightDashed size={13} />}
-            value={padV ? (padV[1] === padV[3] ? padV[1] : null) : null}
-            placeholder="Mixed"
-            min={0}
-            onChange={(v) => typeof v === 'number' && padV && setPad([padV[0], v, padV[2], v])}
-            onScrub={(v) => padV && setPad([padV[0], v, padV[2], v], true)}
-          />
-          <Field
-            label={<PanelTopBottomDashed size={13} />}
-            value={padV ? (padV[0] === padV[2] ? padV[0] : null) : null}
-            placeholder="Mixed"
-            min={0}
-            onChange={(v) => typeof v === 'number' && padV && setPad([v, padV[1], v, padV[3]])}
-            onScrub={(v) => padV && setPad([v, padV[1], v, padV[3]], true)}
-          />
-          <IconButton icon={<Scan size={14} />} label="Individual padding" onClick={() => setPerSide(true)} />
-        </div>
-      ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) 24px', gap: 8 }}>
-          <div className="insp-g4">
-            {(['T', 'R', 'B', 'L'] as const).map((l, i) => (
-              <Field
-                key={l}
-                label={l}
-                value={padV ? padV[i] : null}
-                placeholder="–"
-                min={0}
-                onChange={(v) => {
-                  if (typeof v !== 'number' || !padV) return
-                  const next = [...padV]
-                  next[i] = v
-                  setPad(next)
-                }}
-                onScrub={(v) => {
-                  if (!padV) return
-                  const next = [...padV]
-                  next[i] = v
-                  setPad(next, true)
-                }}
-              />
-            ))}
-          </div>
-          <IconButton icon={<Scan size={14} />} label="Individual padding" active onClick={() => setPerSide(false)} />
-        </div>
-      )}
+      <PaddingFields ctx={ctx} />
       <Checkbox
         checked={clip === true}
         label="Clip content"
@@ -212,5 +171,65 @@ export function FlexSection({ ctx }: { ctx: Ctx }): JSX.Element {
         ignore={[spacingBtn.current]}
       />
     </Section>
+  )
+}
+
+/** Padding: horizontal + vertical, or one field per side. Shared by the Flex and Grid sections. */
+export function PaddingFields({ ctx }: { ctx: Ctx }): JSX.Element {
+  const pad = common(ctx.nodes, (n) => readBox(n.style, 'padding'))
+  const padV = isMixed(pad) ? null : pad
+  const [perSide, setPerSide] = useState(() => Boolean(padV && (padV[0] !== padV[2] || padV[1] !== padV[3])))
+  const setPad = (v: number[], live = false): void => ctx.set(writeBox('padding', v), live ? co(ctx, 'pad') : undefined)
+  return (
+    <>
+        {!perSide ? (
+          <div className="insp-g2i">
+            <Field
+              label={<PanelLeftRightDashed size={13} />}
+              value={padV ? (padV[1] === padV[3] ? padV[1] : null) : null}
+              placeholder="Mixed"
+              min={0}
+              onChange={(v) => typeof v === 'number' && padV && setPad([padV[0], v, padV[2], v])}
+              onScrub={(v) => padV && setPad([padV[0], v, padV[2], v], true)}
+            />
+            <Field
+              label={<PanelTopBottomDashed size={13} />}
+              value={padV ? (padV[0] === padV[2] ? padV[0] : null) : null}
+              placeholder="Mixed"
+              min={0}
+              onChange={(v) => typeof v === 'number' && padV && setPad([v, padV[1], v, padV[3]])}
+              onScrub={(v) => padV && setPad([v, padV[1], v, padV[3]], true)}
+            />
+            <IconButton icon={<Scan size={14} />} label="Individual padding" onClick={() => setPerSide(true)} />
+          </div>
+        ) : (
+          <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) 24px', gap: 8 }}>
+            <div className="insp-g4">
+              {(['T', 'R', 'B', 'L'] as const).map((l, i) => (
+                <Field
+                  key={l}
+                  label={l}
+                  value={padV ? padV[i] : null}
+                  placeholder="–"
+                  min={0}
+                  onChange={(v) => {
+                    if (typeof v !== 'number' || !padV) return
+                    const next = [...padV]
+                    next[i] = v
+                    setPad(next)
+                  }}
+                  onScrub={(v) => {
+                    if (!padV) return
+                    const next = [...padV]
+                    next[i] = v
+                    setPad(next, true)
+                  }}
+                />
+              ))}
+            </div>
+            <IconButton icon={<Scan size={14} />} label="Individual padding" active onClick={() => setPerSide(false)} />
+          </div>
+        )}
+    </>
   )
 }

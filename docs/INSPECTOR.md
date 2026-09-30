@@ -8,10 +8,12 @@ Code: `src/renderer/src/editor/inspector/`. Every edit goes through store action
 | `TopBar.tsx` | Avatar (the open profile's picture, or its initial on the profile colour), zoom menu, Share popover (Export `.vellum` JSON / Copy HTML) |
 | `ConnectAgentModal.tsx` | "Connect your agent": agent list, commands and config snippets, bridge status, example prompts |
 | `LayoutSection.tsx` | X/Y/rotation, W/H with Fixed/Fit/Fill, rotate/flip, Add flex / Wrap in flex, Absolute position, Clip content, size presets (`SIZE_PRESETS`) |
-| `FlexSection.tsx` | 3×3 align grid, direction, wrap, gap, spacing menu, padding H/V or per side, remove |
+| `FlexSection.tsx` | 3×3 align grid, direction, wrap, gap, spacing menu, padding H/V or per side (`PaddingFields`, shared with Grid), remove, switch to grid |
+| `GridSection.tsx` | Grid: columns/rows (a number = equal `minmax(0, 1fr)` tracks, or any template text), column/row gap, align in cell (`alignItems`/`justifyItems`), padding, fill columns first / dense (`gridAutoFlow`), clip, switch to flex. Grid item: column/row span (`gridColumn`/`gridRow: span N`) |
+| `ModeSection.tsx` | Theme mode for frames (`attrs['data-mode']`), shown when the file has theme modes |
 | `BasicSections.tsx` | Radius (uniform or per corner), Blending (opacity, `mixBlendMode`, eye toggles `node.visible`) |
 | `FillSection.tsx` + `fills.ts` | Stacked fills: solid, linear/radial gradient, image |
-| `EffectSections.tsx` | Outline, Border (All or one side), Shadow / Inner shadow, Filters, Guides/Video placeholders, Export |
+| `EffectSections.tsx` | Outline, Border (All or one side), Shadow / Inner shadow, Filters (slider + field per filter, presets in the + menu), Background blur (`backdropFilter`: blur + saturate), Guides/Video placeholders, Export |
 | `TextSection.tsx` + `fonts.ts` | Font picker, weight, size, line height, letter spacing, align, vertical align, Formatting popover, Underline, Stroke |
 | `exporting.ts` | PNG, SVG and HTML export |
 | `common.ts` | Mixed-value helper (`common`/`MIXED`), selection ctx, CSS parsers |
@@ -24,7 +26,8 @@ Code: `src/renderer/src/editor/inspector/`. Every edit goes through store action
 - **Outline:** `outlineStyle`, `outlineWidth`, `outlineOffset`, `outlineColor`.
 - **Border:** `border{,Top,Right,Bottom,Left}{Width,Style,Color}`. Hiding a border or outline sets its style to `none`.
 - **Shadows:** `boxShadow` holds both shadow and inset shadow. Text uses `textShadow`.
-- **Filters:** `filter`.
+- **Filters:** `filter`. Presets write ordinary filter lists. **Background blur:** `backdropFilter: blur(Npx) saturate(N%)` on frames and rectangles.
+- **Grid:** `display:grid` + `gridTemplateColumns`/`gridTemplateRows`, `gap` (or `rowGap`/`columnGap` when they differ). "Add grid" (Layout section) makes two equal columns; children without a width get `width:100%`. Removing grid/flex also removes children's `gridColumn`/`gridRow`.
 - **Text weight, line height and letter spacing:** `fontWeight` is a number (100–900). Line height is written in px, and "Auto" means `normal`. Letter spacing is shown as a % and written as em.
 - **Text vertical align:** `display:flex; flexDirection:column; justifyContent`.
 - **Formatting popover:**

@@ -177,7 +177,6 @@ export function CanvasView({ docId }: { docId: string }): JSX.Element | null {
   const page = useStore((s) => activePage(s, docId))
   const camera = useStore((s) => s.editors[docId]?.camera)
   const tool = useStore((s) => s.editors[docId]?.tool ?? 'move')
-  const working = useStore((s) => (s.editors[docId]?.workingNodes.length ?? 0) > 0)
   const pixelGrid = useStore((s) => s.prefs['canvas.pixelGrid'] !== false)
   const viewport = useRef<HTMLDivElement | null>(null)
   const world = useRef<HTMLDivElement | null>(null)
@@ -1133,7 +1132,6 @@ export function CanvasView({ docId }: { docId: string }): JSX.Element | null {
       )}
       <Overlay docId={docId} transient={transient} onHandleDown={onHandleDown} onLabelDown={onLabelDown} />
       <CommentsLayer docId={docId} />
-      {working && <div className="cv-glow" />}
       {ctx.element}
     </div>
   )

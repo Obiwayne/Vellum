@@ -204,7 +204,7 @@ async function renderOnce(args: RenderArgs): Promise<RenderResult> {
     await w.webContents.executeJavaScript(
       `(() => {
         const wrap = document.getElementById('__canvas_wrap');
-        if (wrap) { wrap.style.width = ${m.wrapWidth} + 'px'; wrap.style.height = ${m.wrapHeight} + 'px'; wrap.style.display = 'flex'; }
+        if (wrap) { wrap.style.width = ${m.wrapWidth} + 'px'; wrap.style.height = ${m.wrapHeight} + 'px'; if (getComputedStyle(wrap).display === 'inline-flex') wrap.style.display = 'flex'; }
         document.body.style.width = document.body.style.minWidth = ${Math.ceil(m.x + m.wrapWidth)} + 'px';
         document.documentElement.style.zoom = ${JSON.stringify(String(scale))};
         ${args.background ? `document.body.style.background = ${JSON.stringify(args.background)};` : ''}

@@ -14,7 +14,9 @@ const GROUPS: { title: string; items: [string, string][] }[] = [
       ['Comment', 'C'],
       ['Shaders', 'S'],
       ['Create image', 'Ctrl+Shift+I'],
-      ['Create SVG', 'Ctrl+Shift+J']
+      ['Create SVG', 'Ctrl+Shift+J'],
+      ['Icons', 'Shift+I'],
+      ['Show / hide comments', 'Shift+C']
     ]
   },
   {

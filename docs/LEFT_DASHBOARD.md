@@ -19,10 +19,14 @@
 - `starterTheme.ts` contains the 84 tokens bundled as the starter theme.
 - `WhatsNew.tsx` exports `FooterLinks` and `WhatsNewModal` (`APP_VERSION`). `InlineEdit.tsx` is the shared rename input.
 
+### Theme modes
+`model/modes.ts`. `Doc.modes` lists the modes (`[0]` is the base mode, whose values are `token.value`); `Token.modes[mode]` holds the other values. The Theme panel shows a mode strip (click to view/edit that mode, double-click to rename, right-click to delete, + to add); rows show the viewed mode's values and a dot when the token has its own value there. The token editor edits the viewed mode and can reset it to the base value. A frame's mode is `attrs['data-mode']`: `computeNodeStyle` puts that mode's token values on the frame as custom properties (canvas, thumbnails, screenshots); exports keep the attribute and add `[data-mode="…"]` blocks (`tokensCssWithModes`).
+
 ## Dashboard (`src/renderer/src/dashboard/`)
 - `Dashboard.tsx` has the sidebar: the account row (profile picture + name; menu: Edit profile…, Switch profile, Lock for protected profiles, Settings, Delete profile…), search (Ctrl+F), Recents, Learn, Files, Archive, Settings, the dismissible "Using agents" card and the footer.
   - The main area has the title, "+ New file" (`createFile()` applies the default page colour) and the grid/list toggle.
   - It also contains the delete confirmation.
+- **Folders** (`folders.ts`, `FolderViews.tsx`): nested folders stored in the profile prefs (`prefs.folders`: `{id, name, parent}`); a file's folder is `Doc.folderId`. Files view shows the current folder's subfolders (cards or rows) and files, with a breadcrumb; the sidebar shows the folder tree under Files. Files and folders drag onto folders, tree rows and breadcrumb crumbs; file menus have "Move to folder". Deleting a folder moves its files and subfolders to its parent. "New file" inside a folder creates it there.
 - `FileCard.tsx` has the cards and list rows with relative times. Its file menu has Open, Open in new tab, Rename, Duplicate (`duplicateDoc`), Archive/Unarchive and Delete…, and hides the unsafe items for the Scratchpad.
 - `Thumbnail.tsx` renders a scaled live DOM preview of page 1. It has no `data-node-id`, so the canvas resolver is not affected.
 - `LearnPage.tsx` has the shortcut reference and the Claude setup. `ConnectAgentModal.tsx` exports `ConnectAgentBody`, `MCP_COMMAND` and `ConnectAgentModal`.

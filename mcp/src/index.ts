@@ -702,7 +702,7 @@ server.registerTool(
   'get_tokens',
   {
     description:
-      'List the file\'s design tokens (colors, spacing, typography, etc). format "json" (default) returns structured tokens, "css" a `:root { ... }` stylesheet, "tailwind" a Tailwind v4 `@theme { ... }` block.',
+      'List the file\'s design tokens (colors, spacing, typography, etc). format "json" (default) returns structured tokens, "css" a `:root { ... }` stylesheet, "tailwind" a Tailwind v4 `@theme { ... }` block. When the file has theme modes (e.g. Light/Dark), json includes each token\'s per-mode values and css/tailwind add a `[data-mode="Dark"] { ... }` block per mode.',
     inputSchema: {
       fileId,
       format: z.enum(['json', 'css', 'tailwind']).optional(),
@@ -728,7 +728,11 @@ Returns one result per input entry.`,
           z.object({
             name: tokenName,
             newName: tokenName.optional(),
-            value: z.union([z.string(), z.number()]).optional(),
+            value: z.union([z.string(), z.number()]).optional().describe('Value in the base mode.'),
+            modes: z
+              .record(z.string(), z.union([z.string(), z.number(), z.null()]))
+              .optional()
+              .describe('Values in other theme modes, e.g. {"Dark": "#0B0B0C"}; null removes a mode value. Unknown modes are created.'),
             delete: z.boolean().optional(),
             description: z.string().optional()
           })
@@ -744,14 +748,16 @@ server.registerTool(
   'create_tokens',
   {
     description: `Create (or upsert) one or more design tokens. Each entry needs name and value (type is optional but recommended).
-Use var(--other-token) as the value to alias another token. For colors define neutrals first, then primary, secondary, accent; other types smallest value first.`,
+Use var(--other-token) as the value to alias another token. For colors define neutrals first, then primary, secondary, accent; other types smallest value first.
+Theme modes: pass modes: {"Dark": "#0B0B0C"} for a token's value in another mode. The first use creates the modes (the base mode is called "Light" unless the file already has modes). Then put a frame in a mode with set_theme_mode, or write_html with data-mode="Dark" on the artboard.`,
     inputSchema: {
       fileId,
       tokens: z
         .array(
           z.object({
             name: tokenName,
-            value: z.union([z.string(), z.number()]),
+            value: z.union([z.string(), z.number()]).describe('Value in the base mode.'),
+            modes: z.record(z.string(), z.union([z.string(), z.number()])).optional().describe('Values in other theme modes, e.g. {"Dark": "#0B0B0C"}.'),
             type: tokenTypes.optional(),
             description: z.string().optional()
           })
@@ -760,6 +766,20 @@ Use var(--other-token) as the value to alias another token. For colors define ne
     }
   },
   (args) => forward('create_tokens', args)
+)
+
+server.registerTool(
+  'set_theme_mode',
+  {
+    description:
+      'Put frames (usually artboards) into a theme mode such as "Dark": the frame and everything inside it use that mode\'s token values. Pass mode null to inherit again. See get_basic_info → themeModes; create modes with create_tokens (modes: {...}).',
+    inputSchema: {
+      fileId,
+      nodeIds: z.array(z.string()).min(1),
+      mode: z.string().nullable().describe('Mode name, or null to inherit from the parent.')
+    }
+  },
+  (args) => forward('set_theme_mode', args)
 )
 
 server.registerTool(

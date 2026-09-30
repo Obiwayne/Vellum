@@ -2,6 +2,7 @@
 import { getStore, activePage, activeDocId } from '../model/store'
 import { topLevelOf } from '../model/ops'
 import type { CommentThread, Doc, Token } from '../model/types'
+import { MODE_ATTR, MODE_NAME_RE, modesOf, tokenValueIn, tokensCssWithModes } from '../model/modes'
 import {
   arr,
   geometry,
@@ -63,6 +64,7 @@ export function basicInfo(docId: string, pageIdArg?: unknown): unknown {
     pages: doc.pages.map((p) => ({ id: p.id, name: p.name, isActive: p.id === viewing })),
     fontFamilies: fontFamiliesOf(doc),
     openComments: (doc.comments ?? []).filter((t) => t.status === 'open').length,
+    ...(modesOf(doc).length ? { themeModes: modesOf(doc) } : {}),
     tokens: { items: doc.tokens.map((t) => ({ name: t.name, value: t.value })) }
   })
 }
@@ -195,9 +197,23 @@ registerHandler('get_tokens', (args) => {
   const re = pattern ? globToRegex(pattern) : null
   const list = doc.tokens.filter((t) => (!types.length || types.includes(tokenType(t.name))) && (!re || re.test(t.name)))
   const format = str(args.format) ?? 'json'
-  if (format === 'css') return scoped(docId, `:root {\n${list.map((t) => `  ${t.name}: ${t.value};`).join('\n')}\n}`)
-  if (format === 'tailwind') return scoped(docId, `@theme {\n${list.map((t) => `  ${t.name}: ${t.value};`).join('\n')}\n}`)
-  return scoped(docId, { tokens: list.map((t) => ({ name: t.name, value: t.value, type: tokenType(t.name) })), count: list.length })
+  const modes = modesOf(doc)
+  if (format === 'css') return scoped(docId, tokensCssWithModes(doc, list, true))
+  if (format === 'tailwind') {
+    const theme = `@theme {\n${list.map((t) => `  ${t.name}: ${t.value};`).join('\n')}\n}`
+    const extra = modes.length ? `\n\n${tokensCssWithModes(doc, list, true).split('\n\n').slice(1).join('\n\n')}` : ''
+    return scoped(docId, theme + extra)
+  }
+  return scoped(docId, {
+    ...(modes.length ? { modes, baseMode: modes[0] } : {}),
+    tokens: list.map((t) => ({
+      name: t.name,
+      value: t.value,
+      type: tokenType(t.name),
+      ...(modes.length > 1 ? { modes: Object.fromEntries(modes.slice(1).map((m) => [m, tokenValueIn(doc, t, m)])) } : {})
+    })),
+    count: list.length
+  })
 })
 
 const NAME_RE = /^--[a-zA-Z0-9_-]+$/
@@ -218,7 +234,8 @@ registerHandler('create_tokens', (args) => {
     }
   }
   if (valid.length) getStore().upsertTokens(docId, valid)
-  return scoped(docId, { results })
+  applyModeValues(docId, arr<{ name?: string; modes?: unknown }>(args.tokens))
+  return scoped(docId, { results, ...(modesOf(getDoc(docId)).length ? { themeModes: modesOf(getDoc(docId)) } : {}) })
 })
 
 registerHandler('set_tokens', (args) => {
@@ -235,6 +252,8 @@ registerHandler('set_tokens', (args) => {
     getStore().setTokens(docId, tokens)
     return scoped(docId, { replaced: true, count: tokens.length, ...(results.length ? { results } : {}) })
   }
+  // mode values first (by the current name), then renames/values/deletes
+  applyModeValues(docId, entries.filter((e) => !e.delete) as Array<{ name?: string; modes?: unknown }>)
   getStore().mutate(docId, 'Set tokens', (d) => {
     for (const e of entries) {
       const t = d.tokens.find((x) => x.name === e.name)
@@ -267,6 +286,49 @@ registerHandler('set_tokens', (args) => {
         for (const other of d.tokens) if (other.value.includes(old)) other.value = other.value.replace(re, `var(${e.newName}`)
       }
       results.push({ name: t.name, result: 'updated', value: t.value })
+    }
+  })
+  return scoped(docId, { results })
+})
+
+// ------------------------------------------------------------------------------------------------
+// theme modes
+
+/** Write per-mode token values ({ Dark: '#000' }), creating modes that don't exist yet. */
+function applyModeValues(docId: string, entries: Array<{ name?: string; modes?: unknown }>): void {
+  const s = getStore()
+  for (const e of entries) {
+    if (!e.name || !e.modes || typeof e.modes !== 'object') continue
+    for (const [mode, raw] of Object.entries(e.modes as Record<string, unknown>)) {
+      const m = mode.trim()
+      if (!MODE_NAME_RE.test(m)) throw new Error(`Invalid mode name "${mode}" (letters, digits, spaces, - and _; max 32)`)
+      if (!modesOf(getDoc(docId)).includes(m)) s.addMode(docId, m)
+      const v = raw === null ? null : tokenValue(raw)
+      if (raw !== null && v === null) continue
+      s.setTokenValue(docId, e.name, m, v)
+    }
+  }
+}
+
+registerHandler('set_theme_mode', (args) => {
+  const docId = resolveDocId(args)
+  const doc = getDoc(docId)
+  const modes = modesOf(doc)
+  const mode = args.mode === null || args.mode === undefined ? null : str(args.mode)?.trim() ?? null
+  if (mode && !modes.includes(mode))
+    throw new Error(modes.length ? `Mode "${mode}" not found. Modes: ${modes.join(', ')}` : 'The file has no theme modes. Create them with create_tokens (modes: {"Dark": …}).')
+  const ids = arr<string>(args.nodeIds)
+  const results: unknown[] = []
+  getStore().mutate(docId, 'Set theme mode', (d) => {
+    for (const id of ids) {
+      const n = d.nodes[id]
+      if (!n || n.type !== 'frame') {
+        results.push({ nodeId: id, result: 'error', message: n ? 'Only frames can have a theme mode' : 'Node not found' })
+        continue
+      }
+      if (mode) (n.attrs ??= {})[MODE_ATTR] = mode
+      else if (n.attrs) delete n.attrs[MODE_ATTR]
+      results.push({ nodeId: id, mode: mode ?? 'inherit', result: 'ok' })
     }
   })
   return scoped(docId, { results })

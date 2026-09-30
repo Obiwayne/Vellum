@@ -1,6 +1,6 @@
 // Dashboard: sidebar (account, search, Recents/Learn, Files/Archive/Settings, agents card) + main area.
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
-import { Archive, ChevronDown, ChevronRight, Clock, GraduationCap, LayoutGrid, List, Lock, Minus, Plus, Search, Settings } from 'lucide-react'
+import { Archive, ChevronDown, ChevronRight, Clock, FolderPlus, GraduationCap, LayoutGrid, List, Lock, Minus, Plus, Search, Settings } from 'lucide-react'
 import { Button, Menu, Modal, Tooltip, useContextMenu } from '../ui'
 import { getStore, useStore } from '../model/store'
 import type { Doc } from '../model/types'
@@ -12,6 +12,8 @@ import { ConnectAgentModal } from './ConnectAgentModal'
 import { Avatar } from '../profile/parts'
 import { lockAndReload, useCurrentProfile } from '../profile/profile'
 import { DeleteProfileModal, EditProfileModal } from '../profile/ProfileModals'
+import { childFolders, createFolder, docFolder, folderById, moveDocToFolder, useFolders, type Folder } from './folders'
+import { Breadcrumb, FolderCard, FolderTree, folderMenu } from './FolderViews'
 import './dashboard.css'
 
 type Section = 'recents' | 'learn' | 'files' | 'archive' | 'settings'
@@ -25,6 +27,7 @@ const TITLES: Record<Section, string> = {
 }
 
 let lastSection: Section = 'recents'
+let lastFolder: string | null = null
 
 /** Create a new file, applying the default page colour preference. */
 export function createFile(): string {
@@ -59,6 +62,11 @@ export function Dashboard(): JSX.Element {
   const prefs = useStore((s) => s.prefs)
   const [section, setSectionState] = useState<Section>(lastSection)
   const [query, setQuery] = useState('')
+  const folders = useFolders()
+  const [folderState, setFolderState] = useState<string | null>(lastFolder)
+  // a folder deleted elsewhere falls back to its parent chain / the top level
+  const folder = folderById(folders, folderState) ? folderState : null
+  const [renameNew, setRenameNew] = useState<string | null>(null)
   const [editProfileOpen, setEditProfileOpen] = useState(false)
   const [deleteProfileOpen, setDeleteProfileOpen] = useState(false)
   const profile = useCurrentProfile()
@@ -77,6 +85,16 @@ export function Dashboard(): JSX.Element {
     lastSection = s
     setSectionState(s)
     setQuery('')
+  }
+  const openFolder = (id: string | null): void => {
+    lastFolder = id
+    setFolderState(id)
+    setSection('files')
+  }
+  const newFolder = (): void => {
+    const id = createFolder(section === 'files' && !query.trim() ? folder : null)
+    setRenameNew(id)
+    if (section !== 'files') openFolder(null)
   }
 
   // Ctrl+F focuses search
@@ -110,20 +128,24 @@ export function Dashboard(): JSX.Element {
         return out
       }
       case 'files':
-        return all.filter((d) => !d.archived).sort((a, b) => Number(Boolean(b.scratchpad)) - Number(Boolean(a.scratchpad)) || b.updatedAt - a.updatedAt)
+        return all.filter((d) => !d.archived && docFolder(folders, d) === folder).sort((a, b) => Number(Boolean(b.scratchpad)) - Number(Boolean(a.scratchpad)) || b.updatedAt - a.updatedAt)
       case 'archive':
         return all.filter((d) => d.archived).sort((a, b) => b.updatedAt - a.updatedAt)
       default:
         return []
     }
-  }, [docs, recents, section, query])
+  }, [docs, recents, section, query, folders, folder])
 
   const openMenu = (e: React.MouseEvent, doc: Doc, rename: () => void): void =>
     ctx.open(e, fileMenu(doc, { rename, askDelete: () => setConfirmDelete(doc) }))
+  const openFolderMenu = (e: React.MouseEvent, f: Folder, rename: () => void): void =>
+    ctx.open(e, folderMenu(f, { rename, open: (id) => openFolder(id) }))
 
   const searching = query.trim().length > 0
   const showFiles = searching || section === 'recents' || section === 'files' || section === 'archive'
   const title = searching ? `Results for “${query.trim()}”` : TITLES[section]
+  const inFiles = !searching && section === 'files'
+  const subFolders = inFiles ? childFolders(folders, folder) : []
 
   return (
     <div className="db">
@@ -192,7 +214,8 @@ export function Dashboard(): JSX.Element {
         </nav>
         <div className="db-side__hairline" />
         <nav className="db-navs">
-          <NavItem icon={<LayoutGrid size={16} />} label="Files" active={!searching && section === 'files'} onClick={() => setSection('files')} />
+          <NavItem icon={<LayoutGrid size={16} />} label="Files" active={inFiles && folder === null} onClick={() => openFolder(null)} />
+          <FolderTree current={inFiles ? folder : undefined} onOpen={openFolder} onMenu={openFolderMenu} />
           <NavItem icon={<Archive size={16} />} label="Archive" active={!searching && section === 'archive'} onClick={() => setSection('archive')} />
           <NavItem icon={<Settings size={16} />} label="Settings" active={!searching && section === 'settings'} onClick={() => setSection('settings')} />
         </nav>
@@ -219,10 +242,24 @@ export function Dashboard(): JSX.Element {
       <section className="db-main">
         <div className="db-main__inner">
           <div className="db-main__head">
-            <h1 className="db-title">{title}</h1>
+            {inFiles ? <Breadcrumb current={folder} onOpen={openFolder} /> : <h1 className="db-title">{title}</h1>}
             {showFiles && (
               <>
-                <Button variant="primary" size="sm" icon={<Plus size={14} />} className="db-newfile" onClick={() => createFile()}>
+                {(inFiles || section === 'recents') && !searching && (
+                  <Button size="sm" icon={<FolderPlus size={14} />} className="db-newfile" onClick={newFolder}>
+                    New folder
+                  </Button>
+                )}
+                <Button
+                  variant="primary"
+                  size="sm"
+                  icon={<Plus size={14} />}
+                  className="db-newfile"
+                  onClick={() => {
+                    const id = createFile()
+                    if (inFiles && folder) moveDocToFolder(id, folder)
+                  }}
+                >
                   New file
                 </Button>
                 <div className="db-viewtoggle">
@@ -251,10 +288,31 @@ export function Dashboard(): JSX.Element {
             )}
           </div>
 
+          {subFolders.length > 0 && view === 'grid' && (
+            <div className="db-folders">
+              {subFolders.map((f) => (
+                <FolderCard key={f.id} f={f} list={false} onOpen={openFolder} onMenu={openFolderMenu} autoRename={f.id === renameNew} />
+              ))}
+            </div>
+          )}
+          {subFolders.length > 0 && view === 'list' && (
+            <div className="db-list db-list--folders">
+              {subFolders.map((f) => (
+                <FolderCard key={f.id} f={f} list onOpen={openFolder} onMenu={openFolderMenu} autoRename={f.id === renameNew} />
+              ))}
+            </div>
+          )}
           {showFiles &&
             (list.length === 0 ? (
+              subFolders.length > 0 ? null :
               <div className="db-empty">
-                {searching ? 'No files match your search.' : section === 'archive' ? 'Archived files will appear here.' : 'No files yet.'}
+                {searching
+                  ? 'No files match your search.'
+                  : section === 'archive'
+                    ? 'Archived files will appear here.'
+                    : inFiles && folder
+                      ? 'This folder is empty. Drag files here, or use “Move to folder” in a file’s menu.'
+                      : 'No files yet.'}
               </div>
             ) : view === 'grid' ? (
               <div className="db-grid">

@@ -36,9 +36,10 @@ export async function buildDocument(p: RenderPayload, opts: { exportMode?: boole
   const cssUrl = googleCssUrl(google)
   const sized = p.width !== null && p.height !== null
   // The wrapper reproduces the canvas context: inherited text defaults, and — when we know the
-  // measured size — a box of exactly that size so width:100% / flex:1 children resolve correctly.
+  // measured size — a one-cell grid of exactly that size, so width:100% children resolve and
+  // flow children without a width (grid cells, stretched flex items) keep their measured width.
   const wrap = sized
-    ? `display:flex;width:${p.width}px;height:${p.height}px;`
+    ? `display:grid;grid-template-columns:${p.width}px;grid-template-rows:${p.height}px;width:${p.width}px;height:${p.height}px;`
     : 'display:inline-flex;'
   const body = opts.exportMode ? p.exportHtml : p.html
   return `<!doctype html>

@@ -1,5 +1,5 @@
 // Screen-space overlay above the world: frame labels, hover/selection outlines, handles, size
-// badge, agent working outlines + glow, snapping guides, marquee, drawing previews.
+// badge, agent working outlines + tag, snapping guides, marquee, drawing previews.
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from 'react'
 import { activePage, useStore } from '../../model/store'
 import type { Camera, CNode, WorldRect } from '../../model/types'

@@ -69,5 +69,5 @@
 ## [multi-agent] finish_working_on_nodes clears other agents' working marks
 - **FIXED** — `finish_working_on_nodes` takes an optional `nodeIds`: only those nodes (and the artboards they are in) are released and the result lists `released`/`remaining`. With no arguments it still releases every mark in the file. The guide tells agents to pass `nodeIds` when several agents share a file. Regression checks: regress.mjs §9.
 - Tool: finish_working_on_nodes() called by one agent while another agent was still writing into a different artboard of hNTr3_YXd6KI.
-- Expected: only the caller's artboards lose the teal outline/orange glow.
+- Expected: only the caller's artboards lose the teal outline.
 - Actual: every working mark in the file was cleared.

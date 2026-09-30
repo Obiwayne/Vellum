@@ -100,6 +100,14 @@ Unless the user gave a detailed design system, post a short brief in chat BEFORE
 2. You MUST call get_font_family_info before writing typographic styles for the first time in a session, to confirm availability and the exact weights/styles.
 3. Units: font sizes in **px** (required); letter-spacing in **em**; line-height in **px** (relative values are fine if they don't produce sub-pixel line boxes).
 
+## Layout: flex and grid
+- Flex (display:flex) for rows/stacks; CSS grid (display:grid; gridTemplateColumns:"repeat(3, minmax(0, 1fr))"; gap) for card grids, galleries and dashboards. Grid children span with gridColumn:"span 2". The user can edit both in the inspector.
+
+## Theme modes (Light / Dark)
+- A file can have theme modes: one token set with a value per mode (get_basic_info → themeModes, get_tokens shows per-mode values).
+- Create or extend them with create_tokens / set_tokens: {"name":"--color-bg","value":"#FFFFFF","modes":{"Dark":"#0B0B0C"}}.
+- Put an artboard (or any frame) into a mode with set_theme_mode, or write_html with data-mode="Dark" on it. Everything inside uses that mode's values, so style with var(--token) rather than hard-coded colours.
+
 ## Comments (change requests pinned to layers)
 The user leaves comments on the canvas with the Comment tool (C): each thread is pinned to a node and numbered like a pin (#1, #2…). They are usually instructions for you.
 1. list_comment_threads (defaults to open threads) gives each thread's comment text and the node it is on: id, name, type, text for text nodes, parent and artboard.
@@ -108,7 +116,7 @@ The user leaves comments on the canvas with the Comment tool (C): each thread is
 4. Resolved threads are history; leave them alone unless asked. Call finish_working_on_nodes at the end as usual.
 
 ## Housekeeping
-- Nodes you create or edit are marked as "working" (the user sees a teal outline and an orange glow). Always release them with finish_working_on_nodes at the end. With no arguments it releases every mark in the file (including other agents'); when several agents work on the same file, pass nodeIds (the artboards or nodes you worked on) so only yours are released.
+- Nodes you create or edit are marked as "working" (the user sees a teal outline with a tag). Always release them with finish_working_on_nodes at the end. With no arguments it releases every mark in the file (including other agents'); when several agents work on the same file, pass nodeIds (the artboards or nodes you worked on) so only yours are released.
 - Every mutating tool call is one undo step for the user (Ctrl+Z).
 - Do not mention node IDs to the user — refer to layers by name.`
 

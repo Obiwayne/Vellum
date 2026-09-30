@@ -1,5 +1,6 @@
 // HTML <-> node conversion.
 import type { CNode, Doc, NodeType, Style } from './types'
+import { modeVars, nodeMode } from './modes'
 import { anchoredAxes, isFlowChild, isFlowLayout, isPageRoot, makeNode, numericSize, textPreview } from './ops'
 import { cleanAttrs, safeTag, sanitizeAttrs, sanitizeSvgMarkup } from './sanitize'
 
@@ -120,6 +121,11 @@ export function computeNodeStyle(doc: Doc, id: string, opts: { asRoot?: boolean;
   // and selectable; exports keep browser semantics (an empty element is 0px tall)
   if (!opts.export && n.type === 'text' && !n.text && s.minHeight === undefined) s.minHeight = '1lh'
   if (!n.visible) s.display = 'none'
+  // theme mode: the frame carries its mode's token values (exports use [data-mode] CSS instead)
+  if (!opts.export) {
+    const mode = nodeMode(doc, n)
+    if (mode) Object.assign(s, modeVars(doc, mode))
+  }
   return s
 }
 

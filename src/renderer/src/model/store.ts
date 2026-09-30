@@ -7,6 +7,7 @@ import type { Camera, CNode, CommentThread, Doc, EditorState, NodeType, Page, St
 import { history } from './history'
 import * as ops from './ops'
 import { htmlToNodes } from './html'
+import { MODE_ATTR, MODE_NAME_RE } from './modes'
 
 export const DASHBOARD: TabId = 'dashboard'
 
@@ -75,6 +76,8 @@ export interface Store {
   deleteNodes(docId: string, ids: string[]): void
   duplicateNodes(docId: string, ids: string[]): string[]
   addFlex(docId: string, id: string): void
+  addGrid(docId: string, id: string): void
+  switchLayout(docId: string, id: string, to: 'flex' | 'grid'): void
   wrapInFlex(docId: string, ids: string[]): string | null
   removeFlex(docId: string, id: string): void
   /** generic escape hatch: run an arbitrary recipe on the doc draft as one undoable step */
@@ -84,6 +87,12 @@ export interface Store {
   setTokens(docId: string, tokens: Token[]): void
   upsertTokens(docId: string, tokens: Token[]): void
   removeToken(docId: string, name: string): void
+  /** add a theme mode (the first call also creates the base mode); values start as copies of the base */
+  addMode(docId: string, name: string, baseName?: string): string | null
+  renameMode(docId: string, from: string, to: string): boolean
+  removeMode(docId: string, name: string): void
+  /** set a token's value in a mode (the base mode writes token.value) */
+  setTokenValue(docId: string, tokenName: string, mode: string | null, value: string | null, opts?: MutateOptions): void
 
   // comments (saved with the file, not part of undo history)
   addComment(docId: string, anchor: CommentAnchor, body: string, author?: CommentAuthor): string | null
@@ -496,6 +505,14 @@ export const useStore = create<Store>()((set, get) => {
       mutate(docId, 'Add flex', (d) => ops.addFlex(d, id))
     },
 
+    addGrid(docId, id) {
+      mutate(docId, 'Add grid', (d) => ops.addGrid(d, id))
+    },
+
+    switchLayout(docId, id, to) {
+      mutate(docId, to === 'grid' ? 'Switch to grid' : 'Switch to flex', (d) => ops.switchLayout(d, id, to))
+    },
+
     wrapInFlex(docId, ids) {
       let wrapper: string | null = null
       mutate(docId, 'Wrap in flex', (d) => {
@@ -534,6 +551,80 @@ export const useStore = create<Store>()((set, get) => {
       mutate(docId, 'Remove token', (d) => {
         d.tokens = d.tokens.filter((t) => t.name !== name)
       })
+    },
+
+    addMode(docId, name, baseName = 'Light') {
+      const doc = get().docs[docId]
+      const n = name.trim()
+      if (!doc || !MODE_NAME_RE.test(n)) return null
+      const existing = doc.modes && doc.modes.length > 1 ? doc.modes : []
+      const base = existing[0] ?? (baseName.trim() || 'Light')
+      if ([...existing, base].some((m) => m.toLowerCase() === n.toLowerCase())) return null
+      mutate(docId, 'Add mode', (d) => {
+        d.modes = [...(existing.length ? existing : [base]), n]
+      })
+      return n
+    },
+
+    renameMode(docId, from, to) {
+      const doc = get().docs[docId]
+      const n = to.trim()
+      if (!doc?.modes?.includes(from) || !MODE_NAME_RE.test(n) || doc.modes.some((m) => m !== from && m.toLowerCase() === n.toLowerCase())) return false
+      mutate(docId, 'Rename mode', (d) => {
+        d.modes = d.modes!.map((m) => (m === from ? n : m))
+        for (const t of d.tokens) {
+          if (t.modes && from in t.modes) {
+            t.modes[n] = t.modes[from]
+            delete t.modes[from]
+          }
+        }
+        for (const node of Object.values(d.nodes)) if (node.attrs?.[MODE_ATTR] === from) node.attrs[MODE_ATTR] = n
+      })
+      return true
+    },
+
+    removeMode(docId, name) {
+      mutate(docId, 'Delete mode', (d) => {
+        if (!d.modes?.includes(name)) return
+        const wasBase = d.modes[0] === name
+        d.modes = d.modes.filter((m) => m !== name)
+        for (const t of d.tokens) {
+          // deleting the base mode promotes the next mode's values to base
+          if (wasBase && d.modes[0] && t.modes?.[d.modes[0]] !== undefined) t.value = t.modes[d.modes[0]]
+          if (t.modes) {
+            delete t.modes[name]
+            if (wasBase && d.modes[0]) delete t.modes[d.modes[0]]
+            if (!Object.keys(t.modes).length) delete t.modes
+          }
+        }
+        for (const node of Object.values(d.nodes)) if (node.attrs?.[MODE_ATTR] === name) delete node.attrs[MODE_ATTR]
+        if (d.modes.length < 2) {
+          delete d.modes
+          for (const t of d.tokens) delete t.modes
+          for (const node of Object.values(d.nodes)) if (node.attrs) delete node.attrs[MODE_ATTR]
+        }
+      })
+    },
+
+    setTokenValue(docId, tokenName, mode, value, opts) {
+      mutate(
+        docId,
+        'Edit token',
+        (d) => {
+          const t = d.tokens.find((x) => x.name === tokenName)
+          if (!t) return
+          const base = !mode || !d.modes || d.modes.length < 2 || mode === d.modes[0]
+          if (base) {
+            if (value !== null) t.value = value
+            return
+          }
+          if (value === null) {
+            if (t.modes) delete t.modes[mode]
+            if (t.modes && !Object.keys(t.modes).length) delete t.modes
+          } else (t.modes ??= {})[mode] = value
+        },
+        opts
+      )
     },
 
     // ------------------------------------------------------------------ comments

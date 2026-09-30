@@ -3,6 +3,7 @@ import { computeNodeStyle, cssValue, nodeToHtml, nodeToJsx, nodeToRenderHtml, ta
 import { cleanAttrs, sanitizeSvgMarkup } from '../model/sanitize'
 import { descendants, isPageRoot, pageOf } from '../model/ops'
 import type { CNode, Doc } from '../model/types'
+import { effectiveMode, modeVars, nodeMode, tokensCssWithModes } from '../model/modes'
 import { inheritedStyle } from './tools-read'
 import { styleToTailwind } from './tailwind'
 import { geometry, getDoc, registerHandler, requireNode, resolveDocId, scoped, str } from './registry'
@@ -40,8 +41,10 @@ registerHandler('_render_node', (args) => {
       .map(([k, v]) => `${toKebab(k)}:${cssValue(k, v)}`)
       .join(';')
   )
-  const tokens = doc.tokens.filter((t) => /^--[\w-]+$/.test(t.name))
-  const tokensCss = tokens.length ? cssSafe(`:root{${tokens.map((t) => `${t.name}:${t.value}`).join(';')}}`) : ''
+  // tokens with their theme modes; a node inside a moded frame renders in that mode
+  const inherited = n.parent ? effectiveMode(doc, n.parent) : null
+  const rootVars = inherited && !nodeMode(doc, n) ? Object.entries(modeVars(doc, inherited)).map(([k, v]) => `${k}:${v}`).join(';') : ''
+  const tokensCss = cssSafe(tokensCssWithModes(doc) + (rootVars ? `:root{${rootVars}}` : ''))
   return scoped(docId, {
     nodeId: n.id,
     name: n.name,

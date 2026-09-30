@@ -1,11 +1,12 @@
 // Vertical tool strip (40px). Tool keys are handled by editor/shortcuts.ts.
 import { useCallback, useEffect, useState, type ReactNode } from 'react'
-import { Diamond, Hand, ImagePlus, MessageCirclePlus, MousePointer2, PenTool, Scan, Square, VectorSquare } from 'lucide-react'
+import { Diamond, Hand, ImagePlus, Shapes, MessageCirclePlus, MousePointer2, PenTool, Scan, Square, VectorSquare } from 'lucide-react'
 import { Button, IconButton, Modal } from '../../ui'
 import { useStore } from '../../model/store'
 import type { Tool } from '../../model/types'
 import { createImageFromFile, insertSvgMarkup } from '../canvas/actions'
 import { toolbarHooks } from '../shortcuts'
+import { IconPicker } from './IconPicker'
 
 interface ToolDef {
   tool: Tool
@@ -36,7 +37,8 @@ export const TOOL_GROUPS: ToolDef[][] = [
   [
     { tool: 'shader', label: 'Shaders', shortcut: 'S', icon: <Diamond {...ICON} /> },
     { tool: 'image', label: 'Create image', shortcut: 'Ctrl+Shift+I', icon: <ImagePlus {...ICON} /> },
-    { tool: 'svg', label: 'Create SVG', shortcut: 'Ctrl+Shift+J', icon: <VectorSquare {...ICON} /> }
+    { tool: 'svg', label: 'Create SVG', shortcut: 'Ctrl+Shift+J', icon: <VectorSquare {...ICON} /> },
+    { tool: 'icon', label: 'Icons', shortcut: 'Shift+I', icon: <Shapes {...ICON} /> }
   ]
 ]
 
@@ -44,22 +46,27 @@ export function Toolbar({ docId }: { docId: string }): JSX.Element {
   const tool = useStore((s) => s.editors[docId]?.tool ?? 'move')
   const setTool = useStore((s) => s.setTool)
   const [svgOpen, setSvgOpen] = useState(false)
+  const [iconsOpen, setIconsOpen] = useState(false)
 
   const createImage = useCallback(() => createImageFromFile(docId), [docId])
   const createSvg = useCallback(() => setSvgOpen(true), [])
+  const openIcons = useCallback(() => setIconsOpen(true), [])
 
   useEffect(() => {
     toolbarHooks.createImage = createImage
     toolbarHooks.createSvg = createSvg
+    toolbarHooks.openIcons = openIcons
     return () => {
+      if (toolbarHooks.openIcons === openIcons) toolbarHooks.openIcons = undefined
       if (toolbarHooks.createImage === createImage) toolbarHooks.createImage = undefined
       if (toolbarHooks.createSvg === createSvg) toolbarHooks.createSvg = undefined
     }
-  }, [createImage, createSvg])
+  }, [createImage, createSvg, openIcons])
 
   const onTool = (t: Tool): void => {
     if (t === 'image') createImage()
     else if (t === 'svg') createSvg()
+    else if (t === 'icon') openIcons()
     else setTool(docId, t)
   }
 
@@ -83,6 +90,7 @@ export function Toolbar({ docId }: { docId: string }): JSX.Element {
         </div>
       ))}
       <SvgDialog docId={docId} open={svgOpen} onClose={() => setSvgOpen(false)} />
+      <IconPicker docId={docId} open={iconsOpen} onClose={() => setIconsOpen(false)} />
     </div>
   )
 }

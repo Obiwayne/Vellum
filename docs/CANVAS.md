@@ -35,9 +35,10 @@ The canvas code lives in `src/renderer/src/editor/canvas/`. The toolbar is in `e
   - Comment (C): click a layer (or empty canvas) and type; Enter posts, Shift+Enter adds a line, Esc cancels and a second Esc leaves the tool. The numbered pin is attached to the exact layer under the pointer (highlighted while hovering) and follows it. Click a pin for its thread: reply, resolve/reopen, delete. The left panel's Comments tab lists threads (Open / Resolved / All); clicking one jumps to it. Shift+C toggles pins. Threads are saved in the file (`Doc.comments`) and are not part of undo history. Agents read and answer them through the MCP comment tools.
   - Create image (Ctrl+Shift+I) opens a file picker and inserts the image as a data URL.
   - Create SVG (Ctrl+Shift+J) opens a paste-markup dialog.
+  - Icons (Shift+I, `editor/toolbar/IconPicker.tsx`) searches the bundled Lucide set (loaded on first open) and inserts the icon as an SVG layer through `insertSvgMarkup`, with the chosen size, stroke and colour baked in. Enter inserts the first match; Shift+click keeps the picker open.
   - After you create something, the tool returns to Move.
 - **Context menus** (`menus.ts`) cover the node menu and empty-canvas menu, and every item works. "Cursor chat" is disabled.
-- **Agent working state**: nodes in `workingNodes` get a teal outline with a "Claude" tag. While any are present, the viewport shows the orange inset glow.
+- **Agent working state**: nodes in `workingNodes` get a teal outline with a "Claude" tag.
 - **World-rect resolver**: still registered through `ops.setWorldRectResolver`, and it measures `[data-node-id]`.
 
 ## Shortcuts (editor/shortcuts.ts, capture phase)

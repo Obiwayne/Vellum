@@ -1,5 +1,6 @@
 // Node export (PNG / SVG / HTML) for the inspector's Export section.
 import { nodeToHtml } from '../../model/html'
+import { tokensCssWithModes } from '../../model/modes'
 import { worldRect } from '../../model/ops'
 import { fontsFor, nodeToRenderHtml } from '../../bridge/tools-render'
 import { fetchCss } from './fonts'
@@ -10,8 +11,7 @@ export type ExportFormat = 'png' | 'svg' | 'html'
 const safe = (s: string): string => s.replace(/[\\/:*?"<>|]+/g, '_').trim() || 'export'
 
 function tokensCss(doc: Doc): string {
-  if (!doc.tokens.length) return ''
-  return `:root{${doc.tokens.map((t) => `${t.name}:${t.value}`).join(';')}}`
+  return tokensCssWithModes(doc)
 }
 
 function downloadBlob(name: string, blob: Blob): void {

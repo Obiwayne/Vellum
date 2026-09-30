@@ -42,17 +42,26 @@ its design system, component sheets and every screen and dialog (85 artboards), 
 - **Images** — paste screenshots and copied images with `Ctrl+V` (including image files copied in File Explorer),
   or drag image files straight onto the canvas; they land where you drop them.
 - **Inspector** — layout (X/Y, rotation, Fixed/Fit/Fill sizing, device size presets), flex (direction,
-  alignment grid, gap, padding, wrap), radius, opacity and blend modes, solid/gradient/image fills,
-  outline, border, shadows, inner shadows, filters, full typography with a font picker, export (PNG/SVG/HTML).
+  alignment grid, gap, padding, wrap), CSS grid (columns, rows, gaps, cell alignment, item spans), radius,
+  opacity and blend modes, solid/gradient/image fills, outline, border, shadows, inner shadows, filters with
+  sliders and one-click presets, background blur (frosted glass), full typography with a font picker,
+  export (PNG/SVG/HTML).
+- **Icons** — search and insert any of ~1,850 Lucide icons as editable SVG, with size, stroke and colour
+  (`Shift+I`).
 - **Layers & pages** — layers tree with drag-and-drop, show/hide, lock and rename; multiple pages per file.
 - **Theme tokens** — CSS custom-property tokens (colours, type, spacing, radii…) with a starter theme;
-  use them anywhere as `var(--token)`.
-- **Dashboard** — recents, files, archive, search, grid/list views and live thumbnails.
+  use them anywhere as `var(--token)`. **Theme modes** (e.g. Light / Dark) give each token a value per mode;
+  put any frame in a mode and everything inside follows. Exports include `[data-mode="…"]` CSS.
+- **Comments** — press `C` and click a layer to pin a comment ("make this say Get started"). Ask your AI to
+  address your comments: it makes the change, replies in the thread and resolves it.
+- **Dashboard** — recents, files, nested folders (drag files onto folders), archive, search, grid/list views
+  and live thumbnails.
 - **Editing** — undo/redo, copy/paste (including HTML from other apps), copy as HTML/JSX/CSS,
   right-click menus and keyboard shortcuts throughout.
 - **Profiles & privacy** — local profiles with an optional password that encrypts your files (see below).
-- **MCP server** — 32 tools (`write_html`, `update_styles`, `get_screenshot`, `get_jsx`, tokens, pages, export…).
-  Layers an agent is working on are outlined live on the canvas.
+- **MCP server** — 35 tools (`write_html`, `update_styles`, `get_screenshot`, `get_jsx`, tokens and theme
+  modes, comments, pages, export…). Works with Claude Code, Codex and other MCP clients. Layers an agent is
+  working on are outlined live on the canvas with a tag.
 
 ### Profiles & privacy
 
@@ -133,6 +142,8 @@ See [`docs/MCP.md`](docs/MCP.md) for the full tool list and troubleshooting.
 |---|---|
 | Move · Pan | `V` · hold `Space` |
 | Frame · Rectangle · Pen · Text | `F` · `R` · `P` · `T` |
+| Comment · Show/hide comments | `C` · `Shift+C` |
+| Icons | `Shift+I` |
 | Add / wrap in flex | `Shift+A` |
 | Zoom to 100% · fit · selection | `Shift+0` · `Shift+1` · `Shift+2` |
 | Copy · Paste · Duplicate · Delete | `Ctrl+C` · `Ctrl+V` · `Ctrl+D` · `Delete` |

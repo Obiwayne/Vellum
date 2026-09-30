@@ -2,18 +2,21 @@
 import { useState } from 'react'
 import { Button, Section } from '../../ui'
 import { activePage, useStore } from '../../model/store'
-import { isFlex } from '../../model/ops'
+import { isFlex, isGrid } from '../../model/ops'
 import { useCtx } from './common'
 import { TopBar } from './TopBar'
 import { ColorInput } from './ColorInput'
 import { ConnectAgentModal, watchBridgeActivity } from './ConnectAgentModal'
 import { LayoutSection } from './LayoutSection'
 import { FlexSection } from './FlexSection'
+import { GridItemSection, GridSection } from './GridSection'
+import { ModeSection } from './ModeSection'
 import { BlendingSection, RadiusSection } from './BasicSections'
 import { FillSection } from './FillSection'
 import {
   BorderSection,
   ExportSection,
+  BackgroundBlurSection,
   FiltersSection,
   OutlineSection,
   PlaceholderSection,
@@ -51,11 +54,14 @@ function SelectionInspector({ docId, ids }: { docId: string; ids: string[] }): J
   if (!ctx.nodes.length) return null
   const allText = ctx.nodes.every((n) => n.type === 'text')
   const allFlex = ctx.nodes.every((n) => isFlex(n))
+  const allGrid = ctx.nodes.every((n) => isGrid(n))
+  const allGridItems = ctx.nodes.every((n) => n.parent && isGrid(doc?.nodes[n.parent]) && n.style.position !== 'absolute')
   const key = ids.join(',')
   if (allText)
     return (
       <div key={key}>
         <LayoutSection ctx={ctx} />
+        {allGridItems && <GridItemSection ctx={ctx} />}
         <BlendingSection ctx={ctx} />
         <FillSection ctx={ctx} text />
         <TextSection ctx={ctx} />
@@ -69,7 +75,10 @@ function SelectionInspector({ docId, ids }: { docId: string; ids: string[] }): J
   return (
     <div key={key}>
       <LayoutSection ctx={ctx} />
+      {allGridItems && <GridItemSection ctx={ctx} />}
       {allFlex && <FlexSection ctx={ctx} />}
+      {allGrid && <GridSection ctx={ctx} />}
+      {ctx.nodes.every((n) => n.type === 'frame') && <ModeSection ctx={ctx} />}
       <RadiusSection ctx={ctx} />
       <BlendingSection ctx={ctx} />
       <FillSection ctx={ctx} />
@@ -78,6 +87,7 @@ function SelectionInspector({ docId, ids }: { docId: string; ids: string[] }): J
       <ShadowSection ctx={ctx} />
       <ShadowSection ctx={ctx} inset />
       <FiltersSection ctx={ctx} />
+      {ctx.nodes.every((n) => n.type === 'frame' || n.type === 'rect') && <BackgroundBlurSection ctx={ctx} />}
       <PlaceholderSection title="Guides" />
       <PlaceholderSection title="Video" />
       <ExportSection ctx={ctx} />

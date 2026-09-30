@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Ellipsis, File, Pencil } from 'lucide-react'
 import { type MenuEntry } from '../ui'
+import { DND_FILE, moveToFolderMenu } from './folders'
 import { DASHBOARD, getStore } from '../model/store'
 import type { Doc } from '../model/types'
 import { InlineEdit } from '../editor/left/InlineEdit'
@@ -49,6 +50,7 @@ export function fileMenu(doc: Doc, actions: { rename: () => void; askDelete: () 
     { type: 'separator' },
     { label: 'Rename', onSelect: actions.rename },
     { label: 'Duplicate', onSelect: () => duplicateDoc(doc.id) },
+    ...(doc.scratchpad ? [] : [moveToFolderMenu(doc)]),
     ...(doc.scratchpad
       ? []
       : ([
@@ -76,10 +78,17 @@ export function duplicateDoc(id: string): string | null {
       d.tokens = copy.tokens
       d.nextId = copy.nextId
       d.thumbnail = copy.thumbnail
+      if (copy.folderId) d.folderId = copy.folderId
     },
     { noHistory: true }
   )
   return newId
+}
+
+/** Start dragging a file onto a folder. */
+function dragFile(e: React.DragEvent, doc: Doc): void {
+  e.dataTransfer.setData(DND_FILE, doc.id)
+  e.dataTransfer.effectAllowed = 'move'
 }
 
 interface CardProps {
@@ -96,6 +105,8 @@ export function FileCard({ doc, now, onMenu }: CardProps): JSX.Element {
     <div
       className="db-card"
       tabIndex={0}
+      draggable={!renaming && !doc.scratchpad}
+      onDragStart={(e) => dragFile(e, doc)}
       onClick={() => !renaming && getStore().openDoc(doc.id)}
       onKeyDown={(e) => e.key === 'Enter' && !renaming && getStore().openDoc(doc.id)}
       onContextMenu={(e) => onMenu(e, doc, rename)}
@@ -165,6 +176,8 @@ export function FileRow({ doc, now, onMenu }: CardProps): JSX.Element {
     <div
       className="db-row"
       tabIndex={0}
+      draggable={!renaming && !doc.scratchpad}
+      onDragStart={(e) => dragFile(e, doc)}
       onClick={() => !renaming && getStore().openDoc(doc.id)}
       onKeyDown={(e) => e.key === 'Enter' && !renaming && getStore().openDoc(doc.id)}
       onContextMenu={(e) => onMenu(e, doc, rename)}

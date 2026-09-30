@@ -72,6 +72,7 @@ The server's `instructions` tell the model to load `get_guide({topic:"vellum-mcp
 | `set_tokens` | `tokens[{name, newName?, value?, delete?}]`, or `replace: true` with the full list | per-entry results. A rename rewrites `var(--old)` references across the file. |
 | `create_tokens` | `tokens[{name, value, type?}]` (upsert) | `{name, result: created \| updated}` per entry |
 | `get_font_family_info` | `familyNames` | `fontsPerFamily{family:[{style,weight,isItalic,axes?}]}, sources, notFound?` |
+| `set_theme_mode` | `nodeIds, mode \| null` | per-node results; frames only. Modes come from `create_tokens`/`set_tokens` `modes: {"Dark": value}` (created on first use, base mode "Light"). `get_basic_info` lists `themeModes`; `get_tokens` json has per-mode values and css/tailwind add `[data-mode]` blocks. |
 | `finish_working_on_nodes` | `nodeIds?` | `{released, remaining}` |
 | `list_comment_threads` | `status?: open (default) \| resolved \| all, pageId?, nodeId? (includes descendants), limit?, offset?` | `{threads[{threadId, number, status, pageId, pageName, node{id,name,type,text?,parent?,artboard} \| null, comment, author, messageCount, lastMessage?}], count, total}` |
 | `get_comment_thread` | `threadId` (id or pin number) | thread summary + `messages[{author: user \| agent, authorName, body, createdAt}]` |
@@ -79,7 +80,7 @@ The server's `instructions` tell the model to load `get_guide({topic:"vellum-mcp
 | `set_comment_thread_status` | `threadId, status: open \| resolved` | `{threadId, number, status}` |
 | `list_comment_thread_authors` | – | `{authors}` |
 
-Each mutating tool call is a single undo step in the app (`store.mutate` / `store.transact`). Nodes created or edited by the agent put their **artboard** into `editor.workingNodes`, which the canvas draws with the teal outline and orange glow. `finish_working_on_nodes` clears them.
+Each mutating tool call is a single undo step in the app (`store.mutate` / `store.transact`). Nodes created or edited by the agent put their **artboard** into `editor.workingNodes`, which the canvas draws with the teal outline and "Claude" tag. `finish_working_on_nodes` clears them.
 
 ## Architecture
 

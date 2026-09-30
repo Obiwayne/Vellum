@@ -5,6 +5,7 @@ import { getStore, useStore } from '../../model/store'
 import { computeNodeStyle } from '../../model/html'
 import { cleanAttrs, sanitizeSvgMarkup } from '../../model/sanitize'
 import { isFlowLayout } from '../../model/ops'
+import { MODE_ATTR } from '../../model/modes'
 import type { CNode } from '../../model/types'
 import { commitTextEditing, textEditing } from './actions'
 import { notifyLayout } from './geometry'
@@ -30,6 +31,10 @@ function renderStyle(docId: string, node: CNode, topLevel: boolean): CSSProperti
 
 export const NodeView = memo(function NodeView({ docId, id, topLevel }: Props): JSX.Element | null {
   const node = useStore((s) => s.docs[docId]?.nodes[id])
+  // a frame with a theme mode renders its mode's token values: re-render when tokens/modes change
+  const hasMode = Boolean(node?.attrs?.[MODE_ATTR])
+  useStore((s) => (hasMode ? s.docs[docId]?.tokens : null))
+  useStore((s) => (hasMode ? s.docs[docId]?.modes : null))
   if (!node) return null
   const style = renderStyle(docId, node, topLevel)
   switch (node.type) {

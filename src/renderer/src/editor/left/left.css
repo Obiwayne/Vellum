@@ -449,3 +449,68 @@ body.lp-dragging,
 body.lp-dragging * {
   cursor: grabbing !important;
 }
+
+/* theme modes */
+.lp-modes {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 0 8px 6px 12px;
+  flex-shrink: 0;
+  flex-wrap: wrap;
+}
+.lp-mode {
+  height: 24px;
+  max-width: 96px;
+  padding: 0 8px;
+  border-radius: var(--radius);
+  color: var(--text-3);
+  line-height: 24px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.lp-mode:hover {
+  background: var(--control-hover);
+  color: var(--text);
+}
+.lp-mode--active,
+.lp-mode--active:hover {
+  background: var(--segment-active);
+  color: var(--text);
+  font-weight: var(--weight-medium);
+}
+.lp-mode .lp-inline-edit {
+  width: 80px;
+}
+.lp-token__mode {
+  width: 6px;
+  height: 6px;
+  margin-left: 4px;
+  border-radius: 50%;
+  background: var(--accent);
+  flex-shrink: 0;
+}
+.lp-token-editor__mode {
+  margin-left: 6px;
+  padding: 1px 6px;
+  border-radius: var(--radius-xs);
+  background: var(--accent-soft);
+  color: var(--text);
+  font-size: 11px;
+  font-weight: var(--weight-regular);
+}
+.lp-token-editor__reset {
+  margin: 0 12px 8px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--accent-hover);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.lp-token-editor__reset:hover {
+  text-decoration: underline;
+}

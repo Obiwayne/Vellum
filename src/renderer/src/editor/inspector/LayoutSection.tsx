@@ -2,7 +2,7 @@ import { useRef, useState } from 'react'
 import { ChevronDown, FlipHorizontal2, FlipVertical2, RotateCwSquare } from 'lucide-react'
 import { Button, Checkbox, Field, IconButton, Menu, Section, type MenuEntry } from '../../ui'
 import { useStore } from '../../model/store'
-import { anchoredAxes, isFlex } from '../../model/ops'
+import { anchoredAxes, isFlowLayout } from '../../model/ops'
 import { common, co, displayPos, fv, inFlexParent, isMixed, measuredSize, sizeMode, type Ctx, type SizeMode } from './common'
 
 // ------------------------------------------------------------------------------------------ presets
@@ -86,7 +86,7 @@ export function LayoutSection({ ctx }: { ctx: Ctx }): JSX.Element {
   const allFrames = nodes.every((n) => n.type === 'frame')
   const anyFlexChild = nodes.some((n) => inFlexParent(doc, n))
   const allFlexChild = nodes.every((n) => inFlexParent(doc, n))
-  const allFlex = nodes.every((n) => isFlex(n))
+  const anyFlow = nodes.some((n) => isFlowLayout(n.style))
   const flowChild = nodes.some((n) => inFlexParent(doc, n) && n.style.position !== 'absolute')
 
   const pos = nodes.map((n) => displayPos(doc, n))
@@ -229,14 +229,19 @@ export function LayoutSection({ ctx }: { ctx: Ctx }): JSX.Element {
           />
         </div>
       </div>
-      {allFrames && !allFlex && !allFlexChild && (
-        <Button
-          full
-          shortcut="Shift+A"
-          onClick={() => store().transact(docId, 'Add flex', () => ids.forEach((id) => store().addFlex(docId, id)))}
-        >
-          Add flex
-        </Button>
+      {allFrames && !anyFlow && !allFlexChild && (
+        <div className="insp-g2">
+          <Button
+            full
+            shortcut="Shift+A"
+            onClick={() => store().transact(docId, 'Add flex', () => ids.forEach((id) => store().addFlex(docId, id)))}
+          >
+            Add flex
+          </Button>
+          <Button full onClick={() => store().transact(docId, 'Add grid', () => ids.forEach((id) => store().addGrid(docId, id)))}>
+            Add grid
+          </Button>
+        </div>
       )}
       {anyFlexChild && (
         <Button full shortcut="Shift+A" onClick={() => store().wrapInFlex(docId, ids)}>
@@ -250,7 +255,7 @@ export function LayoutSection({ ctx }: { ctx: Ctx }): JSX.Element {
           onChange={toggleAbsolute}
         />
       )}
-      {allFrames && !allFlex && (
+      {allFrames && !anyFlow && (
         <Checkbox
           checked={clip === true}
           label="Clip content"

@@ -128,7 +128,7 @@ profile is open. The renderer shows a profile picker (`src/renderer/src/profile/
 - `mcp/` exposes the design tools listed in docs/MCP.md. Registered in Claude Code as
   `claude mcp add vellum -- node <path-to-Vellum>/mcp/dist/index.js`.
 - While the agent works on nodes they appear in `workingNodes` → canvas outlines them in teal with a label, and the
-  canvas shows the orange inset glow; `finish_working_on_nodes` clears it.
+  `finish_working_on_nodes` clears it.
 
 ## Out of scope
 Accounts, teams, billing, sharing, multiplayer, AI image generation.

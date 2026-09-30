@@ -24,7 +24,7 @@ const TOOL_KEYS: Record<string, Tool> = {
 }
 
 /** Handlers for Create image / Create SVG are provided by the toolbar (it owns the SVG dialog). */
-export const toolbarHooks: { createImage?: () => void; createSvg?: () => void } = {}
+export const toolbarHooks: { createImage?: () => void; createSvg?: () => void; openIcons?: () => void } = {}
 
 export function installCanvasShortcuts(docId: string): () => void {
   const onKey = (e: KeyboardEvent): void => {
@@ -71,6 +71,7 @@ export function installCanvasShortcuts(docId: string): () => void {
       else handled = false
     } else if (shift) {
       if (code === 'KeyF') A.frameSelection(docId)
+      else if (code === 'KeyI') toolbarHooks.openIcons?.()
       else if (code === 'KeyA') A.wrapOrAddFlex(docId)
       else if (code === 'KeyN') A.nextArtboard(docId, -1)
       else if (code === 'Digit0') zoomTo100(docId)

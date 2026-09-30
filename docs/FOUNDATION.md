@@ -166,7 +166,7 @@ Styling: plain CSS with a `.c-` prefix in `ui/ui.css`. The tokens in `styles/tok
 - Surfaces: `--bg-canvas`, `--bg-panel`, `--bg-menu`, `--hairline`
 - Controls: `--control-bg`, `--control-hover`, `--segment-active`, `--row-selected(-strong)`
 - Text: `--text`, `--text-2`, `--text-3`, `--text-4`
-- Accent and agent: `--accent`, `--agent-teal`, `--agent-glow`
+- Accent and agent: `--accent`, `--agent-teal`
 - Primary button: `--primary-bg`, `--primary-text`
 - Shape and elevation: `--radius`, `--radius-menu`, `--raised-shadow`, `--menu-shadow`
 - Fonts: `--font-ui`, `--font-mono`
@@ -182,7 +182,7 @@ Use CSS modules or your own prefixed CSS file for feature styles.
   - Check `e.defaultPrevented`, or call `preventDefault()` in your own handlers.
 - **Cut/Copy/Paste/Select All** from the Edit menu, when focus isn't in a text field, dispatch `window` `CustomEvent('canvas:command', {detail: {command}})` (`CANVAS_COMMAND_EVENT`). The canvas should listen for it.
 - **Bridge tools**: in `bridge/` (e.g. a new `bridge/tools.ts` imported from `main.tsx`), call `registerHandler('write_html', async (args) => …)`. Use `resolveDocId(args)` for `fileId`. Throwing an Error returns `{error}`. Results must be JSON-serialisable.
-- **Working nodes and the agent glow**: `setWorkingNodes`/`addWorkingNodes`. Clear them with `setWorkingNodes(docId, [])`.
+- **Working nodes (agent outline)**: `setWorkingNodes`/`addWorkingNodes`. Clear them with `setWorkingNodes(docId, [])`.
 
 ## Deviations from ARCHITECTURE.md
 - Editor actions (`setTool`, `setCamera`, `setHovered`, `setEditingText`) take `docId` as their first argument.

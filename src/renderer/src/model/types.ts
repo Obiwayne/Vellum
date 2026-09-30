@@ -43,7 +43,10 @@ export interface Page {
 /** name like '--color-gray-50' */
 export interface Token {
   name: string
+  /** value in the base mode (doc.modes[0]) */
   value: string
+  /** values in the other theme modes, by mode name (missing = same as the base value) */
+  modes?: Record<string, string>
 }
 
 export interface Doc {
@@ -65,6 +68,10 @@ export interface Doc {
    * v2: canvas content inherits `line-height: normal` (v1 inherited 20px).
    */
   version?: number
+  /** theme modes, e.g. ['Light', 'Dark']; [0] is the base mode (see model/modes.ts) */
+  modes?: string[]
+  /** dashboard folder (see dashboard/folders.ts); missing = top level */
+  folderId?: string
   /** comment threads pinned to the canvas (not part of undo history) */
   comments?: CommentThread[]
 }
@@ -97,7 +104,7 @@ export interface CommentThread {
   updatedAt: number
 }
 
-export type Tool = 'move' | 'pan' | 'frame' | 'rect' | 'pen' | 'text' | 'comment' | 'shader' | 'image' | 'svg'
+export type Tool = 'move' | 'pan' | 'frame' | 'rect' | 'pen' | 'text' | 'comment' | 'shader' | 'image' | 'svg' | 'icon'
 
 export interface Camera {
   /** screen = world * zoom + (x, y) */

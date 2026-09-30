@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { ChevronDown, ChevronRight, Plus, Search, X } from 'lucide-react'
+import { modesOf, tokenValueIn } from '../../model/modes'
 import { Button, ColorPicker, IconButton, Menu, Popover, parseColor, useContextMenu, type MenuEntry } from '../../ui'
 import { getStore, useStore } from '../../model/store'
 import type { Token } from '../../model/types'
@@ -35,8 +36,20 @@ function ThemeEmptyIcon(): JSX.Element {
   )
 }
 
+/** Mode being viewed/edited in the Theme panel, per doc. */
+const modeByDoc = new Map<string, string>()
+
 export function ThemePanel({ docId }: { docId: string }): JSX.Element {
   const tokens = useStore((s) => s.docs[docId]?.tokens ?? [])
+  const doc = useStore((s) => s.docs[docId])
+  const modes = modesOf(doc)
+  const [modeState, setModeState] = useState<string | null>(() => modeByDoc.get(docId) ?? null)
+  const mode = modeState && modes.includes(modeState) ? modeState : modes[0] ?? null
+  const setMode = (m: string): void => {
+    modeByDoc.set(docId, m)
+    setModeState(m)
+  }
+  const [renamingMode, setRenamingMode] = useState<string | null>(null)
   const [query, setQuery] = useState('')
   const [searching, setSearching] = useState(false)
   const [addOpen, setAddOpen] = useState(false)
@@ -107,8 +120,34 @@ export function ThemePanel({ docId }: { docId: string }): JSX.Element {
     { label: 'Export CSS…', disabled: !tokens.length, onSelect: () => downloadText('tokens.css', tokensToCss(tokens)) },
     { label: 'Copy as CSS', disabled: !tokens.length, onSelect: () => void navigator.clipboard.writeText(tokensToCss(tokens)) },
     { type: 'separator' },
+    modes.length
+      ? { label: 'Add theme mode', onSelect: () => addMode() }
+      : { label: 'Add dark mode', onSelect: () => addMode('Dark') },
+    { type: 'separator' },
     { label: 'Use starter theme', onSelect: () => s().upsertTokens(docId, STARTER_THEME) },
     { label: 'Delete all tokens', danger: true, disabled: !tokens.length, onSelect: () => s().setTokens(docId, []) }
+  ]
+
+  const addMode = (name?: string): void => {
+    const list = modesOf(s().docs[docId])
+    let n = name ?? `Mode ${list.length + 1}`
+    for (let k = 2; list.some((m) => m.toLowerCase() === n.toLowerCase()); k++) n = `${name ?? 'Mode'} ${k}`
+    const made = s().addMode(docId, n)
+    if (made) {
+      setMode(made)
+      if (!name) setRenamingMode(made)
+    }
+  }
+
+  const modeMenu = (m: string): MenuEntry[] => [
+    { label: 'Rename', onSelect: () => setRenamingMode(m) },
+    { label: 'Add mode', onSelect: () => addMode() },
+    { type: 'separator' },
+    {
+      label: modes.length <= 2 ? 'Delete mode (turns modes off)' : 'Delete mode',
+      danger: true,
+      onSelect: () => s().removeMode(docId, m)
+    }
   ]
 
   const rowMenu = (name: string): MenuEntry[] => [
@@ -164,6 +203,34 @@ export function ThemePanel({ docId }: { docId: string }): JSX.Element {
         <Menu open={addOpen} onClose={() => setAddOpen(false)} anchor={addBtn.current} items={addMenu} placement="bottom-end" ignore={[addBtn.current]} minWidth={180} />
       </div>
 
+      {modes.length > 0 && (
+        <div className="lp-modes">
+          {modes.map((m, i) => (
+            <div
+              key={m}
+              className={['lp-mode', m === mode && 'lp-mode--active'].filter(Boolean).join(' ')}
+              title={i === 0 ? `${m} (base values). Double-click to rename` : `${m}. Double-click to rename`}
+              onClick={() => setMode(m)}
+              onDoubleClick={() => setRenamingMode(m)}
+              onContextMenu={(e) => ctx.open(e, modeMenu(m))}
+            >
+              {renamingMode === m ? (
+                <InlineEdit
+                  value={m}
+                  onCommit={(v) => {
+                    if (s().renameMode(docId, m, v)) setMode(v.trim())
+                    setRenamingMode(null)
+                  }}
+                  onCancel={() => setRenamingMode(null)}
+                />
+              ) : (
+                m
+              )}
+            </div>
+          ))}
+          <IconButton icon={<Plus size={14} />} label="Add theme mode" onClick={() => addMode()} />
+        </div>
+      )}
       {tokens.length === 0 ? (
         <div className="lp-theme-empty">
           <div className="lp-theme-empty__icon">
@@ -206,6 +273,8 @@ export function ThemePanel({ docId }: { docId: string }): JSX.Element {
                     <TokenRow
                       key={t.name}
                       token={t}
+                      value={doc ? tokenValueIn(doc, t, mode) : t.value}
+                      overridden={Boolean(mode && mode !== modes[0] && t.modes?.[mode] !== undefined)}
                       active={editing?.name === t.name}
                       renaming={renaming === t.name}
                       onClick={(el) => setEditing(editing?.name === t.name ? null : { name: t.name, anchor: el })}
@@ -235,6 +304,8 @@ export function ThemePanel({ docId }: { docId: string }): JSX.Element {
             key={editing.name}
             docId={docId}
             token={editingToken}
+            mode={mode}
+            baseMode={modes[0] ?? null}
             onRename={(v) => {
               const name = normalizeName(v)
               renameToken(editing.name, v)
@@ -250,6 +321,8 @@ export function ThemePanel({ docId }: { docId: string }): JSX.Element {
 
 function TokenRow({
   token,
+  value,
+  overridden,
   active,
   renaming,
   onClick,
@@ -258,6 +331,10 @@ function TokenRow({
   onRenameDone
 }: {
   token: Token
+  /** value in the mode being viewed */
+  value: string
+  /** the viewed (non-base) mode has its own value */
+  overridden: boolean
   active: boolean
   renaming: boolean
   onClick: (el: HTMLElement) => void
@@ -270,18 +347,19 @@ function TokenRow({
     <div
       className={['lp-token', active && 'lp-token--active'].filter(Boolean).join(' ')}
       data-token={token.name}
-      title={`${token.name}: ${token.value}`}
+      title={`${token.name}: ${value}`}
       onClick={(e) => onClick(e.currentTarget)}
       onDoubleClick={onRename}
       onContextMenu={onContextMenu}
     >
-      {isColor && <span className="lp-token__swatch" style={{ background: token.value }} />}
+      {isColor && <span className="lp-token__swatch" style={{ background: value }} />}
       {renaming ? (
         <InlineEdit value={displayName(token.name)} onCommit={(v) => onRenameDone(v)} onCancel={() => onRenameDone(null)} />
       ) : (
         <span className="lp-ellipsis lp-token__name">{displayName(token.name)}</span>
       )}
-      {!isColor && !renaming && <span className="lp-token__value">{token.value}</span>}
+      {!isColor && !renaming && <span className="lp-token__value">{value}</span>}
+      {overridden && !renaming && <span className="lp-token__mode" title="Has its own value in this mode" />}
     </div>
   )
 }
@@ -289,38 +367,40 @@ function TokenRow({
 function TokenEditor({
   docId,
   token,
+  mode,
+  baseMode,
   onRename,
   onClose
 }: {
   docId: string
   token: Token
+  /** mode being edited (null = no modes) */
+  mode: string | null
+  baseMode: string | null
   onRename: (v: string) => void
   onClose: () => void
 }): JSX.Element {
   const isColor = groupOf(token.name) === 'color'
   const [name, setName] = useState(displayName(token.name))
-  const [value, setValue] = useState(token.value)
-  const initial = useRef(token.value)
-  useEffect(() => setValue(token.value), [token.value])
+  const doc = useStore((st) => st.docs[docId])
+  const current = doc ? tokenValueIn(doc, token, mode) : token.value
+  const inMode = Boolean(mode && baseMode && mode !== baseMode)
+  const overridden = inMode && token.modes?.[mode as string] !== undefined
+  const [value, setValue] = useState(current)
+  const initial = useRef(current)
+  useEffect(() => setValue(current), [current])
 
-  const setTokenValue = (v: string, live: boolean): void => {
-    getStore().mutate(
-      docId,
-      'Edit token',
-      (d) => {
-        const t = d.tokens.find((x) => x.name === token.name)
-        if (t) t.value = v
-      },
-      live ? { coalesce: `token:${token.name}` } : undefined
-    )
-  }
+  const setTokenValue = (v: string | null, live: boolean): void =>
+    getStore().setTokenValue(docId, token.name, mode, v, live ? { coalesce: `token:${token.name}:${mode ?? ''}` } : undefined)
 
   const stop = (e: React.KeyboardEvent): void => e.stopPropagation()
 
   return (
     <div className={['lp-token-editor', isColor && 'lp-token-editor--color'].filter(Boolean).join(' ')} onKeyDown={stop}>
       <div className="lp-token-editor__head">
-        <span>Edit token</span>
+        <span>
+          Edit token{mode && <span className="lp-token-editor__mode">{mode}</span>}
+        </span>
         <IconButton icon={<X size={14} />} label="Close" onClick={onClose} />
       </div>
       <label className="lp-token-editor__field">
@@ -343,17 +423,22 @@ function TokenEditor({
           value={value}
           spellCheck={false}
           onChange={(e) => setValue(e.target.value)}
-          onBlur={() => value.trim() && value !== token.value && setTokenValue(value.trim(), false)}
+          onBlur={() => value.trim() && value !== current && setTokenValue(value.trim(), false)}
           onKeyDown={(e) => {
             if (e.key === 'Enter' && value.trim()) setTokenValue(value.trim(), false)
             if (e.key === 'Escape') onClose()
           }}
         />
       </label>
+      {overridden && (
+        <button type="button" className="lp-token-editor__reset" onClick={() => setTokenValue(null, false)}>
+          Use the {baseMode} value
+        </button>
+      )}
       {isColor && (
         <div className="lp-token-editor__picker">
           <ColorPicker
-            value={parseColor(token.value) ? token.value : '#000000'}
+            value={parseColor(current) ? current : '#000000'}
             previous={initial.current}
             onChange={(c, { live }) => setTokenValue(c, live)}
           />

@@ -198,6 +198,12 @@ export function isFlowLayout(style: Style | undefined): boolean {
   return d === 'flex' || d === 'inline-flex' || d === 'grid' || d === 'inline-grid'
 }
 
+/** Grid container? */
+export function isGrid(node: CNode | undefined): boolean {
+  const d = node?.style.display
+  return d === 'grid' || d === 'inline-grid'
+}
+
 /** Flex container? (grid counts as flow too — see isFlowLayout) */
 export function isFlex(node: CNode | undefined): boolean {
   const d = node?.style.display
@@ -413,7 +419,26 @@ export function duplicate(doc: Doc, id: string): string {
   return cid
 }
 
-const FLEX_KEYS = ['display', 'flexDirection', 'flexWrap', 'gap', 'rowGap', 'columnGap', 'alignItems', 'justifyContent', 'alignContent']
+const FLEX_KEYS = [
+  'display',
+  'flexDirection',
+  'flexWrap',
+  'gap',
+  'rowGap',
+  'columnGap',
+  'alignItems',
+  'justifyContent',
+  'alignContent',
+  'justifyItems',
+  'gridTemplateColumns',
+  'gridTemplateRows',
+  'gridAutoFlow',
+  'gridAutoRows',
+  'gridAutoColumns'
+]
+
+/** Grid-item keys a child keeps only while its parent is a grid. */
+const GRID_ITEM_KEYS = ['gridColumn', 'gridRow', 'gridArea', 'justifySelf']
 
 /** Turn a frame into a flex container with the default settings. */
 export function addFlex(doc: Doc, id: string): void {
@@ -427,6 +452,41 @@ export function addFlex(doc: Doc, id: string): void {
     padding: '16px',
     height: 'fit-content'
   })
+}
+
+/** Turn a frame into a grid: two equal columns by default (children flow into cells). */
+export function addGrid(doc: Doc, id: string): void {
+  const n = doc.nodes[id]
+  if (!n || n.type !== 'frame') return
+  for (const k of FLEX_KEYS) delete n.style[k]
+  Object.assign(n.style, {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+    gap: 16,
+    padding: n.style.padding ?? '16px',
+    alignItems: 'start',
+    height: 'fit-content'
+  })
+  // children flow into cells; fixed widths would overflow narrow cells, so let them fill
+  for (const c of n.children) {
+    const child = doc.nodes[c]
+    if (child && child.style.position !== 'absolute' && child.type !== 'text' && child.style.width === undefined) child.style.width = '100%'
+  }
+}
+
+/** Switch a flow container between flex and grid, keeping gap, padding and children. */
+export function switchLayout(doc: Doc, id: string, to: 'flex' | 'grid'): void {
+  const n = doc.nodes[id]
+  if (!n || n.type !== 'frame') return
+  const keep = { gap: n.style.gap, padding: n.style.padding }
+  if (to === 'grid') addGrid(doc, id)
+  else {
+    for (const k of FLEX_KEYS) delete n.style[k]
+    for (const c of n.children) for (const k of GRID_ITEM_KEYS) delete doc.nodes[c]?.style[k]
+    Object.assign(n.style, { display: 'flex', flexDirection: 'column', alignItems: 'start' })
+  }
+  if (keep.gap !== undefined) n.style.gap = keep.gap
+  if (keep.padding !== undefined) n.style.padding = keep.padding
 }
 
 /**
@@ -453,6 +513,7 @@ export function removeFlex(doc: Doc, id: string): void {
     }
   })
   for (const k of FLEX_KEYS) delete n.style[k]
+  for (const c of n.children) for (const k of GRID_ITEM_KEYS) delete doc.nodes[c]?.style[k]
   delete n.style.padding
 }
 

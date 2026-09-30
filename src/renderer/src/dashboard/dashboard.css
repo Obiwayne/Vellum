@@ -602,3 +602,122 @@ button.db-account__btn:hover {
   background: var(--danger) !important;
   color: #fff !important;
 }
+
+/* ---------------------------------------------------------------- folders */
+.db-tree {
+  display: flex;
+  flex-direction: column;
+}
+.db-tree__row {
+  gap: 6px;
+  cursor: pointer;
+}
+.db-tree__row .lp-inline-edit {
+  flex: 1;
+  min-width: 0;
+}
+.db-tree__chev {
+  display: inline-flex;
+  width: 12px;
+  flex-shrink: 0;
+  color: var(--text-3);
+  transition: transform 100ms ease;
+}
+.db-tree__chev--open {
+  transform: rotate(90deg);
+}
+.db-tree__chev--none {
+  visibility: hidden;
+}
+/* a folder being dragged over */
+.db-drop,
+.db-drop:hover {
+  background: var(--accent-soft) !important;
+  box-shadow: inset 0 0 0 1px var(--accent);
+}
+.db-folders {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, 256px);
+  gap: 12px 24px;
+  margin-bottom: 32px;
+}
+.db-folder {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 256px;
+  height: 56px;
+  padding: 0 8px 0 14px;
+  border-radius: var(--radius-menu);
+  background: var(--bg-panel);
+  color: var(--text);
+  cursor: pointer;
+  outline: none;
+}
+.db-folder:hover,
+.db-folder:focus-visible {
+  box-shadow: 0 0 0 1px #4a4a4a;
+}
+.db-folder:hover .db-card__more {
+  display: inline-flex;
+}
+.db-folder__icon {
+  flex-shrink: 0;
+  color: var(--text-2);
+}
+.db-folder__name {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 13px;
+  font-weight: var(--weight-medium);
+}
+.db-folder__meta {
+  color: var(--text-3);
+  font-size: 12px;
+  font-weight: var(--weight-regular);
+}
+.db-list--folders {
+  margin-bottom: 16px;
+}
+.db-crumbs {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+.db-crumbs__part {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  min-width: 0;
+}
+.db-crumbs__sep {
+  flex-shrink: 0;
+  color: var(--text-4);
+}
+.db-crumb {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding: 0 6px;
+  border-radius: var(--radius);
+  color: var(--text-3);
+  font: inherit;
+  cursor: pointer;
+}
+.db-crumb:hover {
+  color: var(--text);
+  background: var(--row-selected);
+}
+.db-crumb--last,
+.db-crumb--last:hover {
+  color: var(--text);
+  background: none;
+  cursor: default;
+}
+.db-crumbs > .db-crumb:first-child {
+  padding-left: 0;
+}
