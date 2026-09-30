@@ -1,18 +1,18 @@
 // Dashboard: sidebar (account, search, Recents/Learn, Files/Archive/Settings, agents card) + main area.
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
-import { Archive, ChevronDown, ChevronRight, Clock, FolderPlus, GraduationCap, LayoutGrid, List, Lock, Minus, Plus, Search, Settings } from 'lucide-react'
+import { Archive, ChevronDown, ChevronRight, Clock, FolderPlus, GraduationCap, LayoutGrid, List, Lock, Minus, Plus, Search, Settings, X } from 'lucide-react'
 import { Button, Menu, Modal, Tooltip, useContextMenu } from '../ui'
 import { getStore, useStore } from '../model/store'
 import type { Doc } from '../model/types'
 import { FooterLinks } from '../editor/left/WhatsNew'
-import { FileCard, FileRow, fileMenu, useNow } from './FileCard'
+import { FileCard, FileRow, fileMenu, filesMenu, useNow } from './FileCard'
 import { LearnPage } from './LearnPage'
 import { DEFAULT_USER_NAME, PREF, SettingsPage } from './SettingsPage'
 import { ConnectAgentModal } from './ConnectAgentModal'
 import { Avatar } from '../profile/parts'
 import { lockAndReload, useCurrentProfile } from '../profile/profile'
 import { DeleteProfileModal, EditProfileModal } from '../profile/ProfileModals'
-import { childFolders, createFolder, docFolder, folderById, moveDocToFolder, useFolders, type Folder } from './folders'
+import { childFolders, createFolder, docFolder, folderById, moveDocToFolder, moveToFolderMenu, useFolders, type Folder } from './folders'
 import { Breadcrumb, FolderCard, FolderTree, folderMenu } from './FolderViews'
 import './dashboard.css'
 
@@ -72,7 +72,11 @@ export function Dashboard(): JSX.Element {
   const profile = useCurrentProfile()
   const [accountOpen, setAccountOpen] = useState(false)
   const [connectOpen, setConnectOpen] = useState(false)
-  const [confirmDelete, setConfirmDelete] = useState<Doc | null>(null)
+  const [confirmDelete, setConfirmDelete] = useState<Doc[] | null>(null)
+  const [selected, setSelected] = useState<string[]>([])
+  const [moveMenuOpen, setMoveMenuOpen] = useState(false)
+  const selAnchor = useRef<string | null>(null)
+  const moveBtnRef = useRef<HTMLButtonElement | null>(null)
   const accountRef = useRef<HTMLButtonElement | null>(null)
   const searchRef = useRef<HTMLInputElement | null>(null)
   const ctx = useContextMenu()
@@ -136,16 +140,74 @@ export function Dashboard(): JSX.Element {
     }
   }, [docs, recents, section, query, folders, folder])
 
-  const openMenu = (e: React.MouseEvent, doc: Doc, rename: () => void): void =>
-    ctx.open(e, fileMenu(doc, { rename, askDelete: () => setConfirmDelete(doc) }))
+  const searching = query.trim().length > 0
+  const showFiles = searching || section === 'recents' || section === 'files' || section === 'archive'
+
+  // ---------------------------------------------------------------- multi-select
+  // the selection only covers files currently shown; it resets when the view changes
+  useEffect(() => setSelected([]), [section, folder, query])
+  const selSet = useMemo(() => new Set(selected), [selected])
+  const selDocs = useMemo(() => list.filter((d) => selSet.has(d.id)), [list, selSet])
+  const selSafe = selDocs.filter((d) => !d.scratchpad)
+  const selAllArchived = selSafe.length > 0 && selSafe.every((d) => d.archived)
+  const clearSelection = (): void => {
+    if (selected.length) setSelected([])
+  }
+
+  /** Ctrl-click toggles, Shift-click selects a range from the last picked file. Plain click opens. */
+  const pick = (e: React.MouseEvent, doc: Doc): boolean => {
+    const ctrl = e.ctrlKey || e.metaKey
+    if (!ctrl && !e.shiftKey) return false
+    const ids = list.map((d) => d.id)
+    const a = selAnchor.current ? ids.indexOf(selAnchor.current) : -1
+    const b = ids.indexOf(doc.id)
+    if (e.shiftKey && a >= 0 && b >= 0) {
+      const range = ids.slice(Math.min(a, b), Math.max(a, b) + 1)
+      setSelected(ctrl ? [...new Set([...selected, ...range])] : range)
+      return true
+    }
+    setSelected(selSet.has(doc.id) ? selected.filter((id) => id !== doc.id) : [...selected, doc.id])
+    selAnchor.current = doc.id
+    return true
+  }
+  /** Dragging one of several selected files drags them all (never the Scratchpad). */
+  const dragIds = (doc: Doc): string[] => (selSet.has(doc.id) && selSafe.length > 1 ? selSafe.map((d) => d.id) : [doc.id])
+
+  // Ctrl+A selects every file shown, Esc clears
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent): void => {
+      if (e.defaultPrevented) return
+      const t = e.target as HTMLElement | null
+      if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) return
+      if ((e.ctrlKey || e.metaKey) && !e.shiftKey && !e.altKey && e.code === 'KeyA' && showFiles && list.length) {
+        e.preventDefault()
+        setSelected(list.map((d) => d.id))
+      } else if (e.key === 'Escape' && selected.length) {
+        setSelected([])
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [list, showFiles, selected.length])
+
+  const openMenu = (e: React.MouseEvent, doc: Doc, rename: () => void): void => {
+    if (selDocs.length > 1 && selSet.has(doc.id)) {
+      ctx.open(e, filesMenu(selDocs, { askDelete: (docs) => setConfirmDelete(docs) }))
+      return
+    }
+    if (!selSet.has(doc.id)) clearSelection()
+    ctx.open(e, fileMenu(doc, { rename, askDelete: () => setConfirmDelete([doc]) }))
+  }
   const openFolderMenu = (e: React.MouseEvent, f: Folder, rename: () => void): void =>
     ctx.open(e, folderMenu(f, { rename, open: (id) => openFolder(id) }))
 
-  const searching = query.trim().length > 0
-  const showFiles = searching || section === 'recents' || section === 'files' || section === 'archive'
   const title = searching ? `Results for “${query.trim()}”` : TITLES[section]
   const inFiles = !searching && section === 'files'
   const subFolders = inFiles ? childFolders(folders, folder) : []
+  const newFile = (): void => {
+    const id = createFile()
+    if (inFiles && folder) moveDocToFolder(id, folder)
+  }
 
   return (
     <div className="db">
@@ -239,7 +301,13 @@ export function Dashboard(): JSX.Element {
         <FooterLinks className="db-footer" />
       </aside>
 
-      <section className="db-main">
+      <section
+        className="db-main"
+        onClick={(e) => {
+          // clicking empty space clears the file selection
+          if (!(e.target as HTMLElement).closest('.db-card, .db-row, .db-folder, .db-selbar, button, input')) clearSelection()
+        }}
+      >
         <div className="db-main__inner">
           <div className="db-main__head">
             {inFiles ? <Breadcrumb current={folder} onOpen={openFolder} /> : <h1 className="db-title">{title}</h1>}
@@ -250,16 +318,7 @@ export function Dashboard(): JSX.Element {
                     New folder
                   </Button>
                 )}
-                <Button
-                  variant="primary"
-                  size="sm"
-                  icon={<Plus size={14} />}
-                  className="db-newfile"
-                  onClick={() => {
-                    const id = createFile()
-                    if (inFiles && folder) moveDocToFolder(id, folder)
-                  }}
-                >
+                <Button variant="primary" size="sm" icon={<Plus size={14} />} className="db-newfile" onClick={newFile}>
                   New file
                 </Button>
                 <div className="db-viewtoggle">
@@ -313,11 +372,18 @@ export function Dashboard(): JSX.Element {
                     : inFiles && folder
                       ? 'This folder is empty. Drag files here, or use “Move to folder” in a file’s menu.'
                       : 'No files yet.'}
+                {!searching && section !== 'archive' && (
+                  <div className="db-empty__cta">
+                    <Button variant="primary" size="sm" icon={<Plus size={14} />} onClick={newFile}>
+                      New file
+                    </Button>
+                  </div>
+                )}
               </div>
             ) : view === 'grid' ? (
               <div className="db-grid">
                 {list.map((d) => (
-                  <FileCard key={d.id} doc={d} now={now} onMenu={openMenu} />
+                  <FileCard key={d.id} doc={d} now={now} onMenu={openMenu} selected={selSet.has(d.id)} onPick={pick} dragIds={dragIds} />
                 ))}
               </div>
             ) : (
@@ -330,10 +396,43 @@ export function Dashboard(): JSX.Element {
                   <span className="db-row__more" />
                 </div>
                 {list.map((d) => (
-                  <FileRow key={d.id} doc={d} now={now} onMenu={openMenu} />
+                  <FileRow key={d.id} doc={d} now={now} onMenu={openMenu} selected={selSet.has(d.id)} onPick={pick} dragIds={dragIds} />
                 ))}
               </div>
             ))}
+          {showFiles && selDocs.length > 0 && (
+            <div className="db-selbar-wrap">
+              <div className="db-selbar">
+                <span className="db-selbar__count">{selDocs.length} selected</span>
+                <button type="button" ref={moveBtnRef} className="db-selbar__btn" disabled={!selSafe.length} onClick={() => setMoveMenuOpen((o) => !o)}>
+                  Move to folder <ChevronDown size={12} />
+                </button>
+                <button
+                  type="button"
+                  className="db-selbar__btn"
+                  disabled={!selSafe.length}
+                  onClick={() => selSafe.forEach((d) => getStore().archiveDoc(d.id, !selAllArchived))}
+                >
+                  {selAllArchived ? 'Unarchive' : 'Archive'}
+                </button>
+                <button type="button" className="db-selbar__btn db-selbar__btn--danger" disabled={!selSafe.length} onClick={() => setConfirmDelete(selSafe)}>
+                  Delete…
+                </button>
+                <button type="button" className="db-selbar__btn db-selbar__close" aria-label="Clear selection" onClick={() => setSelected([])}>
+                  <X size={14} />
+                </button>
+              </div>
+              <Menu
+                open={moveMenuOpen}
+                onClose={() => setMoveMenuOpen(false)}
+                anchor={moveBtnRef.current}
+                ignore={[moveBtnRef.current]}
+                placement="top-start"
+                minWidth={200}
+                items={moveToFolderMenu(selDocs).submenu ?? []}
+              />
+            </div>
+          )}
           {!searching && section === 'learn' && <LearnPage />}
           {!searching && section === 'settings' && <SettingsPage />}
         </div>
@@ -346,7 +445,7 @@ export function Dashboard(): JSX.Element {
       <Modal
         open={Boolean(confirmDelete)}
         onClose={() => setConfirmDelete(null)}
-        title="Delete file?"
+        title={confirmDelete && confirmDelete.length > 1 ? `Delete ${confirmDelete.length} files?` : 'Delete file?'}
         width={400}
         footer={
           <>
@@ -354,8 +453,9 @@ export function Dashboard(): JSX.Element {
             <Button
               className="db-danger-btn"
               onClick={() => {
-                if (confirmDelete) getStore().deleteDoc(confirmDelete.id)
+                for (const d of confirmDelete ?? []) if (!d.scratchpad) getStore().deleteDoc(d.id)
                 setConfirmDelete(null)
+                setSelected([])
               }}
             >
               Delete
@@ -364,7 +464,9 @@ export function Dashboard(): JSX.Element {
         }
       >
         <div className="db-confirm">
-          “{confirmDelete?.name}” will be permanently deleted. This can’t be undone.
+          {confirmDelete && confirmDelete.length > 1
+            ? `${confirmDelete.length} files will be permanently deleted. This can’t be undone.`
+            : `“${confirmDelete?.[0]?.name ?? ''}” will be permanently deleted. This can’t be undone.`}
         </div>
       </Modal>
     </div>

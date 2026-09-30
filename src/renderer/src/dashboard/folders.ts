@@ -4,7 +4,7 @@
 import { nanoid } from 'nanoid'
 import { getStore, useStore } from '../model/store'
 import type { Doc } from '../model/types'
-import type { MenuEntry } from '../ui'
+import type { MenuEntry, MenuItem } from '../ui'
 
 export interface Folder {
   id: string
@@ -15,7 +15,7 @@ export interface Folder {
 }
 
 export const FOLDERS_PREF = 'folders'
-/** drag-and-drop payload types */
+/** drag-and-drop payload types (DND_FILE holds one or more doc ids, newline-separated) */
 export const DND_FILE = 'application/x-vellum-file'
 export const DND_FOLDER = 'application/x-vellum-folder'
 
@@ -135,17 +135,23 @@ export function moveDocToFolder(docId: string, folderId: string | null): void {
   )
 }
 
-/** "Move to folder" submenu for a file. */
-export function moveToFolderMenu(doc: Doc): MenuEntry {
+/** "Move to folder" submenu for one file or several (the Scratchpad never moves). */
+export function moveToFolderMenu(docs: Doc | Doc[]): MenuItem {
   const list = getFolders()
-  const current = docFolder(list, doc)
-  const rows: MenuEntry[] = [{ label: 'No folder', checked: current === null, onSelect: () => moveDocToFolder(doc.id, null) }]
+  const movable = (Array.isArray(docs) ? docs : [docs]).filter((d) => !d.scratchpad)
+  const places = new Set(movable.map((d) => docFolder(list, d)))
+  // a check only when every file is in the same place
+  const current = places.size === 1 ? [...places][0] : undefined
+  const move = (folderId: string | null): void => {
+    for (const d of movable) moveDocToFolder(d.id, folderId)
+  }
+  const rows: MenuEntry[] = [{ label: 'No folder', checked: current === null, onSelect: () => move(null) }]
   const walk = (parent: string | null, depth: number): void => {
     for (const f of childFolders(list, parent)) {
-      rows.push({ label: `${'    '.repeat(depth)}${f.name}`, checked: current === f.id, onSelect: () => moveDocToFolder(doc.id, f.id) })
+      rows.push({ label: `${'    '.repeat(depth)}${f.name}`, checked: current === f.id, onSelect: () => move(f.id) })
       walk(f.id, depth + 1)
     }
   }
   walk(null, 0)
-  return { label: 'Move to folder', submenu: rows }
+  return { label: 'Move to folder', disabled: !movable.length, submenu: rows }
 }

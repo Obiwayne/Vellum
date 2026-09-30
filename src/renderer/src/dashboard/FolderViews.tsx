@@ -44,7 +44,7 @@ function useDrop(target: string | null): {
         if (!file && !folder) return
         e.preventDefault()
         e.stopPropagation()
-        if (file) moveDocToFolder(file, target)
+        if (file) for (const id of file.split('\n')) moveDocToFolder(id, target)
         else if (folder && folder !== target) moveFolder(folder, target)
       }
     }

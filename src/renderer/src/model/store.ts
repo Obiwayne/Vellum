@@ -62,6 +62,8 @@ export interface Store {
   addPage(docId: string, name?: string): string
   renamePage(docId: string, pageId: string, name: string): void
   deletePage(docId: string, pageId: string): void
+  /** Move a page to `index` in the pages list (index in the list without the page). */
+  movePage(docId: string, pageId: string, index: number): void
   setActivePage(docId: string, pageId: string): void
   setPageBackground(docId: string, pageId: string, color: string): void
 
@@ -355,6 +357,17 @@ export const useStore = create<Store>()((set, get) => {
         d.pages = d.pages.filter((x) => x.id !== pageId)
       })
       pruneEditor(docId)
+    },
+
+    movePage(docId, pageId, index) {
+      mutate(docId, 'Move page', (d) => {
+        const from = d.pages.findIndex((p) => p.id === pageId)
+        if (from < 0) return
+        const to = Math.max(0, Math.min(index, d.pages.length - 1))
+        if (to === from) return
+        const [page] = d.pages.splice(from, 1)
+        d.pages.splice(to, 0, page)
+      })
     },
 
     setActivePage(docId, pageId) {
