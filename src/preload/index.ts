@@ -49,6 +49,13 @@ const api: CanvasApi = {
       return () => ipcRenderer.removeListener(IPC.updChanged, h)
     }
   },
+  history: {
+    list: (docId) => ipcRenderer.invoke(IPC.histList, docId),
+    load: (docId, versionId) => ipcRenderer.invoke(IPC.histLoad, docId, versionId),
+    save: (doc, opts) => ipcRenderer.invoke(IPC.histSave, doc, opts),
+    rename: (docId, versionId, name) => ipcRenderer.invoke(IPC.histRename, docId, versionId, name),
+    remove: (docId, versionId) => ipcRenderer.invoke(IPC.histRemove, docId, versionId)
+  },
   mcpEntry: ipcRenderer.sendSync(IPC.mcpEntry) as string,
 
   capturePage: (rect) => ipcRenderer.invoke(IPC.capturePage, rect),

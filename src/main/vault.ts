@@ -5,6 +5,7 @@
 //   profiles.json                 list of profiles (name, avatar, KDF params, wrapped data keys)
 //   profiles/<id>/index.json      that profile's index + prefs
 //   profiles/<id>/files/<doc>.json
+//   profiles/<id>/history/<doc>/   version history (index.json, <version>.bin, blobs/<hash>.bin)
 //
 // A profile without a password stores plain JSON, exactly like before profiles existed. A profile
 // with a password has a random 256-bit data key (DEK); every file is AES-256-GCM encrypted with it
@@ -811,7 +812,28 @@ export class Vault {
     return this.enqueue(path, () => fs.rm(path, { force: true }))
   }
 
-  /** Every data file of the open profile (index + docs). */
+  /** Read + decode a binary file of the open profile (version history). null when missing or unreadable. */
+  async readBytes(path: string): Promise<Buffer | null> {
+    const context = this.contextOf(path)
+    try {
+      return this.decode(await fs.readFile(path), context)
+    } catch {
+      return null
+    }
+  }
+
+  writeBytes(path: string, data: Buffer): Promise<void> {
+    const context = this.contextOf(path)
+    return this.enqueue(path, () => writeAtomic(path, this.dek ? encryptBytes(this.dek, data, context) : data))
+  }
+
+  /** Delete a folder of the open profile (never the profile folder itself). */
+  async removeDir(path: string): Promise<void> {
+    if (!this.contextOf(path)) throw new Error('Path outside the profile')
+    await fs.rm(path, { recursive: true, force: true })
+  }
+
+  /** Every data file of the open profile (index, docs and version history). */
   private async dataFiles(): Promise<string[]> {
     const dir = this.currentDir()
     const out: string[] = []
@@ -821,6 +843,21 @@ export class Vault {
     } catch {
       /* no files yet */
     }
+    // version history: history/<doc>/index.json, <version>.bin, blobs/<hash>.bin
+    const walk = async (d: string): Promise<void> => {
+      let entries: import('node:fs').Dirent[]
+      try {
+        entries = await fs.readdir(d, { withFileTypes: true })
+      } catch {
+        return
+      }
+      for (const e of entries) {
+        const p = join(d, e.name)
+        if (e.isDirectory()) await walk(p)
+        else if (/\.(json|bin)$/.test(e.name)) out.push(p)
+      }
+    }
+    await walk(join(dir, 'history'))
     return out
   }
 

@@ -120,6 +120,21 @@ with a password has every file AES-256-GCM encrypted (`VLME` header, version, IV
 that is wrapped by an scrypt password key and by a recovery key; the key only lives in main-process memory while the
 profile is open. The renderer shows a profile picker (`src/renderer/src/profile/`) until a profile is open. On first run create a "Scratchpad" doc (permanent draft, can't be deleted).
 
+## Version history
+- Main: `src/main/history.ts`, stored per profile in `history/<docId>/` (encrypted like the rest of the profile):
+  `index.json` (VersionMeta[], newest first), `<versionId>.bin` (gzipped doc JSON whose strings >= 4 KB — images —
+  are replaced by refs) and `blobs/<sha1>.bin` (each big string once, shared by all versions).
+- Automatic versions: `saveDoc` calls `beforeSave` first; when the newest version is older than 5 minutes
+  (`VELLUM_HISTORY_INTERVAL_MS` overrides it for tests) the doc as it is on disk, i.e. the state before this
+  save, becomes a version. So the last state before every break is kept. The newest 100 automatic versions are
+  kept; `named` and `restore` versions are never pruned. Deleting a doc deletes its history.
+- Each version stores a `summary` (counts from `src/shared/docDiff.ts`, which both processes use) of the changes
+  since the previous version; deleting a version recomputes its newer neighbour's summary.
+- Renderer: `src/renderer/src/history/`. `HistoryView` replaces the dashboard/editor while `store.historyDocId`
+  is set (dashboard `…` → History, File menu, `Ctrl+Alt+H`); `VersionCanvas` is a read-only pan/zoom render
+  with added/edited layers outlined. Restore saves the current state as a `restore` version, then replaces
+  pages/nodes/tokens/modes in one undoable `mutate` (name, folder and comments are kept).
+
 ## Bridge / MCP
 - Electron main runs a WebSocket server on `ws://127.0.0.1:29170` (env `VELLUM_PORT`). Messages `{id, tool, args}` → main
   forwards to renderer via IPC → `bridge/handlers.ts` executes against the store and returns `{id, result|error}`.

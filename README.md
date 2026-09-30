@@ -33,6 +33,9 @@ its design system, component sheets and every screen and dialog (85 artboards), 
     <td width="50%"><img src="docs/screenshots/editor-games.png" alt="A full-length screen selected, with flex layout in the inspector" /><p align="center"><sub>Full-length screen with flex layout</sub></p></td>
     <td width="50%"><img src="docs/screenshots/dashboard.png" alt="Dashboard with live file thumbnails" /><p align="center"><sub>Dashboard with live thumbnails</sub></p></td>
   </tr>
+  <tr>
+    <td colspan="2"><img src="docs/screenshots/history.png" alt="Version history: the versions on the right, the selected one on the canvas with the added layer outlined" /><p align="center"><sub>Version history: step through versions, see what changed, restore</sub></p></td>
+  </tr>
 </table>
 
 ## Features
@@ -66,6 +69,11 @@ its design system, component sheets and every screen and dialog (85 artboards), 
   put any frame in a mode and everything inside follows. Exports include `[data-mode="…"]` CSS.
 - **Comments** — press `C` and click a layer to pin a comment ("make this say Get started"). Ask your AI to
   address your comments: it makes the change, replies in the thread and resolves it.
+- **Version history** — Vellum saves a version of each file every 5 minutes while you edit (the newest 100
+  are kept) and you can save named versions with `Ctrl+Alt+S`. Open **History** from a file's `…` menu on the
+  dashboard (or `Ctrl+Alt+H` in a file) to step through versions, see what changed (layers added, edited and
+  removed are outlined on the canvas and listed), restore one or copy it to a new file. A restore keeps the
+  state it replaced as a version and can be undone.
 - **Dashboard** — recents, files, nested folders (drag files onto folders), archive, search, grid/list views
   and live thumbnails. Select several files (`Ctrl`/`Shift`+click, `Ctrl+A`) to move, archive or delete them
   together.
@@ -180,6 +188,7 @@ See [`docs/MCP.md`](docs/MCP.md) for the full tool list and troubleshooting.
 | Zoom to 100% · fit · selection | `Shift+0` · `Shift+1` · `Shift+2` |
 | Copy · Paste · Duplicate · Delete | `Ctrl+C` · `Ctrl+V` · `Ctrl+D` · `Delete` |
 | Undo · Redo | `Ctrl+Z` · `Ctrl+Shift+Z` |
+| Save version · Version history | `Ctrl+Alt+S` · `Ctrl+Alt+H` |
 | Bring to front · Send to back | `]` · `[` |
 
 The full list is on the **Learn** page in the app's dashboard.

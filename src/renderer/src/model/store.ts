@@ -42,6 +42,11 @@ export interface Store {
   prefs: Record<string, unknown>
   /** bumps on every history change so undo/redo UI can re-render */
   historyTick: number
+  /** doc whose version history is open (full-window viewer), or null */
+  historyDocId: string | null
+
+  openHistory(docId: string): void
+  closeHistory(): void
 
   hydrate(data: HydrateData): void
 
@@ -198,6 +203,14 @@ export const useStore = create<Store>()((set, get) => {
     editors: {},
     prefs: {},
     historyTick: 0,
+    historyDocId: null,
+
+    openHistory(docId) {
+      if (get().docs[docId]) set({ historyDocId: docId })
+    },
+    closeHistory() {
+      set({ historyDocId: null })
+    },
 
     hydrate(data) {
       const editors: Record<string, EditorState> = {}
@@ -236,6 +249,7 @@ export const useStore = create<Store>()((set, get) => {
       set({
         tabs: s.tabs.includes(id) ? s.tabs : [...s.tabs, id],
         activeTab: id,
+        historyDocId: null,
         recents: touchRecents(s.recents, id),
         editors: s.editors[id] ? s.editors : { ...s.editors, [id]: defaultEditor(doc) }
       })
@@ -257,7 +271,7 @@ export const useStore = create<Store>()((set, get) => {
         if (s.docs[id]) get().openDoc(id)
         return
       }
-      set({ activeTab: id, recents: id !== DASHBOARD ? touchRecents(s.recents, id) : s.recents })
+      set({ activeTab: id, historyDocId: null, recents: id !== DASHBOARD ? touchRecents(s.recents, id) : s.recents })
     },
 
     reopenClosedTab() {
@@ -314,7 +328,8 @@ export const useStore = create<Store>()((set, get) => {
           docs,
           editors,
           recents: st.recents.filter((r) => r !== id),
-          closedTabs: st.closedTabs.filter((c) => c !== id)
+          closedTabs: st.closedTabs.filter((c) => c !== id),
+          historyDocId: st.historyDocId === id ? null : st.historyDocId
         }
       })
       history.clear(id)

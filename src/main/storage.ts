@@ -4,6 +4,7 @@ import { join } from 'path'
 import { IPC, type DocSummary, type IndexData, type ProfileInfo, type ProfileResult, type ProfilesState, type StoredDoc } from '@shared/api'
 import { Vault, safeId, type ProfileRecord } from './vault'
 import { disposeRenderer } from './offscreen'
+import { beforeSave, listVersions, loadVersion, removeHistory, removeVersion, renameVersion, saveVersion } from './history'
 
 const root = (): string => app.getPath('userData')
 
@@ -149,11 +150,34 @@ export function registerStorageIpc(): void {
     if (!doc || typeof doc !== 'object') throw new Error('Invalid document')
     const path = docPath(doc.id)
     await fs.mkdir(filesDir(), { recursive: true })
+    try {
+      await beforeSave(doc, path)
+    } catch (err) {
+      console.error('[history] before save:', err instanceof Error ? err.message : err)
+    }
     await getVault().writeJson(path, JSON.stringify(doc))
   })
   ipcMain.handle(IPC.deleteDoc, async (_e, id: unknown) => {
     await getVault().remove(docPath(id))
+    await removeHistory(safeId(id))
   })
+
+  // version history
+  ipcMain.handle(IPC.histList, (_e, docId: unknown) => listVersions(safeId(docId)))
+  ipcMain.handle(IPC.histLoad, (_e, docId: unknown, vid: unknown) => loadVersion(safeId(docId), safeId(vid)))
+  ipcMain.handle(IPC.histSave, (_e, doc: StoredDoc, opts: { kind?: unknown; name?: unknown; restoredFrom?: unknown }) => {
+    if (!doc || typeof doc !== 'object') throw new Error('Invalid document')
+    safeId(doc.id)
+    const o = opts && typeof opts === 'object' ? opts : {}
+    return saveVersion(doc, o.kind === 'restore' ? 'restore' : 'named', {
+      name: optStr(o.name),
+      restoredFrom: typeof o.restoredFrom === 'number' ? o.restoredFrom : undefined
+    })
+  })
+  ipcMain.handle(IPC.histRename, (_e, docId: unknown, vid: unknown, name: unknown) =>
+    renameVersion(safeId(docId), safeId(vid), str(name))
+  )
+  ipcMain.handle(IPC.histRemove, (_e, docId: unknown, vid: unknown) => removeVersion(safeId(docId), safeId(vid)))
   ipcMain.handle(IPC.loadIndex, () => getVault().readJson<IndexData>(indexPath()))
   ipcMain.handle(IPC.saveIndex, async (_e, index: IndexData) => {
     if (!index || typeof index !== 'object') throw new Error('Invalid index')

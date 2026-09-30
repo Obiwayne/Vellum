@@ -3,6 +3,7 @@ import type { MenuEntry } from '../ui/Menu'
 import { DASHBOARD, activeDocId, getStore } from '../model/store'
 import { exportPagePdf } from '../editor/canvas/actions'
 import { openUpdates } from './updates'
+import { useSaveVersionDialog } from '../history/versions'
 
 const api = (): Window['canvasApi'] | undefined => window.canvasApi
 
@@ -64,6 +65,15 @@ export const commands = {
   nextTab: (): void => getStore().cycleTab(1),
   previousTab: (): void => getStore().cycleTab(-1),
   goToLastTab: (): void => getStore().goToLastTab(),
+  showHistory: (): void => {
+    const id = activeDocId(getStore())
+    if (id) getStore().openHistory(id)
+  },
+  saveVersion: (): void => {
+    const s = getStore()
+    const id = s.historyDocId ?? activeDocId(s)
+    if (id) useSaveVersionDialog.getState().open(id)
+  },
   exportPagePdf: (): void => {
     const id = activeDocId(getStore())
     if (id) void exportPagePdf(id)
@@ -85,6 +95,9 @@ export function appMenu(): MenuEntry[] {
         { type: 'separator' },
         { label: 'Close Tab', shortcut: 'Ctrl+W', onSelect: commands.closeTab, disabled: s.activeTab === DASHBOARD },
         { label: 'Close Window', shortcut: 'Ctrl+Shift+W', onSelect: commands.closeWindow },
+        { type: 'separator' },
+        { label: 'Save to Version History…', shortcut: 'Ctrl+Alt+S', onSelect: commands.saveVersion, disabled: !docId },
+        { label: 'Show Version History', shortcut: 'Ctrl+Alt+H', onSelect: commands.showHistory, disabled: !docId },
         { type: 'separator' },
         { label: 'Export PDF of All Artboards…', onSelect: commands.exportPagePdf, disabled: !docId },
         { type: 'separator' },
@@ -162,6 +175,8 @@ export function installAppShortcuts(): () => void {
     else if (e.code === 'KeyT' && !e.altKey) commands.newTab()
     else if (e.code === 'KeyW' && e.shiftKey) commands.closeWindow()
     else if (e.code === 'KeyW' && !e.altKey) commands.closeTab()
+    else if (e.code === 'KeyS' && e.altKey && !e.shiftKey) commands.saveVersion()
+    else if (e.code === 'KeyH' && e.altKey && !e.shiftKey) commands.showHistory()
     else if (e.code === 'KeyD' && e.shiftKey) commands.goToDashboard()
     else if (e.code === 'Digit9' && !e.shiftKey) commands.goToLastTab()
     else if (e.code === 'KeyM' && !e.shiftKey && !e.altKey) commands.minimize()
@@ -169,8 +184,8 @@ export function installAppShortcuts(): () => void {
     else if (e.code === 'KeyR' && !e.altKey) commands.reload()
     // Ctrl+Shift+I is "Create image" in the editor; only toggles devtools on the dashboard.
     else if (e.code === 'KeyI' && e.shiftKey && getStore().activeTab === DASHBOARD) commands.toggleDevTools()
-    else if (e.code === 'KeyZ' && !inText) (e.shiftKey ? commands.redo : commands.undo)()
-    else if (e.code === 'KeyY' && !inText && !e.shiftKey) commands.redo()
+    else if (e.code === 'KeyZ' && !inText && !getStore().historyDocId) (e.shiftKey ? commands.redo : commands.undo)()
+    else if (e.code === 'KeyY' && !inText && !e.shiftKey && !getStore().historyDocId) commands.redo()
     else handled = false
     if (handled) {
       e.preventDefault()

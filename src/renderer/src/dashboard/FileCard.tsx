@@ -50,6 +50,7 @@ export function fileMenu(doc: Doc, actions: { rename: () => void; askDelete: () 
     { type: 'separator' },
     { label: 'Rename', onSelect: actions.rename },
     { label: 'Duplicate', onSelect: () => duplicateDoc(doc.id) },
+    { label: 'History', onSelect: () => s.openHistory(doc.id) },
     ...(doc.scratchpad ? [] : [moveToFolderMenu(doc)]),
     ...(doc.scratchpad
       ? []

@@ -1,4 +1,5 @@
 // Shared between main, preload and renderer. Keep this file free of runtime imports.
+import type { DiffSummary } from './docDiff'
 
 /** Persisted JSON document. The renderer's `Doc` type (model/types.ts) is stored as-is. */
 export interface StoredDoc {
@@ -100,6 +101,42 @@ export interface UpdatesApi {
   onStatus(cb: (status: UpdateStatus) => void): () => void
 }
 
+/** How a version came to be: saved automatically, named by the user, or kept before a restore. */
+export type VersionKind = 'auto' | 'named' | 'restore'
+
+/** One saved version of a doc (src/main/history.ts). */
+export interface VersionMeta {
+  id: string
+  kind: VersionKind
+  /** when the version was saved */
+  createdAt: number
+  /** the doc's own updatedAt at that moment (when it was last edited) */
+  docUpdatedAt: number
+  name?: string
+  /** for kind 'restore': createdAt of the version that was restored over it */
+  restoredFrom?: number
+  /** changes since the previous (older) version; missing for the oldest */
+  summary?: DiffSummary
+  pageCount: number
+  nodeCount: number
+  /** compressed bytes on disk (without shared images) */
+  size: number
+  /** main process only: blob hashes this version uses */
+  blobs?: string[]
+}
+
+export interface HistoryApi {
+  /** newest first */
+  list(docId: string): Promise<VersionMeta[]>
+  /** the doc as it was in that version */
+  load(docId: string, versionId: string): Promise<StoredDoc | null>
+  /** save the given doc state as a named version, or as the restore point before a restore */
+  save(doc: StoredDoc, opts: { kind: 'named' | 'restore'; name?: string; restoredFrom?: number }): Promise<VersionMeta>
+  /** name / rename a version ('' clears the name); a named version is never pruned */
+  rename(docId: string, versionId: string, name: string): Promise<void>
+  remove(docId: string, versionId: string): Promise<void>
+}
+
 export interface Rect {
   x: number
   y: number
@@ -144,6 +181,7 @@ export interface CanvasApi {
   userDataPath(): Promise<string>
   profiles: ProfilesApi
   updates: UpdatesApi
+  history: HistoryApi
   /** absolute path of the MCP server entry (mcp/dist/index.js), forward slashes */
   mcpEntry: string
   // capture: rect in CSS px of the window's web contents; returns PNG base64 (no data: prefix)
@@ -214,5 +252,10 @@ export const IPC = {
   updStatus: 'updates:status',
   updCheck: 'updates:check',
   updInstall: 'updates:install',
-  updChanged: 'updates:changed'
+  updChanged: 'updates:changed',
+  histList: 'history:list',
+  histLoad: 'history:load',
+  histSave: 'history:save',
+  histRename: 'history:rename',
+  histRemove: 'history:remove'
 } as const
