@@ -39,28 +39,41 @@ its design system, component sheets and every screen and dialog (85 artboards), 
 
 - **Canvas** — infinite pan and zoom (2%–25600%), artboards, frames, rectangles, text, pen paths, images and SVG;
   selection handles, marquee select, snapping guides, drag-to-reorder inside flex layouts, inline text editing.
+  Drag **padding and gap handles** right on flex/grid frames, and **gradient handles** (angle, stops, radial
+  centre and radius) on gradient fills. `Ctrl`+right-click lists every layer under the pointer.
 - **Images** — paste screenshots and copied images with `Ctrl+V` (including image files copied in File Explorer),
-  or drag image files straight onto the canvas; they land where you drop them.
-- **Inspector** — layout (X/Y, rotation, Fixed/Fit/Fill sizing, device size presets), flex (direction,
-  alignment grid, gap, padding, wrap), CSS grid (columns, rows, gaps, cell alignment, item spans), radius,
-  opacity and blend modes, solid/gradient/image fills, outline, border, shadows, inner shadows, filters with
-  sliders and one-click presets, background blur (frosted glass), full typography with a font picker,
-  export (PNG/SVG/HTML).
+  or drag image files straight onto the canvas; they land where you drop them. `Ctrl`+drag a handle to **crop**.
+- **Inspector** — layout (X/Y, rotation, Fixed/Fit/Fill sizing, device size presets), **constraints**
+  (left/right/centre/scale when the parent resizes, as real CSS), flex (direction, alignment grid, gap,
+  padding, wrap), CSS grid (columns, rows, gaps, cell alignment, item spans), radius, opacity and blend modes,
+  solid/gradient/image fills, outline, border, shadows, inner shadows, filters with sliders and one-click
+  presets, background blur (frosted glass); fills, shadows and filters reorder by dragging.
+  - **Selection colors** — every colour in the selection with a use count; change one and it changes
+    everywhere. Any colour field can **add the colour as a token**.
+  - **Other styles** — any CSS the other panels don't cover (often written by an AI: `transform`,
+    `aspect-ratio`, `z-index`…) is listed and editable, and you can add your own properties.
+  - **Typography** — font picker, full text settings, **OpenType features** (tabular/oldstyle figures, slashed
+    zero, fractions, ligatures, small caps, custom `font-feature-settings`) and **variable font axes**
+    (read from local font files). New text starts with the last text style you used.
+- **Export & code** — PNG, JPG and WebP (2x by default), SVG, HTML and **PDF**, plus one multi-page PDF of all
+  artboards. Copy as HTML, CSS, JSX, **React** (`Alt+R`) or **Tailwind** (`Alt+T`).
 - **Icons** — search and insert any of ~1,850 Lucide icons as editable SVG, with size, stroke and colour
   (`Shift+I`).
-- **Layers & pages** — layers tree with drag-and-drop, show/hide, lock and rename; multiple pages per file.
+- **Layers & pages** — layers tree with drag-and-drop, show/hide, lock and rename (`Alt+L` collapses all);
+  multiple pages per file, reordered by dragging. The left sidebar and the Pages list are resizable.
 - **Theme tokens** — CSS custom-property tokens (colours, type, spacing, radii…) with a starter theme;
   use them anywhere as `var(--token)`. **Theme modes** (e.g. Light / Dark) give each token a value per mode;
   put any frame in a mode and everything inside follows. Exports include `[data-mode="…"]` CSS.
 - **Comments** — press `C` and click a layer to pin a comment ("make this say Get started"). Ask your AI to
   address your comments: it makes the change, replies in the thread and resolves it.
 - **Dashboard** — recents, files, nested folders (drag files onto folders), archive, search, grid/list views
-  and live thumbnails.
-- **Editing** — undo/redo, copy/paste (including HTML from other apps), copy as HTML/JSX/CSS,
-  right-click menus and keyboard shortcuts throughout.
+  and live thumbnails. Select several files (`Ctrl`/`Shift`+click, `Ctrl+A`) to move, archive or delete them
+  together.
+- **Editing** — undo/redo, copy/paste (including HTML from other apps), right-click menus and keyboard
+  shortcuts throughout.
 - **Profiles & privacy** — local profiles with an optional password that encrypts your files (see below).
 - **MCP server** — 35 tools (`write_html`, `update_styles`, `get_screenshot`, `get_jsx`, tokens and theme
-  modes, comments, pages, export…). Works with Claude Code, Codex and other MCP clients. Layers an agent is
+  modes, comments, pages, export to PNG/JPG/WebP/SVG/PDF/HTML/JSX…). Works with Claude Code, Codex and other MCP clients. Layers an agent is
   working on are outlined live on the canvas with a tag.
 
 ### Profiles & privacy
@@ -140,11 +153,17 @@ See [`docs/MCP.md`](docs/MCP.md) for the full tool list and troubleshooting.
 
 | Tool / action | Shortcut |
 |---|---|
-| Move · Pan | `V` · hold `Space` |
+| Move · Pan | `V` · `H` (or hold `Space`) |
 | Frame · Rectangle · Pen · Text | `F` · `R` · `P` · `T` |
 | Comment · Show/hide comments | `C` · `Shift+C` |
 | Icons | `Shift+I` |
 | Add / wrap in flex | `Shift+A` |
+| Opacity 10%–90% · 100% | `1`–`9` · `0` |
+| Bold · Italic · Underline | `Ctrl+B` · `Ctrl+I` · `Ctrl+U` |
+| Font size · weight · letter spacing · line height | `Ctrl+Shift+.`/`,` · `Ctrl+Alt+.`/`,` · `Alt+.`/`,` · `Alt+Shift+.`/`,` |
+| Copy as React · Tailwind | `Alt+R` · `Alt+T` |
+| Crop an image | hold `Ctrl` while resizing |
+| Layers under the pointer | `Ctrl`+right-click |
 | Zoom to 100% · fit · selection | `Shift+0` · `Shift+1` · `Shift+2` |
 | Copy · Paste · Duplicate · Delete | `Ctrl+C` · `Ctrl+V` · `Ctrl+D` · `Delete` |
 | Undo · Redo | `Ctrl+Z` · `Ctrl+Shift+Z` |
