@@ -302,29 +302,43 @@ export function CanvasView({ docId }: { docId: string }): JSX.Element | null {
   }, [tool, docId])
 
   // ---------------------------------------------------------------- middle-button pan
-  // Taken in the capture phase so no child (labels, pins, handles, the text editor) can swallow it,
-  // and the browser's own middle-click behaviour (autoscroll, paste) is blocked.
+  // Taken on the window in the capture phase, before any child (labels, pins, handles, the text editor)
+  // can swallow it, and without depending on the viewport element this effect first saw. The browser's
+  // own middle-click behaviour (autoscroll, paste) is blocked over the canvas.
   useEffect(() => {
-    const el = viewport.current
-    if (!el) return
+    const overCanvas = (e: MouseEvent): boolean => {
+      const el = viewport.current
+      if (e.button !== 1 || !el?.isConnected) return false
+      const t = e.target as Element | null
+      if (t && el.contains(t)) return true
+      // menus and dialogs floating over the canvas keep their own middle click
+      if (t?.closest?.('.c-popover, .c-menu, .c-modal-overlay')) return false
+      const r = el.getBoundingClientRect()
+      return e.clientX >= r.left && e.clientX < r.right && e.clientY >= r.top && e.clientY < r.bottom
+    }
     const down = (e: PointerEvent): void => {
-      if (e.button !== 1) return
+      if (!overCanvas(e)) return
       e.preventDefault()
       e.stopPropagation()
-      if (gesture.current) return
+      const g = gesture.current
+      if (g) {
+        // a drag still holding its button keeps going; one whose release was missed is finished first
+        if (g.kind !== 'pan' && e.buttons & 1) return
+        listeners.current.up(e)
+      }
       if (getStore().editors[docId]?.editingTextId) A.commitTextEditing()
       startPan(e.clientX, e.clientY, 4)
     }
     const block = (e: MouseEvent): void => {
-      if (e.button === 1) e.preventDefault()
+      if (overCanvas(e)) e.preventDefault()
     }
-    el.addEventListener('pointerdown', down, true)
-    el.addEventListener('mousedown', block, true)
-    el.addEventListener('auxclick', block, true)
+    window.addEventListener('pointerdown', down, true)
+    window.addEventListener('mousedown', block, true)
+    window.addEventListener('auxclick', block, true)
     return () => {
-      el.removeEventListener('pointerdown', down, true)
-      el.removeEventListener('mousedown', block, true)
-      el.removeEventListener('auxclick', block, true)
+      window.removeEventListener('pointerdown', down, true)
+      window.removeEventListener('mousedown', block, true)
+      window.removeEventListener('auxclick', block, true)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [docId])

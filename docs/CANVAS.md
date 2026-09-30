@@ -12,7 +12,7 @@ The canvas code lives in `src/renderer/src/editor/canvas/`. The toolbar is in `e
   - Click or drag a label to select or move the frame. Double-click it to rename.
 - **Camera**
   - Wheel or trackpad scrolling pans. Ctrl+wheel and pinch zoom at the cursor. Zoom ranges from 2% to 25600%.
-  - You can also pan with Space+drag, middle-drag or the Pan tool (H). The middle button is taken in the capture phase, so it pans from anywhere on the canvas (artboards, labels, pins, handles), the browser's middle-click actions are blocked, and a pan whose release was missed ends on the next move.
+  - You can also pan with Space+drag, middle-drag or the Pan tool (H). The middle button is taken on the window in the capture phase whenever the pointer is over the canvas, so it pans from anywhere on it (artboards, labels, pins, handles) and cannot be lost when the viewport element changes. The browser's middle-click actions are blocked, a pan whose release was missed ends on the next move, and a left drag whose release was missed is finished when the middle button goes down instead of blocking the pan.
   - A pixel grid appears at 800% zoom and above.
 - **Selection** (`selection.ts`)
   - Picking: a click on an artboard child selects the child directly under the artboard. Double-click drills one level deeper, or edits text. Ctrl/Meta+click selects the deepest node.
