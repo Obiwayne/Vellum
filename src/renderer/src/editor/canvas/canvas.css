@@ -122,7 +122,7 @@
   position: absolute;
   box-sizing: border-box;
   border: 1px dashed var(--accent);
-  background: oklch(0.6 0.15 258 / 0.12);
+  background: color-mix(in oklab, var(--accent) 12%, transparent);
   pointer-events: none;
 }
 
@@ -137,7 +137,7 @@
   position: absolute;
   box-sizing: border-box;
   border: 1px solid var(--accent);
-  background: oklch(0.6 0.15 258 / 0.1);
+  background: color-mix(in oklab, var(--accent) 10%, transparent);
   pointer-events: none;
 }
 

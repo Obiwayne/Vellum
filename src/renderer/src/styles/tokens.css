@@ -23,10 +23,18 @@
   --text-4: rgba(255, 255, 255, 0.4);
   --text-disabled: rgba(255, 255, 255, 0.3);
 
+  /* brand (matches resources/icon.svg) */
+  --brand-red: #EE2A1B;
+  --brand-orange: #FF5A1F;
+  --brand-amber: #FF9A1F;
+  --brand-yellow: #FFD43B;
+  --brand-lime: #E4F53C;
+  --brand-gradient: linear-gradient(135deg, var(--brand-yellow), var(--brand-amber) 30%, var(--brand-orange) 60%, var(--brand-red));
+
   /* accent / status */
-  --accent: oklch(0.6 0.15 258);
-  --accent-hover: oklch(0.65 0.15 258);
-  --accent-soft: oklch(0.6 0.15 258 / 0.25);
+  --accent: oklch(0.65 0.2 38);
+  --accent-hover: oklch(0.71 0.19 48);
+  --accent-soft: oklch(0.65 0.2 38 / 0.25);
   --agent-teal: rgb(134, 234, 212);
   --agent-orange: rgb(217, 119, 87);
   --danger: #E5484D;
