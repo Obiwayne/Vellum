@@ -505,13 +505,13 @@ export async function paste(docId: string, mode: PasteMode = 'normal'): Promise<
   }
   // image files copied in File Explorer
   if (media?.files.length) {
-    await insertMedia(docId, media.files.map((f) => ({ name: f.name, src: f.dataUrl, svg: f.svg })), { mode })
+    await insertMedia(docId, media.files.map((f) => ({ name: f.name, src: f.dataUrl, svg: f.svg })), { mode, nextToSelection: true })
     return
   }
   // a bitmap: screenshots, "Copy image" in a browser or another app
   const bitmap = media?.image ?? (sys.image ? await blobToDataUrl(sys.image) : undefined)
   if (bitmap && (!sys.html || isImageOnlyHtml(sys.html))) {
-    await insertMedia(docId, [{ name: 'Image', src: bitmap }], { mode })
+    await insertMedia(docId, [{ name: 'Image', src: bitmap }], { mode, nextToSelection: true })
     return
   }
   const html = sys.html ?? (sys.text && /^\s*</.test(sys.text) ? sys.text : undefined)
@@ -680,13 +680,14 @@ export interface MediaItem {
 /**
  * Insert images/SVGs. With `at` (client coordinates, e.g. a drop point) they go into the frame under
  * that point — appended when it's a flex frame, positioned at the point otherwise — or onto the page
- * centred on the point. Without `at` they go into the selected frame / the visible area.
+ * centred on the point. With `nextToSelection` (paste) and layers selected, they become siblings of the
+ * selection placed to its right. Otherwise they go into the selected frame / the visible area.
  * Several items are laid out side by side with a 40px gap.
  */
 export async function insertMedia(
   docId: string,
   items: MediaItem[],
-  opts: { mode?: PasteMode; at?: { clientX: number; clientY: number } } = {}
+  opts: { mode?: PasteMode; at?: { clientX: number; clientY: number }; nextToSelection?: boolean } = {}
 ): Promise<string[]> {
   const doc = docOf(docId)
   if (!doc || !items.length) return []
@@ -704,32 +705,56 @@ export async function insertMedia(
     })
   )
   const at = opts.at
-  const parentId = at
-    ? containerAt(docId, at.clientX, at.clientY)
-    : opts.mode && opts.mode !== 'normal'
-      ? rootOf(docId)
-      : insertParent(docId)
+  // pasting with layers selected: a sibling of the selection, placed to its right
+  const sel = !at && opts.nextToSelection && (!opts.mode || opts.mode === 'normal') ? topSel(docId) : []
+  const anchor = sel.length ? union(sel.map((id) => measure(id, docId) ?? ops.worldRect(doc, id))) : null
+  const last = sel[sel.length - 1]
+  const parentId = anchor
+    ? (doc.nodes[last].parent as string)
+    : at
+      ? containerAt(docId, at.clientX, at.clientY)
+      : opts.mode && opts.mode !== 'normal'
+        ? rootOf(docId)
+        : insertParent(docId)
+  let index = anchor ? ops.indexInParent(doc, last) + 1 : undefined
   const created: string[] = []
   S().transact(docId, items.length > 1 ? 'Insert images' : 'Insert image', () => {
     for (const { it, w, h } of sized) {
+      const before = created.length
       if (it.svg) {
         const m = it.svg.replace(/^[\s\S]*?(?=<svg[\s>])/i, '')
-        if (/<svg[\s>]/i.test(m)) created.push(...S().insertHtml(docId, parentId, m))
+        if (/<svg[\s>]/i.test(m)) created.push(...S().insertHtml(docId, parentId, m, index))
       } else if (it.src) {
         created.push(
           S().createNode(
             docId,
             { type: 'image', name: it.name, attrs: { src: it.src, alt: it.name }, style: { width: w, height: h, objectFit: 'cover' } },
-            parentId
+            parentId,
+            index
           )
         )
       }
+      if (index !== undefined) index += created.length - before
     }
     S().mutate(docId, 'Place', (d) => {
       const sizes = created.map((id) => {
         const st = d.nodes[id]?.style
         return { w: ops.numericSize(st?.width) ?? 24, h: ops.numericSize(st?.height) ?? 24 }
       })
+      if (anchor) {
+        const parent = d.nodes[parentId]
+        if (!ops.isPageRoot(d, parentId) && ops.isFlowLayout(parent?.style)) return // flow lays them out
+        const origin = originOf(docId, parentId)
+        let x = anchor.x + anchor.width + 40
+        created.forEach((id, i) => {
+          const n = d.nodes[id]
+          if (!n) return
+          n.x = Math.round(x - origin.x)
+          n.y = Math.round(anchor.y - origin.y)
+          x += sizes[i].w + 40
+        })
+        return
+      }
       if (!at) {
         // side by side, centred in the visible area as a group
         const total = sizes.reduce((t, z) => t + z.w, 0) + 40 * (sizes.length - 1)
