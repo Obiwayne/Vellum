@@ -67,7 +67,7 @@ The canvas code lives in `src/renderer/src/editor/canvas/`. The toolbar is in `e
 | Paste variants | Ctrl+Shift+V (paste on top), Ctrl+Shift+R (paste to replace) |
 | Styles | Ctrl+Alt+C / Ctrl+Alt+V |
 | Text (text layers selected; `editor/textStyle.ts`) | Ctrl+B bold (700 ↔ 400), Ctrl+I italic, Ctrl+U underline; Ctrl+Shift+. / , font size ±1; Ctrl+Alt+. / , weight ±100; Alt+. / , letter spacing ±0.01em; Alt+Shift+. / , line height ±1px (from Auto: 1.2 × size). Each press is one undo step. With no text selected the keys do nothing here, so they fall through |
-| Structure | Shift+F (frame selection), Shift+A (add flex, or wrap in flex), Alt+C (clip content) |
+| Structure | Ctrl+G (group), Ctrl+Shift+G (ungroup), Shift+F or Ctrl+Alt+G (frame selection), Shift+A (add flex, or wrap in flex), Alt+C (clip content) |
 | Order | ] and [ (front / back), Ctrl+] and Ctrl+[ (forward / backward) |
 | Visibility | Ctrl+Shift+H (show/hide), Ctrl+Shift+L (lock/unlock) |
 | Opacity | 1–9 (10–90%), 0 (100%); with the `canvas.zoomNumberKeys` pref on, 0 / 1 / 2 zoom like Shift+0/1/2 instead |

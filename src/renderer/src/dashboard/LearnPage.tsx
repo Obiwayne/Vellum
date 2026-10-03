@@ -43,6 +43,8 @@ const GROUPS: { title: string; items: [string, string][] }[] = [
       ['Duplicate', 'Ctrl+D'],
       ['Delete', 'Delete'],
       ['Wrap in flex', 'Shift+A'],
+      ['Group', 'Ctrl+G'],
+      ['Ungroup', 'Ctrl+Shift+G'],
       ['Frame selection', 'Shift+F'],
       ['Bring to front / Send to back', '] / ['],
       ['Show / hide', 'Ctrl+Shift+H'],
