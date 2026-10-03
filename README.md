@@ -2,6 +2,8 @@
 
 <h1 align="center">Vellum</h1>
 
+<p align="center"><a href="https://github.com/Obiwayne/Vellum/actions/workflows/ci.yml"><img src="https://github.com/Obiwayne/Vellum/actions/workflows/ci.yml/badge.svg" alt="CI" /></a></p>
+
 <p align="center">
   A free, local-first design tool where <b>designs are real HTML/CSS</b> —<br />
   with a built-in <b>MCP server so Claude can design in it</b> while you watch.

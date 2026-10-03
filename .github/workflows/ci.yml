@@ -1,0 +1,51 @@
+name: CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: windows-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            mcp/package-lock.json
+      # --ignore-scripts: skip Electron's binary download, nothing here launches the app
+      - run: npm ci --ignore-scripts
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm ci
+        working-directory: mcp
+      - run: npm run build
+        working-directory: mcp
+
+  # Opens the real app on the runner's interactive desktop and runs the MCP suites against it.
+  mcp:
+    runs-on: windows-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            mcp/package-lock.json
+      # full install: the Electron binary is downloaded by its postinstall
+      - run: npm ci
+      - run: npm ci
+        working-directory: mcp
+      - run: npm run test:mcp
