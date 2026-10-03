@@ -780,7 +780,8 @@ export function canUngroup(doc: Doc, id: string): boolean {
 }
 
 /**
- * Dissolve frames: children take the frame's place in its parent, keeping their world position.
+ * Dissolve frames: children take the frame's place in its parent. In a flex/grid parent they join its
+ * flow in order; elsewhere they keep their world position.
  * `rects` are the children's world rects, `origins` each frame's parent world origin.
  * Returns the freed child ids.
  */
@@ -795,19 +796,20 @@ export function ungroupNodes(
     if (!canUngroup(doc, g)) continue
     const group = doc.nodes[g]
     const parent = doc.nodes[group.parent as string]
-    const flowKids = isFlowLayout(group.style)
     const origin = origins.get(g) ?? { x: 0, y: 0 }
     const kids = [...group.children]
     for (const c of kids) {
       const n = doc.nodes[c]
       const r = rects.get(c)
       n.parent = parent.id
-      if (flowKids && isFlowLayout(parent.style)) {
+      if (isFlowLayout(parent.style)) {
+        // auto-layout parent: the children join its flow at the group's index, in order
         if (n.style.position === 'absolute') delete n.style.position
+        n.x = 0
+        n.y = 0
       } else if (r) {
         n.x = Math.round(r.x - origin.x)
         n.y = Math.round(r.y - origin.y)
-        if (isFlowLayout(parent.style)) n.style.position = 'absolute'
       }
       freed.push(c)
     }

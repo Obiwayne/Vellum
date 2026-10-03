@@ -72,15 +72,18 @@ describe('ungroupNodes', () => {
     expect(board.children).toEqual([a.id, b.id, c.id])
   })
 
-  it('in a flex parent, a plain group’s children become absolute at measured offsets', () => {
+  it('in a flex parent, children join the flow at the group’s index, in order, with x/y dropped', () => {
     const { doc, board, a, b } = setup({ display: 'flex' })
-    const gid = ops.wrapNodes(doc, [a.id, b.id], 'Group', new Map([[a.id, rect(0, 0, 5, 5)], [b.id, rect(5, 0, 5, 5)]]), rect(0, 0, 10, 5), { x: 0, y: 0 })!
-    // group sits in a flex parent (flow child); its children are positioned inside it
-    const rects = new Map([[a.id, rect(0, 0, 5, 5)], [b.id, rect(5, 0, 5, 5)]])
+    const c = ops.makeNode(doc, { type: 'rect' as never })
+    ops.insertNode(doc, c, board.id)
+    const rects = new Map([[a.id, rect(0, 0, 5, 5)], [b.id, rect(5, 3, 5, 5)]])
+    const gid = ops.wrapNodes(doc, [a.id, b.id], 'Group', rects, rect(0, 0, 10, 8), { x: 0, y: 0 })!
+    b.style.position = 'absolute'
     ops.ungroupNodes(doc, [gid], rects, new Map([[gid, { x: 0, y: 0 }]]))
-    expect(board.children).toEqual([a.id, b.id])
-    expect(a.style.position).toBe('absolute')
-    expect([b.x, b.y]).toEqual([5, 0])
+    expect(board.children).toEqual([a.id, b.id, c.id])
+    expect(a.style.position).toBeUndefined()
+    expect(b.style.position).toBeUndefined()
+    expect([b.x, b.y]).toEqual([0, 0])
   })
 
   it('refuses artboards and empty frames', () => {
