@@ -773,10 +773,10 @@ export function wrapNodes(
   return wrapper.id
 }
 
-/** A frame with children that isn't an artboard (a page's top-level node). */
+/** A frame with children and a parent: top-level frames can be dissolved, a page's root frame can't. */
 export function canUngroup(doc: Doc, id: string): boolean {
   const n = doc.nodes[id]
-  return Boolean(n && n.type === 'frame' && n.children.length > 0 && n.parent && !isPageRoot(doc, n.parent))
+  return Boolean(n && n.type === 'frame' && n.children.length > 0 && n.parent)
 }
 
 /**

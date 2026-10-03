@@ -109,7 +109,8 @@ export function installCanvasShortcuts(docId: string): () => void {
         const one = sel.length === 1 ? doc?.nodes[sel[0]] : undefined
         if (one?.type === 'text' && !one.locked) A.startTextEditing(docId, one.id)
         else A.selectChildren(docId)
-      } else if (key === 'Delete' || key === 'Backspace') A.deleteSelection(docId)
+      } else if (key === 'Backspace' && shift) A.ungroupSelection(docId)
+      else if (key === 'Delete' || key === 'Backspace') A.deleteSelection(docId)
       else if (key.startsWith('Arrow')) nudgeKey(docId, key, 1)
       else if (code === 'BracketRight') A.reorder(docId, 'front')
       else if (code === 'BracketLeft') A.reorder(docId, 'back')

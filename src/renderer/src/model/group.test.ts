@@ -63,7 +63,7 @@ describe('group / ungroup acceptance', () => {
 
   // Acceptance: "each action works ... at page level". A group of two artboards sits directly under the
   // page root, and canUngroup refuses any frame whose parent is a page root.
-  it.fails('page level: a group made of top-level layers can be ungrouped', () => {
+  it('page level: a group made of top-level layers can be ungrouped', () => {
     const { doc, root, nodes } = page(null)
     const [a, b] = nodes
     const r = new Map([[a.id, rect(0, 0, 10, 10)], [b.id, rect(50, 0, 10, 10)]])

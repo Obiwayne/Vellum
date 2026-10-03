@@ -86,12 +86,13 @@ describe('ungroupNodes', () => {
     expect([b.x, b.y]).toEqual([0, 0])
   })
 
-  it('refuses artboards and empty frames', () => {
+  it('refuses page roots and empty frames, allows top-level frames', () => {
     const { doc, board } = setup()
-    expect(ops.canUngroup(doc, board.id)).toBe(false)
+    expect(ops.canUngroup(doc, board.id)).toBe(true)
+    expect(ops.canUngroup(doc, doc.pages[0].rootId)).toBe(false)
     const empty = ops.makeNode(doc, { type: 'frame' })
     ops.insertNode(doc, empty, board.id)
     expect(ops.canUngroup(doc, empty.id)).toBe(false)
-    expect(ops.ungroupNodes(doc, [board.id], new Map(), new Map())).toEqual([])
+    expect(ops.ungroupNodes(doc, [doc.pages[0].rootId], new Map(), new Map())).toEqual([])
   })
 })
