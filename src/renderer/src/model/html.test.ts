@@ -76,3 +76,59 @@ describe('htmlToNodes', () => {
     expect(nodes[0].style).toMatchObject({ width: 30, height: 20 })
   })
 })
+
+describe('htmlToNodes: docs/BUGS.md cases', () => {
+  it('block container with only inline-level children becomes a wrapping baseline row', () => {
+    const { nodes } = parse('<div><button>a</button><img src="x.png"><button>b</button></div>')
+    expect(nodes[0].type).toBe('frame')
+    expect(nodes[0].style).toMatchObject({ display: 'flex', flexDirection: 'row', flexWrap: 'wrap', alignItems: 'baseline' })
+  })
+
+  it('absolute child with only right/top keeps right and stores left as auto, not 0', () => {
+    const { doc, nodes } = parse('<div><div style="position:absolute;right:10px;top:4px">a</div></div>')
+    const kid = doc.nodes[nodes[0].children[0]]
+    expect(kid.style.right).toBe('10px')
+    expect(kid.style.left).toBe('auto')
+    expect(kid.x).toBe(0)
+    expect(kid.y).toBe(4)
+  })
+
+  it('absolute child with only bottom stores top as auto', () => {
+    const { doc, nodes } = parse('<div><div style="position:absolute;bottom:10px;left:3px">a</div></div>')
+    const kid = doc.nodes[nodes[0].children[0]]
+    expect(kid.style.bottom).toBe('10px')
+    expect(kid.style.top).toBe('auto')
+    expect(kid.x).toBe(3)
+  })
+
+  it('text with no line-height gets no fixed lineHeight', () => {
+    const { nodes } = parse('<p>Hello</p>')
+    expect(nodes[0].style.lineHeight).toBeUndefined()
+  })
+
+  it('an element whose only content is &nbsp; becomes a text node with U+00A0', () => {
+    const { doc, nodes } = parse('<div><div>&nbsp;</div></div>')
+    const kid = doc.nodes[nodes[0].children[0]]
+    expect(kid.type).toBe('text')
+    expect(kid.text).toBe('\u00a0')
+  })
+
+  it('an empty element with only typography styles becomes an empty text node', () => {
+    const { doc, nodes } = parse('<div><div style="font-size:14px;color:red"></div></div>')
+    const kid = doc.nodes[nodes[0].children[0]]
+    expect(kid.type).toBe('text')
+    expect(kid.text).toBe('')
+  })
+
+  it('an empty div with a background or height stays a frame', () => {
+    const { doc, nodes } = parse('<div><div style="background:red"></div><div style="height:10px"></div></div>')
+    expect(nodes[0].children.map((id) => doc.nodes[id].type)).toEqual(['frame', 'frame'])
+  })
+
+  it('backslashes stay literal and add no newline', () => {
+    const { nodes } = parse(String.raw`<div>C:\nonexistent\x.exe</div>`)
+    expect(nodes[0].type).toBe('text')
+    expect(nodes[0].text).toBe(String.raw`C:\nonexistent\x.exe`)
+    expect(nodes[0].text).not.toContain('\n')
+  })
+})
