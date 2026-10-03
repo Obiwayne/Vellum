@@ -107,6 +107,10 @@ Claude Code ──stdio──▶ mcp/dist/index.js ──ws://127.0.0.1:29170─
 
 ## Testing
 
+One command runs everything: `npm run test:mcp` (repo root; needs `npm install` in the root and in `mcp/`). It builds the MCP server, seeds a throwaway data folder with one unprotected profile, starts the app on a free port against it, runs the profile, e2e, regress and security suites, prints a summary, and always stops the app and deletes the folder. It exits 1 if anything failed. `KEEP=1` keeps the data folder; `ONLY=e2e,regress` runs a subset (profiles, e2e, regress, security).
+
+To run one suite by hand:
+
 ```
 # terminal 1: a separate data folder (VELLUM_USER_DATA) keeps your real profiles out of it and avoids the
 # single-instance lock of another running Vellum
