@@ -5,6 +5,7 @@ import { getStore, useStore } from '../../model/store'
 import * as ops from '../../model/ops'
 import type { CNode, Doc } from '../../model/types'
 import { CANVAS_COMMAND_EVENT } from '../../shell/commands'
+import * as A from '../canvas/actions'
 import { InlineEdit } from './InlineEdit'
 
 interface Row {
@@ -98,6 +99,9 @@ export function nodeMenu(docId: string, ids: string[], onRename?: () => void): M
     },
     { label: 'Delete', shortcut: 'Delete', onSelect: () => s.deleteNodes(docId, ids) },
     { type: 'separator' },
+    { label: 'Group selection', shortcut: 'Ctrl+G', onSelect: () => (s.select(docId, ids), A.groupSelection(docId)) },
+    { label: 'Ungroup', shortcut: 'Ctrl+Shift+G', onSelect: () => (s.select(docId, ids), A.ungroupSelection(docId)) },
+    { label: 'Frame selection', shortcut: 'Ctrl+Alt+G', onSelect: () => (s.select(docId, ids), A.frameSelection(docId)) },
     {
       label: 'Wrap in flex',
       shortcut: 'Shift+A',
