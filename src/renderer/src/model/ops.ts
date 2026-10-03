@@ -724,6 +724,102 @@ export function wrapInFlex(doc: Doc, ids: string[]): string | null {
   return wrapper.id
 }
 
+/**
+ * Wrap sibling nodes in a plain frame ("Frame" clips, "Group" doesn't) sized to `bounds` (world coords),
+ * placed where the first node was. `rects` are the nodes' world rects, `origin` the parent's world origin.
+ * Returns the wrapper id.
+ */
+export function wrapNodes(
+  doc: Doc,
+  ids: string[],
+  kind: 'Frame' | 'Group',
+  rects: Map<string, WorldRect | null>,
+  bounds: WorldRect,
+  origin: { x: number; y: number }
+): string | null {
+  const parentId = doc.nodes[ids[0]]?.parent
+  const parent = parentId ? doc.nodes[parentId] : undefined
+  if (!parent) return null
+  const wrapper = makeNode(
+    doc,
+    {
+      type: 'frame',
+      name: kind,
+      style: {
+        width: Math.round(bounds.width),
+        height: Math.round(bounds.height),
+        boxSizing: 'border-box',
+        ...(kind === 'Frame' ? { overflow: 'clip' } : {})
+      }
+    },
+    false
+  )
+  wrapper.x = Math.round(bounds.x - origin.x)
+  wrapper.y = Math.round(bounds.y - origin.y)
+  insertNode(doc, wrapper, parent.id, Math.min(...ids.map((id) => parent.children.indexOf(id))))
+  const inOrder = [...ids].sort((a, b) => parent.children.indexOf(a) - parent.children.indexOf(b))
+  for (const id of inOrder) {
+    const n = doc.nodes[id]
+    const r = rects.get(id)
+    parent.children = parent.children.filter((c) => c !== id)
+    n.parent = wrapper.id
+    wrapper.children.push(id)
+    if (r) {
+      n.x = Math.round(r.x - bounds.x)
+      n.y = Math.round(r.y - bounds.y)
+    }
+    if (n.style.position === 'absolute') delete n.style.position
+  }
+  return wrapper.id
+}
+
+/** A frame with children and a parent: top-level frames can be dissolved, a page's root frame can't. */
+export function canUngroup(doc: Doc, id: string): boolean {
+  const n = doc.nodes[id]
+  return Boolean(n && n.type === 'frame' && n.children.length > 0 && n.parent)
+}
+
+/**
+ * Dissolve frames: children take the frame's place in its parent. In a flex/grid parent they join its
+ * flow in order; elsewhere they keep their world position.
+ * `rects` are the children's world rects, `origins` each frame's parent world origin.
+ * Returns the freed child ids.
+ */
+export function ungroupNodes(
+  doc: Doc,
+  groupIds: string[],
+  rects: Map<string, WorldRect | null>,
+  origins: Map<string, { x: number; y: number }>
+): string[] {
+  const freed: string[] = []
+  for (const g of groupIds) {
+    if (!canUngroup(doc, g)) continue
+    const group = doc.nodes[g]
+    const parent = doc.nodes[group.parent as string]
+    const origin = origins.get(g) ?? { x: 0, y: 0 }
+    const kids = [...group.children]
+    for (const c of kids) {
+      const n = doc.nodes[c]
+      const r = rects.get(c)
+      n.parent = parent.id
+      if (isFlowLayout(parent.style)) {
+        // auto-layout parent: the children join its flow at the group's index, in order
+        if (n.style.position === 'absolute') delete n.style.position
+        n.x = 0
+        n.y = 0
+      } else if (r) {
+        n.x = Math.round(r.x - origin.x)
+        n.y = Math.round(r.y - origin.y)
+      }
+      freed.push(c)
+    }
+    parent.children.splice(parent.children.indexOf(g), 1, ...kids)
+    group.children = []
+    removeNode(doc, g)
+  }
+  return freed
+}
+
 /** Sort ids into document (tree) order. */
 export function sortByTreeOrder(doc: Doc, ids: string[]): string[] {
   const order = new Map<string, number>()
