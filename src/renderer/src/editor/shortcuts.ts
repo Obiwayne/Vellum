@@ -51,13 +51,15 @@ export function installCanvasShortcuts(docId: string): () => void {
       e.stopPropagation()
       return
     }
-    if (ctrl && !alt) {
+    if (ctrl && alt && !shift && code === 'KeyG') A.frameSelection(docId)
+    else if (ctrl && !alt) {
       if (code === 'KeyD' && !shift) A.duplicateSelection(docId)
       else if (code === 'KeyC' && !shift) void A.copySelection(docId)
       else if (code === 'KeyX' && !shift) void A.cutSelection(docId)
       else if (code === 'KeyV') void A.paste(docId, shift ? 'onTop' : 'normal')
       else if (code === 'KeyR' && shift) void A.paste(docId, 'replace')
       else if (code === 'KeyA' && !shift) A.selectAll(docId)
+      else if (code === 'KeyG') shift ? A.ungroupSelection(docId) : A.groupSelection(docId)
       else if (code === 'KeyL' && shift) A.toggleLocked(docId)
       else if (code === 'KeyL') A.copyLink(docId)
       else if (code === 'KeyH' && shift) A.toggleVisible(docId)
