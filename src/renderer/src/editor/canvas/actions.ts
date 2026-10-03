@@ -257,40 +257,9 @@ function wrapSelection(docId: string, kind: 'Frame' | 'Group'): void {
   const bounds = union([...rects.values()])
   if (!bounds) return
   const origin = originOf(docId, parentId)
-  let wrapperId = ''
+  let wrapperId: string | null = null
   S().mutate(docId, kind === 'Group' ? 'Group' : 'Frame selection', (d) => {
-    const parent = d.nodes[parentId]
-    const wrapper = ops.makeNode(
-      d,
-      {
-        type: 'frame',
-        name: kind,
-        style: {
-          width: Math.round(bounds.width),
-          height: Math.round(bounds.height),
-          boxSizing: 'border-box',
-          ...(kind === 'Frame' ? { overflow: 'clip' } : {})
-        }
-      },
-      false
-    )
-    wrapperId = wrapper.id
-    wrapper.x = Math.round(bounds.x - origin.x)
-    wrapper.y = Math.round(bounds.y - origin.y)
-    const index = Math.min(...ids.map((id) => parent.children.indexOf(id)))
-    ops.insertNode(d, wrapper, parentId, index)
-    for (const id of ids) {
-      const n = d.nodes[id]
-      const r = rects.get(id)
-      parent.children = parent.children.filter((c) => c !== id)
-      n.parent = wrapper.id
-      wrapper.children.push(id)
-      if (r) {
-        n.x = Math.round(r.x - bounds.x)
-        n.y = Math.round(r.y - bounds.y)
-      }
-      if (n.style.position === 'absolute') delete n.style.position
-    }
+    wrapperId = ops.wrapNodes(d, ids, kind, rects, bounds, origin)
   })
   if (wrapperId) S().select(docId, [wrapperId])
 }
@@ -299,40 +268,14 @@ function wrapSelection(docId: string, kind: 'Frame' | 'Group'): void {
 export function ungroupSelection(docId: string): void {
   const doc = docOf(docId)
   if (!doc) return
-  const groups = topSel(docId).filter((id) => {
-    const n = doc.nodes[id]
-    return n.type === 'frame' && n.children.length > 0 && !ops.isPageRoot(doc, n.parent as string)
-  })
+  const groups = topSel(docId).filter((id) => ops.canUngroup(doc, id))
   if (!groups.length) return
   const rects = new Map<string, WorldRect | null>()
   for (const g of groups) for (const c of doc.nodes[g].children) rects.set(c, measure(c, docId) ?? ops.worldRect(doc, c))
   const origins = new Map(groups.map((g) => [g, originOf(docId, doc.nodes[g].parent as string)]))
-  const freed: string[] = []
+  let freed: string[] = []
   S().mutate(docId, 'Ungroup', (d) => {
-    for (const g of groups) {
-      const group = d.nodes[g]
-      const parent = d.nodes[group.parent as string]
-      const flowLayout = ops.isFlowChild(d, g) || ops.isFlowLayout(group.style)
-      const origin = origins.get(g)!
-      const at = parent.children.indexOf(g)
-      const kids = [...group.children]
-      for (const c of kids) {
-        const n = d.nodes[c]
-        const r = rects.get(c)
-        n.parent = parent.id
-        if (flowLayout && ops.isFlowLayout(parent.style)) {
-          if (n.style.position === 'absolute') delete n.style.position
-        } else if (r) {
-          n.x = Math.round(r.x - origin.x)
-          n.y = Math.round(r.y - origin.y)
-          if (ops.isFlowLayout(parent.style)) n.style.position = 'absolute'
-        }
-        freed.push(c)
-      }
-      parent.children.splice(at, 1, ...kids)
-      group.children = []
-      ops.removeNode(d, g)
-    }
+    freed = ops.ungroupNodes(d, groups, rects, origins)
   })
   S().select(docId, freed)
 }
