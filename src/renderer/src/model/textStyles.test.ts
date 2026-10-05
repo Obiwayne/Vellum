@@ -179,6 +179,16 @@ describe('migration to v5', () => {
     expect(d.version).toBe(v)
   })
 
+  it.each([3, 4])('a v%i doc with text lacking a line height loads unchanged apart from the version', (v) => {
+    const { d, a } = setup()
+    delete d.nodes[a].style.lineHeight
+    d.version = v
+    const m = ops.migrateDoc(d)
+    expect(m.version).toBe(5)
+    expect(m.nodes[a].style.lineHeight).toBeUndefined()
+    expect(m.nodes).toBe(d.nodes)
+  })
+
   it('a v1 doc still gets the v2 line-height pin on unset text', () => {
     const { d, a } = setup()
     delete d.nodes[a].style.lineHeight
