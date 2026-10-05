@@ -40,6 +40,29 @@ export interface CNode {
   bind?: PropBinding
   /** materialised instance node: id of the main-side node it mirrors */
   srcId?: string
+  /** text node: id of the Doc.textStyles entry this node follows (see model/textStyles.ts) */
+  textStyle?: string
+}
+
+/** CSS keys a text style owns. Colour and alignment are deliberately not part of it. */
+export const TEXT_STYLE_KEYS = [
+  'fontFamily',
+  'fontSize',
+  'fontWeight',
+  'fontStyle',
+  'lineHeight',
+  'letterSpacing',
+  'textDecorationLine',
+  'textTransform'
+] as const
+
+/** A named bundle of typography. Values may be `var(--token)`. Applied by copying onto nodes. */
+export interface TextStyle {
+  id: string
+  /** "Heading/H1": a slash groups it in lists */
+  name: string
+  /** only TEXT_STYLE_KEYS */
+  style: Style
 }
 
 /** Component property kinds. Variant props pick a main of a set (model/variants.ts); the rest drive layers inside a main. */
@@ -85,6 +108,8 @@ export interface NodeOverride {
   visible?: boolean
   locked?: boolean
   name?: string
+  /** text style id followed by this node inside the instance */
+  textStyle?: string
   /** offset inside the parent (positioned children only) */
   x?: number
   y?: number
@@ -113,6 +138,8 @@ export interface Doc {
   pages: Page[]
   nodes: Record<string, CNode>
   tokens: Token[]
+  /** named typography bundles (v5, optional) */
+  textStyles?: TextStyle[]
   nextId: number
   createdAt: number
   updatedAt: number
@@ -126,6 +153,7 @@ export interface Doc {
    * v2: canvas content inherits `line-height: normal` (v1 inherited 20px).
    * v3: components and instances (additive, optional node fields).
    * v4: component sets and variants (additive, optional node fields).
+   * v5: text styles (additive: Doc.textStyles, CNode.textStyle, NodeOverride.textStyle).
    */
   version?: number
   /** theme modes, e.g. ['Light', 'Dark']; [0] is the base mode (see model/modes.ts) */

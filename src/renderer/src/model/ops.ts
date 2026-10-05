@@ -107,7 +107,7 @@ export function makeDoc(id: string, name: string): Doc {
 }
 
 /** Current document format version (Doc.version). */
-export const DOC_VERSION = 4
+export const DOC_VERSION = 5
 
 /**
  * Upgrade a loaded document to DOC_VERSION without changing how it looks. Returns the same object
@@ -118,8 +118,8 @@ export const DOC_VERSION = 4
 export function migrateDoc(doc: Doc): Doc {
   const v = doc.version ?? 1
   if (v >= DOC_VERSION) return doc
-  // v2 → v3 (components) and v3 → v4 (variants) only add optional node fields: nothing to rewrite
-  if (v === 2 || v === 3) return { ...doc, version: DOC_VERSION }
+  // v2 → v3 (components), v3 → v4 (variants), v4 → v5 (text styles) only add optional fields: nothing to rewrite
+  if (v >= 2) return { ...doc, version: DOC_VERSION }
   const nodes: Record<string, CNode> = { ...doc.nodes }
   const hasLineHeight = (id: string): boolean => {
     let cur: string | null = id
