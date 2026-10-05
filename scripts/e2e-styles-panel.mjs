@@ -31,6 +31,27 @@ const fontOf = (word) =>
     const el = [...document.querySelectorAll('[data-node-id]')].find((e) => e.children.length === 0 && e.textContent === w)
     return el ? { size: parseFloat(getComputedStyle(el).fontSize), h: Math.round(el.getBoundingClientRect().height) } : null
   }, word)
+/** click the centre of the canvas element showing `word` (optionally with Shift held) */
+const clickWord = async (word, shift = false) => {
+  const box = await page.evaluate((w) => {
+    const el = [...document.querySelectorAll('[data-node-id]')].find((e) => e.children.length === 0 && e.textContent === w)
+    const r = el?.getBoundingClientRect()
+    return r ? { x: r.x + r.width / 2, y: r.y + r.height / 2 } : null
+  }, word)
+  await page.keyboard.down('Control') // Ctrl+click picks the deepest layer
+  if (shift) await page.keyboard.down('Shift')
+  await page.mouse.click(box.x, box.y)
+  if (shift) await page.keyboard.up('Shift')
+  await page.keyboard.up('Control')
+  await page.waitForTimeout(300)
+}
+/** height of the frame that directly holds the text showing `word` */
+const holderHeight = (word) =>
+  page.evaluate((w) => {
+    const el = [...document.querySelectorAll('[data-node-id]')].find((e) => e.children.length === 0 && e.textContent === w)
+    return Math.round(el.parentElement.closest('[data-node-id]').getBoundingClientRect().height)
+  }, word)
+const inspectorState = () => page.locator('.insp-tstyle').first().getAttribute('data-text-style')
 const typeInto = async (locator, value) => {
   await locator.fill(value)
   await page.keyboard.press('Enter')
@@ -83,6 +104,12 @@ try {
   await page.waitForTimeout(500)
   check((await page.locator('[data-styles="text"] .lp-style__count').textContent()) === '2', 'two layers follow the style')
 
+  // wrap both texts in a flex frame (Fit height), so the container must grow with the text
+  await clickWord('Heading')
+  await clickWord('Body copy', true)
+  await page.keyboard.press('Shift+A')
+  await page.waitForTimeout(500)
+  const wrapBefore = await holderHeight('Heading')
   // edit the style size 16 -> 48 in place: both texts grow
   const before1 = await fontOf('Heading')
   const before2 = await fontOf('Body copy')
@@ -96,6 +123,8 @@ try {
   const after2 = await fontOf('Body copy')
   check(after1 && after1.size === 48 && after2 && after2.size === 48, `editing the style to 48 resizes both texts (${before1?.size},${before2?.size} -> ${after1?.size},${after2?.size})`)
   check(after1 && after2 && after1.h > before1.h && after2.h > before2.h, `the text boxes grow with it (${before1?.h},${before2?.h} -> ${after1?.h},${after2?.h})`)
+  const wrapAfter = await holderHeight('Heading')
+  check(wrapAfter > wrapBefore, `the Fit container grows with the text (${wrapBefore} -> ${wrapAfter} px)`)
   await page.keyboard.press('Escape')
   await page.keyboard.press('Control+z')
   await page.waitForTimeout(500)
@@ -103,8 +132,33 @@ try {
   const undone2 = await fontOf('Body copy')
   check(undone?.size === before1?.size && undone2?.size === before2?.size, `one undo restores both sizes (${undone?.size},${undone2?.size})`)
 
+  // inspector row (T28): a colour edit keeps the link; multi-select Detach and one undo
+  await page.mouse.click(900, 700)
+  await clickWord('Heading')
+  const linked0 = await inspectorState()
+  check(linked0 !== null && linked0 !== 'none' && linked0 !== 'mixed', `the inspector row shows the style on a linked text (${linked0})`)
+  await typeInto(page.locator('input[value="000000"]').first(), 'FF0000')
+  const linked1 = await inspectorState()
+  const redNow = await page.evaluate(() => {
+    const el = [...document.querySelectorAll('[data-node-id]')].find((e) => e.children.length === 0 && e.textContent === 'Heading')
+    return getComputedStyle(el).color
+  })
+  await shot('colour-edit-stays-linked')
+  check(linked1 === linked0 && redNow === 'rgb(255, 0, 0)', `a colour edit keeps the link (${linked0} -> ${linked1}, colour ${redNow})`)
+  await clickWord('Body copy')
+  await clickWord('Heading', true)
+  check((await inspectorState()) === linked0, 'a two-text selection on the same style shows that style')
+  await page.getByRole('button', { name: 'Detach from text style' }).click()
+  await page.waitForTimeout(400)
+  await shot('multi-detached')
+  check((await inspectorState()) === 'none', 'Detach unlinks both selected texts')
+  await page.keyboard.press('Control+z')
+  await page.waitForTimeout(400)
+  check((await inspectorState()) === linked0, 'one undo relinks both')
+
   // colour style from the frame's fill
-  await page.mouse.click(600, 300)
+  await page.mouse.click(900, 700)
+  await page.mouse.click(690, 320)
   await page.waitForTimeout(300)
   await page.locator('[data-styles="colour"] .lp-styles__head button').click()
   await page.waitForTimeout(300)
@@ -122,6 +176,8 @@ try {
   const alert = (await page.locator('.lp-styles__msg').textContent().catch(() => '')) ?? ''
   check(/already|style/.test(alert), `a duplicate colour style name is refused (${alert})`)
   await shot('duplicate-refused')
+} catch (e) {
+  results.push(`FAILED: script error: ${String(e.message).slice(0, 300)}`)
 } finally {
   console.log(results.join('\n'))
   await Promise.race([app.close(), new Promise((r) => setTimeout(r, 8000))])

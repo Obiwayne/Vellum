@@ -79,4 +79,7 @@ export function colourSource(nodes: CNode[]): { id: string; key: 'color' | 'back
 }
 
 /** Token name for a colour style typed by the user: "brand-primary" -> "--color-brand-primary". */
-export const colourTokenName = (input: string): string => normalizeName(`color-${input.trim().replace(/^--/, '').replace(/^color-/, '')}`)
+export function colourTokenName(input: string): string {
+  const slug = normalizeName(input.trim().replace(/^--/, '').replace(/^color-/, '')) // '' when nothing usable is left
+  return slug ? `--color-${slug.slice(2)}` : ''
+}

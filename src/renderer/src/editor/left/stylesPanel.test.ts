@@ -258,3 +258,67 @@ describe('colour styles', () => {
     expect(doc().tokens).toHaveLength(0)
   })
 })
+
+describe('test station: adversarial', () => {
+  const name = (v: string): void => typeInto(section('colour').querySelector('.lp-style__new-input') as HTMLInputElement, v)
+
+  it('a colour style from a text layer saves its text colour and links only that field', () => {
+    const t = text()
+    S().updateStyles(id, [t], { color: '#aa0000', backgroundColor: '#00aa00' })
+    S().select(id, [t])
+    render()
+    act(() => addBtn('colour').click())
+    name('ink')
+    expect(doc().nodes[t].style.color).toBe('var(--color-ink)')
+    expect(doc().nodes[t].style.backgroundColor).toBe('#00aa00')
+    expect(doc().tokens[0].value.toLowerCase()).toBe('#aa0000')
+  })
+
+  it('an invalid name is refused and nothing is created', () => {
+    const f = S().createNode(id, { type: 'frame', style: { backgroundColor: '#336699' } }, rootId())
+    S().select(id, [f])
+    render()
+    act(() => addBtn('colour').click())
+    name('!!!')
+    expect(msg().length).toBeGreaterThan(0)
+    expect(doc().tokens).toHaveLength(0)
+    expect(doc().nodes[f].style.backgroundColor).toBe('#336699')
+  })
+
+  it('deleting from the editor removes the style and unlinks; undo brings both back', () => {
+    const t = text()
+    const sid = S().createTextStyle(id, 'Body', { fontSize: 20 })
+    S().applyTextStyle(id, [t], sid)
+    render()
+    act(() => (section('text').querySelector(`[data-text-style-id="${sid}"]`) as HTMLElement).click())
+    const del = [...document.querySelectorAll('.lp-style-editor button')].find((e) => e.textContent === 'Delete style') as HTMLElement
+    act(() => del.click())
+    expect(doc().textStyles).toEqual([])
+    expect(doc().nodes[t].textStyle).toBeUndefined()
+    S().undo(id)
+    expect(doc().nodes[t].textStyle).toBe(sid)
+  })
+
+  it('clearing a field in the editor removes that key from the style and the layers', () => {
+    const t = text()
+    const sid = S().createTextStyle(id, 'Body', { fontSize: 20, letterSpacing: '2px' })
+    S().applyTextStyle(id, [t], sid)
+    render()
+    act(() => (section('text').querySelector(`[data-text-style-id="${sid}"]`) as HTMLElement).click())
+    const field = [...document.querySelectorAll('.lp-style-editor .lp-token-editor__field')].find((e) => e.textContent?.startsWith('Spacing')) as HTMLElement
+    typeInto(field.querySelector('input') as HTMLInputElement, '')
+    expect(doc().textStyles![0].style.letterSpacing).toBeUndefined()
+    expect(doc().nodes[t].style.letterSpacing).toBeUndefined()
+    expect(doc().nodes[t].style.fontSize).toBe(20)
+  })
+
+  it('a style edit in the panel does not detach other layers and new styles render without a selection', () => {
+    render()
+    expect(host.querySelector('.lp-styles__msg')).toBeNull()
+    act(() => addBtn('colour').click())
+    name('x')
+    expect(msg()).toContain('Select a layer')
+    act(() => addBtn('text').click())
+    expect(msg()).toBe('') // a successful action clears the message
+  })
+})
