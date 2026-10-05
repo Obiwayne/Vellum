@@ -1,11 +1,12 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { ChevronDown, ChevronRight, Columns3, Eye, EyeOff, Frame, Grid2x2, Image, Lock, LockOpen, PenTool, Rows3, Square } from 'lucide-react'
+import { ChevronDown, ChevronRight, Columns3, Diamond, Eye, EyeOff, Frame, Grid2x2, Image, Lock, LockOpen, PenTool, Rows3, Square } from 'lucide-react'
 import { useContextMenu, type MenuEntry } from '../../ui'
 import { getStore, useStore } from '../../model/store'
 import * as ops from '../../model/ops'
 import type { CNode, Doc } from '../../model/types'
 import { CANVAS_COMMAND_EVENT } from '../../shell/commands'
 import * as A from '../canvas/actions'
+import { componentMenu } from '../canvas/componentActions'
 import { InlineEdit } from './InlineEdit'
 
 interface Row {
@@ -31,6 +32,9 @@ export function collapseAllLayers(docId: string): void {
 }
 
 export function NodeIcon({ node }: { node: CNode }): JSX.Element {
+  // main component: filled diamond; instance: hollow diamond
+  if (node.component) return <Diamond size={14} fill="currentColor" />
+  if (node.instance) return <Diamond size={14} />
   switch (node.type) {
     case 'text':
       return <span className="lp-aa">Aa</span>
@@ -110,6 +114,7 @@ export function nodeMenu(docId: string, ids: string[], onRename?: () => void): M
         if (w) s.select(docId, [w])
       }
     },
+    ...componentMenu(docId, ids),
     { type: 'separator' },
     { label: 'Bring to front', shortcut: ']', onSelect: () => reorder(true) },
     { label: 'Send to back', shortcut: '[', onSelect: () => reorder(false) },
@@ -384,6 +389,7 @@ const LayerRow = memo(function LayerRow(p: LayerRowProps): JSX.Element {
     p.parentSelected && 'lp-layer--child-of-selected',
     p.hovered && 'lp-layer--hovered',
     !n.visible && 'lp-layer--hidden',
+    (n.component || n.instance) && 'lp-layer--component',
     n.locked && 'lp-layer--locked',
     p.dropInside && 'lp-layer--drop-inside'
   ]
