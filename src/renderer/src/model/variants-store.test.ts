@@ -353,3 +353,12 @@ describe('test station: adversarial', () => {
     for (const m of copyMains) expect(m.component?.set).toBe(copy)
   })
 })
+
+describe('component sets are not components', () => {
+  it('createComponent refuses a set frame and leaves it intact', () => {
+    const { setId } = withVariant()
+    expect(() => S().createComponent(id, [setId])).toThrow(/already groups/)
+    expect(node(setId).component).toBeUndefined()
+    expect(node(setId).componentSet).toBeDefined()
+  })
+})

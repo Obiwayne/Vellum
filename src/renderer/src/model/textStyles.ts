@@ -44,7 +44,7 @@ export function renameTextStyle(doc: Doc, id: string, name: string): boolean {
 }
 
 /** Write the style's keys onto a node and drop the keys the style leaves unset. Keeps the link. */
-function materialise(node: CNode, s: TextStyle): void {
+export function materialise(node: CNode, s: TextStyle): void {
   for (const k of TEXT_STYLE_KEYS) {
     const v = s.style[k]
     if (v === undefined) delete node.style[k]
@@ -70,10 +70,32 @@ export function detachTextStyle(doc: Doc, nodeId: string): boolean {
   return true
 }
 
-/** Nodes (any depth, all pages) that follow a style. */
+/** Nodes (any depth, all pages) that follow a style. Instance twins (srcId) are left out: they are rebuilt from their main. */
 export function linkedNodes(doc: Doc, styleId: string): CNode[] {
-  return Object.values(doc.nodes).filter((n) => n.textStyle === styleId)
+  return Object.values(doc.nodes).filter((n) => n.textStyle === styleId && n.srcId === undefined)
 }
+
+/** Instance roots whose overrides point at the style (the style change must be re-synced into them). */
+export function instancesUsing(doc: Doc, styleId: string): string[] {
+  return Object.values(doc.nodes)
+    .filter((n) => n.instance?.overrides && Object.values(n.instance.overrides).some((o) => o.textStyle === styleId))
+    .map((n) => n.id)
+}
+
+/** True when `patch` changes a text-style key of the node's style (so a linked node should detach). */
+export function touchesTextStyle(style: Style, patch: StylePatch): boolean {
+  return TEXT_STYLE_KEYS.some((k) => k in patch && patch[k] !== undefined && (patch[k] ?? undefined) !== style[k])
+}
+
+/** Manual typography edit of a linked node: unlink it (values stay). Returns the style's name when it detached, else undefined. */
+export function detachOnEdit(doc: Doc, node: CNode, patch: StylePatch): string | undefined {
+  if (node.textStyle === undefined || !touchesTextStyle(node.style, patch)) return undefined
+  const name = getTextStyle(doc, node.textStyle)?.name ?? node.textStyle
+  delete node.textStyle
+  return name
+}
+
+export const detachedMessage = (name: string): string => `Detached from text style ${name}`
 
 /** Rewrite every node linked to the style from the style's current keys. Returns how many. */
 export function syncTextStyle(doc: Doc, styleId: string): number {

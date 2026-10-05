@@ -1,6 +1,7 @@
 // MCP tools that change the document. Every tool call is one undo step (store.transact / one mutate).
 import { getStore } from '../model/store'
 import * as ops from '../model/ops'
+import { detachOnEdit } from '../model/textStyles'
 import { htmlToNodes } from '../model/html'
 import { STRUCTURE_MSG, instanceRootOf } from '../model/components'
 import type { Doc, StylePatch } from '../model/types'
@@ -159,6 +160,7 @@ registerHandler('update_styles', (args) => {
   if (!updates.length) throw new Error('updates is empty')
   const updated = new Set<string>()
   const notFound = new Set<string>()
+  const detached = new Set<string>()
   getStore().mutate(docId, 'Update styles', (d) => {
     for (const u of updates) {
       const patch = normalizeStyles(u.styles ?? {})
@@ -192,13 +194,15 @@ registerHandler('update_styles', (args) => {
             if (p.bottom != null && p.bottom !== '' && p.top === undefined && t === null) p.top = 'auto'
           }
         }
+        const was = detachOnEdit(d, n, p) // a manual typography edit unlinks the node from its text style
+        if (was) detached.add(was)
         ops.applyStylePatch(n.style, p)
         updated.add(id)
       }
     }
   })
   markWorking(docId, [...updated])
-  return scoped(docId, { updatedNodeIds: [...updated], ...(notFound.size ? { notFound: [...notFound] } : {}) })
+  return scoped(docId, { updatedNodeIds: [...updated], ...(notFound.size ? { notFound: [...notFound] } : {}), ...(detached.size ? { detachedTextStyles: [...detached] } : {}) })
 })
 
 // ------------------------------------------------------------------------------------------------

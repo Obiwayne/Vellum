@@ -1,13 +1,16 @@
 import { Button, Section } from '../../ui'
 import { useStore } from '../../model/store'
 import { instanceRootOf } from '../../model/components'
+import { variantsOf } from '../../model/variants'
 import {
+  addVariantToSelection,
   detachSelection,
   goToMainOfSelection,
   insertInstance,
   isOverridden,
   resetLayerOverride,
-  resetOverridesOfSelection
+  resetOverridesOfSelection,
+  variantLabel
 } from '../canvas/componentActions'
 
 /** Top of the inspector for a main component or anything inside an instance. */
@@ -16,13 +19,24 @@ export function ComponentSection({ docId, ids }: { docId: string; ids: string[] 
   if (!doc || ids.length !== 1) return null
   const node = doc.nodes[ids[0]]
   if (!node) return null
+  if (node.componentSet) {
+    const n = variantsOf(doc, node.id).length
+    return (
+      <Section title="Component set">
+        <div className="insp-comp__name">{node.componentSet.name}</div>
+        <div className="insp-comp__meta">{n} variant{n === 1 ? '' : 's'}</div>
+      </Section>
+    )
+  }
   if (node.component) {
     return (
       <Section title="Main component">
         <div className="insp-comp__name">{node.component.name}</div>
-        <Button full onClick={() => insertInstance(docId, node.id)}>
-          Create instance
-        </Button>
+        {variantLabel(doc, node.id) && <div className="insp-comp__meta">{variantLabel(doc, node.id)}</div>}
+        <div className="insp-comp__row">
+          <Button onClick={() => insertInstance(docId, node.id)}>Create instance</Button>
+          <Button onClick={() => addVariantToSelection(docId)}>Add variant</Button>
+        </div>
       </Section>
     )
   }
@@ -35,6 +49,7 @@ export function ComponentSection({ docId, ids }: { docId: string; ids: string[] 
   return (
     <Section title="Instance">
       <div className="insp-comp__name">{main?.component?.name ?? 'Missing component'}</div>
+      {main && variantLabel(doc, main.id) && <div className="insp-comp__meta" data-variant>{variantLabel(doc, main.id)}</div>}
       <div className="insp-comp__meta">
         {overridden.length ? `${overridden.length} overridden layer${overridden.length === 1 ? '' : 's'}` : 'No overrides'}
       </div>
