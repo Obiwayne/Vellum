@@ -182,6 +182,7 @@ See [`docs/MCP.md`](docs/MCP.md) for the full tool list and troubleshooting.
 | Icons | `Shift+I` |
 | Add / wrap in flex | `Shift+A` |
 | Group � Ungroup � Frame selection | `Ctrl+G` � `Ctrl+Shift+G` or `Shift+Backspace` � `Ctrl+Alt+G` or `Shift+F` |
+| Create component / Detach instance | `Ctrl+Alt+K` / `Ctrl+Alt+B` |
 | Opacity 10%–90% · 100% | `1`–`9` · `0` |
 | Bold · Italic · Underline | `Ctrl+B` · `Ctrl+I` · `Ctrl+U` |
 | Font size · weight · letter spacing · line height | `Ctrl+Shift+.`/`,` · `Ctrl+Alt+.`/`,` · `Alt+.`/`,` · `Alt+Shift+.`/`,` |

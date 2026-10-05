@@ -12,6 +12,7 @@ import { FlexSection } from './FlexSection'
 import { GridItemSection, GridSection } from './GridSection'
 import { ModeSection } from './ModeSection'
 import { BlendingSection, ImageSection, RadiusSection } from './BasicSections'
+import { ComponentSection } from './ComponentSection'
 import { ConstraintsSection } from './ConstraintsSection'
 import { FillSection } from './FillSection'
 import {
@@ -64,6 +65,7 @@ function SelectionInspector({ docId, ids }: { docId: string; ids: string[] }): J
   if (allText)
     return (
       <div key={key}>
+        <ComponentSection docId={docId} ids={ids} />
         <LayoutSection ctx={ctx} />
         {constrainable && <ConstraintsSection ctx={ctx} />}
         {allGridItems && <GridItemSection ctx={ctx} />}
@@ -81,6 +83,7 @@ function SelectionInspector({ docId, ids }: { docId: string; ids: string[] }): J
     )
   return (
     <div key={key}>
+      <ComponentSection docId={docId} ids={ids} />
       <LayoutSection ctx={ctx} />
       {constrainable && <ConstraintsSection ctx={ctx} />}
       {allGridItems && <GridItemSection ctx={ctx} />}

@@ -5,6 +5,7 @@ import { getStore } from '../model/store'
 import { isEyedropperActive, isPopoverOpen } from '../ui'
 import type { Tool } from '../model/types'
 import * as A from './canvas/actions'
+import { createComponentFromSelection, detachSelection } from './canvas/componentActions'
 import * as T from './textStyle'
 import { zoomIn, zoomOut, zoomTo100, zoomToFit, zoomToSelection } from './canvas/camera'
 import { collapseAllLayers } from './left/LayersTree'
@@ -75,6 +76,8 @@ export function installCanvasShortcuts(docId: string): () => void {
     } else if (ctrl && alt) {
       if (code === 'KeyC') A.copyStyles(docId)
       else if (code === 'KeyV') A.pasteStyles(docId)
+      else if (code === 'KeyK' && !shift) createComponentFromSelection(docId)
+      else if (code === 'KeyB' && !shift) detachSelection(docId)
       else handled = false
     } else if (alt) {
       if (code === 'KeyC') A.toggleClip(docId)

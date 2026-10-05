@@ -27,7 +27,7 @@ export function instancesOf(doc: Doc, mainId?: string): string[] {
     .map((n) => n.id)
 }
 
-const CYCLE_MSG = 'A component cannot contain an instance of itself'
+export const CYCLE_MSG = 'A component cannot contain an instance of itself'
 
 /** True when `from`'s subtree (through nested instances) contains an instance of `target`. */
 function reaches(doc: Doc, from: string, target: string, seen = new Set<string>()): boolean {

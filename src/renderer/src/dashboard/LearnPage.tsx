@@ -46,6 +46,8 @@ const GROUPS: { title: string; items: [string, string][] }[] = [
       ['Group', 'Ctrl+G'],
       ['Ungroup', 'Ctrl+Shift+G'],
       ['Frame selection', 'Shift+F'],
+      ['Create component', 'Ctrl+Alt+K'],
+      ['Detach instance', 'Ctrl+Alt+B'],
       ['Bring to front / Send to back', '] / ['],
       ['Show / hide', 'Ctrl+Shift+H'],
       ['Lock / unlock', 'Ctrl+Shift+L'],

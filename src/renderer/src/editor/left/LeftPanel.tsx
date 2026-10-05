@@ -6,6 +6,7 @@ import { PanelLeft } from 'lucide-react'
 import { IconButton, Segmented, matchShortcut } from '../../ui'
 import { getStore, useStore } from '../../model/store'
 import { PagesSection } from './PagesSection'
+import { ComponentsSection } from './ComponentsSection'
 import { LayersTree } from './LayersTree'
 import { ThemePanel } from './ThemePanel'
 import { InlineEdit } from './InlineEdit'
@@ -158,6 +159,7 @@ export function LeftPanel({ docId }: { docId: string }): JSX.Element {
       {tab === 'design' ? (
         <div className="lp-design">
           <PagesSection docId={docId} />
+          <ComponentsSection docId={docId} />
           <div
             className="lp-split"
             title="Drag to resize, double-click to reset"
