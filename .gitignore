@@ -7,3 +7,4 @@ work/
 mcp/test/md-tokens.json
 reference/
 *.lnk
+*.tsbuildinfo

@@ -3,10 +3,11 @@
 import type { MenuEntry } from '../../ui'
 import { getStore } from '../../model/store'
 import * as ops from '../../model/ops'
-import { instanceRootOf, isMain } from '../../model/components'
-import type { CNode, Doc, WorldRect } from '../../model/types'
+import { instanceRootOf, instancesOf, isMain } from '../../model/components'
+import type { CNode, Doc, Page, WorldRect } from '../../model/types'
 import { visibleWorldRect } from './camera'
-import { measure, union } from './geometry'
+import { clientToWorld, measure, union } from './geometry'
+import { containerAt } from './selection'
 import { toast } from './toast'
 
 const S = getStore
@@ -156,4 +157,84 @@ export function componentMenu(docId: string, ids: string[]): MenuEntry[] {
     out.push({ label: 'Detach instance', shortcut: 'Ctrl+Alt+B', onSelect: run(() => detachSelection(docId)) })
   }
   return out
+}
+
+// ------------------------------------------------------------------------------------------------
+// Assets panel: components of every page, search, drag to insert
+
+/** drag-and-drop payload type: the id of the main component to insert */
+export const COMPONENT_DRAG_TYPE = 'application/x-vellum-component'
+
+export interface AssetItem {
+  /** the main component */
+  id: string
+  name: string
+  /** instances of it in the file */
+  instances: number
+}
+
+export interface AssetGroup {
+  page: Page
+  items: AssetItem[]
+}
+
+/** Components per page, filtered by a case-insensitive name search; pages without hits are left out. */
+export function assetGroups(doc: Doc, query = ''): AssetGroup[] {
+  const q = query.trim().toLowerCase()
+  const out: AssetGroup[] = []
+  for (const page of doc.pages) {
+    const items: AssetItem[] = []
+    for (const id of ops.descendants(doc, page.rootId)) {
+      const n = doc.nodes[id]
+      if (!n?.component) continue
+      if (q && !n.component.name.toLowerCase().includes(q)) continue
+      items.push({ id, name: n.component.name, instances: instancesOf(doc, id).length })
+    }
+    if (items.length) out.push({ page, items })
+  }
+  return out
+}
+
+/** Show a main component: switch to its page and select it. */
+export function goToComponent(docId: string, mainId: string): boolean {
+  const doc = docOf(docId)
+  const page = doc?.nodes[mainId]?.component && ops.pageOf(doc, mainId)
+  if (!page) return false
+  S().setActivePage(docId, page.id)
+  S().select(docId, [mainId])
+  return true
+}
+
+/** Rename a component: its name in the Assets panel and (when it was the same) the main's layer name. */
+export function renameComponent(docId: string, mainId: string, name: string): void {
+  const next = name.trim()
+  if (!next || !docOf(docId)?.nodes[mainId]?.component) return
+  S().mutate(docId, 'Rename component', (d) => {
+    const n = d.nodes[mainId]
+    if (!n.component) return
+    if (n.name === n.component.name) n.name = next
+    n.component.name = next
+  })
+}
+
+/** Drop of a component from the Assets panel: an instance in the frame under the pointer (never inside an instance), centred on it. */
+export function dropComponent(docId: string, mainId: string, clientX: number, clientY: number): string | undefined {
+  const doc = docOf(docId)
+  const main = doc?.nodes[mainId]
+  if (!doc || !main?.component) return undefined
+  let parent = containerAt(docId, clientX, clientY, new Set([mainId]))
+  const inside = instanceRootOf(doc, parent)
+  if (inside) parent = doc.nodes[inside].parent as string // an instance's structure is fixed: drop beside it
+  const frame = doc.nodes[parent]
+  let at: { x: number; y: number } | undefined
+  if (!(frame?.type === 'frame' && ops.isFlex(frame))) {
+    const p = clientToWorld(clientX, clientY, docId)
+    const origin = frame?.type === 'frame' && !ops.isPageRoot(doc, parent) ? measure(parent, docId) : null
+    const w = ops.numericSize(main.style.width) ?? 100
+    const h = ops.numericSize(main.style.height) ?? 100
+    at = { x: Math.round(p.x - (origin?.x ?? 0) - w / 2), y: Math.round(p.y - (origin?.y ?? 0) - h / 2) }
+  }
+  const id = guarded(() => S().createInstance(docId, mainId, parent, undefined, at))
+  if (id) S().select(docId, [id])
+  return id
 }

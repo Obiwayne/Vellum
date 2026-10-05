@@ -28,8 +28,8 @@ describe('migrateDoc v3 -> v4', () => {
     const d = ops.makeDoc('d', 'Old')
     d.version = 3
     const m = ops.migrateDoc(d)
-    expect(ops.DOC_VERSION).toBe(4)
-    expect(m.version).toBe(4)
+    expect(ops.DOC_VERSION).toBe(5)
+    expect(m.version).toBe(5)
     expect(m.nodes).toBe(d.nodes)
     expect(ops.migrateDoc(m)).toBe(m)
   })
