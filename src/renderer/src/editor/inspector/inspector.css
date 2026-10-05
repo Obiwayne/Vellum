@@ -692,3 +692,17 @@
   background: var(--component, #9747ff);
   flex-shrink: 0;
 }
+
+/* Text style row: picker + detach + create */
+.insp-tstyle {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.insp-tstyle__select {
+  flex: 1;
+  min-width: 0;
+}
+.insp-tstyle__on {
+  color: var(--accent);
+}

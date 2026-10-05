@@ -509,10 +509,34 @@ function svgInnerToJsx(markup: string): string {
 
 export type JsxFormat = 'inline-styles' | 'tailwind'
 
+/** Hooks for exporting components (bridge/jsx-components.ts): instances become usages, bound props become expressions. */
+export interface JsxHooks {
+  /** a whole replacement for a node (an instance → `<Button />`); null/undefined renders the node normally */
+  replace?: (n: CNode, indent: string) => string | null | undefined
+  /** JSX child expression for a text node (a text prop): `{label}` */
+  text?: (n: CNode) => string | null | undefined
+  /** condition for a node bound to a boolean prop: the node renders as `{cond && (...)}` */
+  when?: (n: CNode) => string | null | undefined
+}
+
+/** Wrap `jsx` (already indented) in `{cond && (...)}` when the node follows a boolean prop. */
+export function jsxWhen(n: CNode, jsx: string, indent: string, hooks?: JsxHooks): string {
+  const cond = hooks?.when?.(n)
+  return cond ? `${indent}{${cond} && (\n${jsx}\n${indent})}` : jsx
+}
+
 /** JSX for a node subtree. 'tailwind' currently falls back to inline styles. */
-export function nodeToJsx(doc: Doc, id: string, _format: JsxFormat = 'inline-styles', indent = '', asRoot = true): string {
+export function nodeToJsx(doc: Doc, id: string, _format: JsxFormat = 'inline-styles', indent = '', asRoot = true, hooks?: JsxHooks): string {
   const n = doc.nodes[id]
   if (!n) return ''
+  const swapped = hooks?.replace?.(n, hooks.when?.(n) ? indent + '  ' : indent)
+  if (swapped) return jsxWhen(n, swapped, indent, hooks)
+  return jsxWhen(n, nodeToJsxPlain(doc, n, _format, indent, asRoot, hooks), indent, hooks)
+}
+
+function nodeToJsxPlain(doc: Doc, n: CNode, _format: JsxFormat, indent: string, asRoot: boolean, hooks?: JsxHooks): string {
+  const id = n.id
+  if (hooks?.when?.(n)) indent += '  '
   const style = computeNodeStyle(doc, id, { asRoot, export: true })
   const tag = tagOf(n)
   const s = jsxStyle(style)
@@ -520,10 +544,10 @@ export function nodeToJsx(doc: Doc, id: string, _format: JsxFormat = 'inline-sty
   if (n.type === 'svg') {
     return `${indent}<svg xmlns="http://www.w3.org/2000/svg"${jsxAttrs(n)}${s}>${svgInnerToJsx(sanitizeSvgMarkup(n.svg))}</svg>`
   }
-  if (n.type === 'text') return `${indent}<${tag}${jsxAttrs(n)}${s}>${jsxText(n.text ?? '')}</${tag}>`
+  if (n.type === 'text') return `${indent}<${tag}${jsxAttrs(n)}${s}>${hooks?.text?.(n) ?? jsxText(n.text ?? '')}</${tag}>`
   const kids = n.children
-    .filter((c) => doc.nodes[c]?.visible !== false)
-    .map((c) => nodeToJsx(doc, c, _format, indent + '  ', false))
+    .filter((c) => doc.nodes[c]?.visible !== false || hooks?.when?.(doc.nodes[c]))
+    .map((c) => nodeToJsx(doc, c, _format, indent + '  ', false, hooks))
   if (!kids.length) return `${indent}<${tag}${jsxAttrs(n)}${s} />`
   return `${indent}<${tag}${jsxAttrs(n)}${s}>\n${kids.join('\n')}\n${indent}</${tag}>`
 }
