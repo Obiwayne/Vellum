@@ -213,6 +213,48 @@ async function main() {
   const det = await call('detach_instance', { nodeId: instId })
   ok(det.body.detachedNodeId === instId && (await call('get_node_info', { nodeId: instId })).body.instanceOf === undefined, 'detach_instance')
 
+  // text styles: two texts follow one style; errors change nothing; plain CSS comes out
+  const second = await call('write_html', { targetNodeId: cardId, mode: 'insert-children', html: '<span style="font-size:14px">Second line</span>' })
+  const secondId = second.body.createdNodeIds?.[0]
+  const ts = await call('create_text_style', { name: 'E2E/Heading', style: { fontSize: 40, fontWeight: 700 } })
+  ok(typeof ts.body.id === 'string' && ts.body.name === 'E2E/Heading', 'create_text_style')
+  const ap = await call('apply_text_style', { nodeIds: [titleId, secondId], styleId: 'e2e/heading' })
+  ok(ap.body.appliedNodeIds?.length === 2, 'apply_text_style to two texts (by name)')
+  const fs2 = async () => (await call('get_computed_styles', { nodeIds: [titleId, secondId] })).body.styles
+  const csA = await fs2()
+  ok(csA[titleId]?.fontSize === '40px' && csA[secondId]?.fontSize === '40px', 'both texts show the style typography')
+  ok((await call('get_node_info', { nodeId: titleId })).body.textStyle?.name === 'E2E/Heading', 'get_node_info reports textStyle')
+  await call('update_text_style', { styleId: ts.body.id, style: { fontSize: 48 } })
+  const csB = await fs2()
+  ok(csB[titleId]?.fontSize === '48px' && csB[secondId]?.fontSize === '48px', 'editing the style updates BOTH linked texts')
+  ok((await call('get_text_styles')).body.styles?.some((s) => s.id === ts.body.id && s.linkedNodeCount === 2), 'get_text_styles lists it with 2 linked nodes')
+  // plain CSS comes out of the export tools: no style objects or links
+  const jsxOut = await call('get_jsx', { nodeId: titleId, format: 'inline-styles' })
+  ok(typeof jsxOut.body === 'string' && jsxOut.body.includes('fontSize: 48') && !/textStyle/i.test(jsxOut.body), 'get_jsx outputs plain CSS for a styled text')
+  // bad ids and non-text nodes change nothing and say why
+  const snap = async () => JSON.stringify([(await fs2()), (await call('get_text_styles')).body.styles])
+  const beforeBad = await snap()
+  let badStyle = ''
+  try {
+    await call('apply_text_style', { nodeIds: [titleId], styleId: 'No such style' })
+  } catch (e) {
+    badStyle = e.message
+  }
+  ok(/not found.*Available: E2E\/Heading/.test(badStyle), `a bad style id is refused with the available names (${badStyle.slice(0, 90)})`)
+  const nonText = await call('apply_text_style', { nodeIds: [cardId, 'nope'], styleId: ts.body.id })
+  ok(nonText.body.appliedNodeIds?.length === 0 && nonText.body.skipped?.length === 2, 'a frame and an unknown node are skipped and listed')
+  ok((await snap()) === beforeBad, 'refused calls changed nothing')
+  // a manual typography edit unlinks one text only
+  const detached = await call('update_styles', { updates: [{ nodeIds: [titleId], styles: { fontSize: '30px' } }] })
+  ok(detached.body.detachedTextStyles?.[0] === 'E2E/Heading', 'update_styles fontSize on one text detaches it and says so')
+  ok((await call('get_node_info', { nodeId: titleId })).body.textStyle === undefined, 'get_node_info: the edited text no longer follows the style')
+  await call('update_text_style', { styleId: ts.body.id, style: { fontSize: 52 } })
+  const csC = await fs2()
+  ok(csC[titleId]?.fontSize === '30px' && csC[secondId]?.fontSize === '52px', 'later style edits reach the linked text only')
+  const delStyle = await call('delete_text_style', { styleId: ts.body.id })
+  ok(delStyle.body.deletedStyleId === ts.body.id && delStyle.body.unlinkedNodeIds?.length === 1, 'delete_text_style unlinks the remaining text')
+  ok((await fs2())[secondId]?.fontSize === '52px', 'the unlinked text keeps its look')
+
   // leave the file as we found it
   if (!process.env.KEEP) {
     await call('delete_nodes', { nodeIds: [artboardId] })

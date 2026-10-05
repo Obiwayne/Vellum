@@ -627,6 +627,72 @@ server.registerTool(
   (args) => forward('set_instance_props', args)
 )
 
+// ------------------------------------------------------------------------------------------------
+// text styles
+
+server.registerTool(
+  'get_text_styles',
+  {
+    description:
+      "List the file's text styles: named typography bundles (fontFamily, fontSize, fontWeight, fontStyle, lineHeight, letterSpacing, textDecorationLine, textTransform) with the number of text nodes that follow each. Colour styles are colour tokens: use get_tokens.",
+    inputSchema: { fileId }
+  },
+  (args) => forward('get_text_styles', args)
+)
+
+server.registerTool(
+  'create_text_style',
+  {
+    description:
+      "Create a text style from a text node's current typography (fromNodeId) or from explicit values (style, camelCase keys, e.g. {\"fontSize\": 32, \"fontWeight\": 700, \"lineHeight\": \"1.25\"}; values may be var(--token)). A slash in the name groups styles (\"Heading/H1\"); duplicate names get a number. It does not link any node: use apply_text_style.",
+    inputSchema: {
+      fileId,
+      name: z.string().describe('Style name, e.g. "Heading/H1".'),
+      fromNodeId: z.string().optional().describe('A text node whose typography becomes the style.'),
+      style: styles.optional().describe('Typography values when not copying from a node.')
+    }
+  },
+  (args) => forward('create_text_style', args)
+)
+
+server.registerTool(
+  'update_text_style',
+  {
+    description:
+      "Edit a text style (by id or name): merge typography values (null removes a key) and/or rename it. Every text node that follows the style is rewritten in the same undo step, so a bigger fontSize makes Fit containers grow.",
+    inputSchema: {
+      fileId,
+      styleId: z.string().describe('The text style id or name.'),
+      style: styles.optional().describe('Typography keys to change; null removes a key.'),
+      name: z.string().optional().describe('New name.')
+    }
+  },
+  (args) => forward('update_text_style', args)
+)
+
+server.registerTool(
+  'delete_text_style',
+  {
+    description: 'Delete a text style (by id or name). Text nodes that followed it keep their current typography and are unlinked.',
+    inputSchema: { fileId, styleId: z.string().describe('The text style id or name.') }
+  },
+  (args) => forward('delete_text_style', args)
+)
+
+server.registerTool(
+  'apply_text_style',
+  {
+    description:
+      "Apply a text style to text nodes (one undo step): its typography is copied onto them and they follow later edits of the style. Pass styleId null to detach (values stay). A manual typography change through update_styles detaches the node from its style (reported as detachedTextStyles). Non-text nodes are skipped and listed.",
+    inputSchema: {
+      fileId,
+      nodeIds: z.array(z.string()).describe('Text node IDs.'),
+      styleId: z.string().nullable().describe('The text style id or name, or null to detach.')
+    }
+  },
+  (args) => forward('apply_text_style', args)
+)
+
 server.registerTool(
   'get_selection',
   {

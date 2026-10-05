@@ -66,6 +66,11 @@ The server's `instructions` tell the model to load `get_guide({topic:"vellum-mcp
 | `add_component_prop` | `componentId, name, type: boolean \| text \| swap, defaultValue?` | `{propertyId, name, type, default, properties[]}` (shared by every variant of the set) |
 | `bind_component_prop` | `nodeId (layer in a main), aspect: visible \| text \| swap, property (name\|id) \| null` | `{nodeId, aspect, propertyId}` |
 | `set_instance_props` | `nodeId, props?{name\|id: string\|boolean}, variants?{name\|id: option}, reset?: true \| [names]` | one undo step; `{instanceId, instanceOf, instanceProperties, variant, droppedOverrides, ...}` |
+| `get_text_styles` | – | `{styles[{id,name,style,linkedNodeCount}], count, keys}`. Text styles are named typography bundles; colour styles are colour tokens (`get_tokens`). |
+| `create_text_style` | `name, fromNodeId? | style?{fontSize,fontWeight,...}` | `{id,name,style,linkedNodeCount,ignoredKeys?}`. A slash groups (`Heading/H1`); duplicate names get a number. Does not link any node. |
+| `update_text_style` | `styleId (id|name), style?{key: value|null}, name?` | one undo step; `{id,name,style,linkedNodeCount,updatedNodeIds}`. Every linked text node is rewritten (a bigger `fontSize` grows Fit containers). |
+| `delete_text_style` | `styleId` | `{deletedStyleId, name, unlinkedNodeIds}`; nodes keep their typography. |
+| `apply_text_style` | `nodeIds, styleId (id|name) | null` | one undo step; `{appliedNodeIds | detachedNodeIds, styleId, name, skipped?[{nodeId,reason}]}`. `null` detaches (values stay). Non-text nodes are skipped. |
 | `get_selection` | – | `selectedNodes[{id,name,component,width,height,worldX,worldY,x,y,artboardId,artboardName,parentId,childCount}]`. `get_selection`, `get_children`, `get_node_info` and `find_nodes` also report `isComponent, componentName, componentSetId, variant, isComponentSet, instanceOf, insideInstance`; `get_node_info` adds `properties` (a main), `componentSet{properties,variants}`, `instanceProperties, overriddenNodeIds` (an instance) and `boundProperties`. |
 | `get_children` | `nodeId` | `children[{id,name,component,childCount,width,height,worldX,worldY,x,y}]` |
 | `get_node_info` | `nodeId` | `id,name,component,width,height,worldX,worldY,x,y,isVisible,isLocked,parentId,childIds,childCount,artboardId,textContent` |
@@ -86,6 +91,8 @@ The server's `instructions` tell the model to load `get_guide({topic:"vellum-mcp
 | `reply_to_comment_thread` | `threadId, body, resolve?` | `{threadId, number, status, messageCount}`; the reply shows as "AI" in the thread |
 | `set_comment_thread_status` | `threadId, status: open \| resolved` | `{threadId, number, status}` |
 | `list_comment_thread_authors` | – | `{authors}` |
+
+`get_node_info` also reports `textStyle{id,name}` for a text node that follows a style. `update_styles` with a typography key (fontSize, fontFamily, fontWeight, fontStyle, lineHeight, letterSpacing, textDecorationLine, textTransform) on a linked node detaches it and lists the style in `detachedTextStyles`.
 
 **get_jsx and components.** A node that contains instances exports each instance as component usage and, above the expression, one definition per component it uses (both formats):
 

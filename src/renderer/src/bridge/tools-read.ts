@@ -4,6 +4,7 @@ import { descendants, isPageRoot } from '../model/ops'
 import { computeNodeStyle, toCamel } from '../model/html'
 import type { CNode, Doc } from '../model/types'
 import { componentInfo } from './tools-components'
+import { getTextStyle } from '../model/textStyles'
 import {
   arr,
   artboardOf,
@@ -96,6 +97,7 @@ registerHandler('get_node_info', (args) => {
     artboardId: artboardOf(doc, n.id),
     textContent: n.type === 'text' ? n.text ?? '' : null,
     ...componentInfo(doc, n, true),
+    ...(n.textStyle ? { textStyle: { id: n.textStyle, name: getTextStyle(doc, n.textStyle)?.name ?? null } } : {}),
     ...(n.type === 'image' ? { src: n.attrs?.src ?? null } : {})
   })
 })

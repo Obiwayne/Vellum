@@ -17,7 +17,9 @@ export function pickTextStyleKeys(style: Style | StylePatch): Style {
   return out
 }
 
-const norm = (name: string): string => name.trim().replace(/\s*\/\s*/g, '/')
+/** The stored form of a style name: trimmed, with no spaces around slashes ("Heading / H1" -> "Heading/H1"). */
+export const normalizeTextStyleName = (name: string): string => name.trim().replace(/\s*\/\s*/g, '/')
+const norm = normalizeTextStyleName
 
 /** Name that no other style uses: "Body", "Body 2", "Body 3"… (case-insensitive). */
 export function uniqueTextStyleName(doc: Doc, name: string, ignoreId?: string): string {
@@ -124,10 +126,20 @@ export function updateTextStyle(doc: Doc, styleId: string, patch: StylePatch): b
 export function deleteTextStyle(doc: Doc, styleId: string): boolean {
   const i = doc.textStyles?.findIndex((s) => s.id === styleId) ?? -1
   if (i < 0) return false
+  const gone = doc.textStyles![i]
   doc.textStyles!.splice(i, 1)
   for (const n of Object.values(doc.nodes)) {
     if (n.textStyle === styleId) delete n.textStyle
-    for (const o of Object.values(n.instance?.overrides ?? {})) if (o.textStyle === styleId) delete o.textStyle
+    for (const [key, o] of Object.entries(n.instance?.overrides ?? {})) {
+      if (o.textStyle !== styleId) continue
+      // an override only stores the link (its keys are written at sync): bake the keys in so the values stay
+      const baked: StylePatch = { ...(o.style ?? {}) }
+      for (const k of TEXT_STYLE_KEYS) baked[k] = gone.style[k] ?? null
+      o.style = baked
+      // '' keeps the layer detached when its main follows another style; otherwise there is nothing to say
+      if (doc.nodes[key]?.textStyle !== undefined) o.textStyle = ''
+      else delete o.textStyle
+    }
   }
   return true
 }
