@@ -88,14 +88,18 @@ export function createVariant(doc: Doc, mainId: string, values?: Record<string, 
   const main = doc.nodes[mainId]
   if (!main?.component) throw new Error(`${mainId} is not a component`)
   if (!main.parent || instanceRootOf(doc, mainId)) throw new Error('Cannot make a variant from an instance or inside one')
-  const setId = setOf(doc, mainId) ?? makeSet(doc, main)
+  const existing = setOf(doc, mainId)
+  // validate before touching the doc: a lone main has no variant props yet, so any key is unknown
+  for (const k of Object.keys(values ?? {})) {
+    if (!existing || !variantProps(doc.nodes[existing]).some((p) => p.id === k)) throw new Error(`Unknown variant property ${k}`)
+  }
+  const setId = existing ?? makeSet(doc, main)
   const set = doc.nodes[setId]
   const props = variantProps(set)
   const vals = variantValues(doc, mainId)
   if (values) {
     for (const [k, opt] of Object.entries(values)) {
-      const p = props.find((x) => x.id === k)
-      if (!p) throw new Error(`Unknown variant property ${k}`)
+      const p = props.find((x) => x.id === k) as PropDef
       if (!p.options?.includes(opt)) (p.options ??= []).push(opt)
       vals[k] = opt
     }

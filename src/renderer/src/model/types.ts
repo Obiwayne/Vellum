@@ -35,12 +35,14 @@ export interface CNode {
   /** component set: a frame whose direct children are the variant mains of one component (see model/variants.ts) */
   componentSet?: { name: string; props: PropDef[] }
   /** instance root: this frame mirrors the main component `of`; its subtree is derived by syncInstances */
-  instance?: { of: string; overrides?: Record<string, NodeOverride> }
+  instance?: { of: string; overrides?: Record<string, NodeOverride>; props?: Record<string, string | boolean> }
+  /** inside a main: component properties this node follows (prop id per aspect); see model/properties.ts */
+  bind?: PropBinding
   /** materialised instance node: id of the main-side node it mirrors */
   srcId?: string
 }
 
-/** Component property kinds. Only 'variant' is used so far (component properties come with T19). */
+/** Component property kinds. Variant props pick a main of a set (model/variants.ts); the rest drive layers inside a main. */
 export type PropType = 'variant' | 'boolean' | 'text' | 'swap'
 
 export interface PropDef {
@@ -60,6 +62,18 @@ export interface ComponentInfo {
   set?: string
   /** variant prop id -> chosen option, for a main inside a set */
   variant?: Record<string, string>
+  /** boolean / text / swap prop definitions of a lone main (a set keeps them on its `componentSet`) */
+  props?: PropDef[]
+}
+
+/** Which prop drives which aspect of a node inside a main. */
+export interface PropBinding {
+  /** boolean prop id: shows or hides the layer */
+  visible?: string
+  /** text prop id: the layer's text (text nodes) */
+  text?: string
+  /** swap prop id: the main shown by this nested instance (instance nodes) */
+  swap?: string
 }
 
 /** Per-instance changes over the main, keyed by the main's descendant id ('' = the main root). */
