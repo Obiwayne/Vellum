@@ -220,3 +220,100 @@ describe('docDiff', () => {
     expect(diffDocs(linked, JSON.parse(JSON.stringify(doc()))).textStylesRemoved).toEqual(['Body'])
   })
 })
+
+describe('test station: adversarial', () => {
+  it('a style edit across several pages is one undo and rewrites every linked node', () => {
+    const { a } = setup()
+    const p2 = S().addPage(id, 'Two')
+    const p2root = doc().pages.find((p) => p.id === p2)!.rootId
+    const c = S().createNode(id, { type: 'text', text: 'C' }, p2root)
+    const sid = S().createTextStyle(id, 'Body', { fontSize: 16 })
+    S().applyTextStyle(id, [a, c], sid)
+    oneUndo(() => S().updateTextStyle(id, sid, { fontSize: 40, fontWeight: 700 }))
+    S().updateTextStyle(id, sid, { fontSize: 40, fontWeight: 700 })
+    expect(node(a).style).toMatchObject({ fontSize: 40, fontWeight: 700 })
+    expect(node(c).style).toMatchObject({ fontSize: 40, fontWeight: 700 })
+  })
+
+  it('a colour edit on a linked node keeps the link (colour is not a style key)', () => {
+    const { a } = setup()
+    const sid = S().createTextStyle(id, 'Body', { fontSize: 16 })
+    S().applyTextStyle(id, [a], sid)
+    expect(S().updateStyles(id, [a], { color: '#ff0000' })).toBeNull()
+    expect(node(a).textStyle).toBe(sid)
+    S().updateTextStyle(id, sid, { fontSize: 30 })
+    expect(node(a).style).toMatchObject({ fontSize: 30, color: '#ff0000' }) // colour survives a style edit
+  })
+
+  it('removing a typography key by null also detaches', () => {
+    const { a } = setup()
+    const sid = S().createTextStyle(id, 'Body', { fontSize: 16, fontWeight: 700 })
+    S().applyTextStyle(id, [a], sid)
+    // fontWeight null on a node that has it: a change, so it unlinks
+    expect(S().updateStyles(id, [a], { fontWeight: null })).toBe('Detached from text style Body')
+    expect(node(a).style.fontWeight).toBeUndefined()
+  })
+
+  it('an instance override survives a main edit, a style edit and undo of each', () => {
+    const main = S().createNode(id, { type: 'frame', name: 'Card' }, root())
+    const label = S().createNode(id, { type: 'text', text: 'Hi' }, main)
+    const stage = S().createNode(id, { type: 'frame', name: 'Stage' }, root())
+    S().createComponent(id, [main])
+    const inst = S().createInstance(id, main, stage)
+    const twin = (): CNode => kids(inst).find((n) => n.srcId === label)!
+    const big = S().createTextStyle(id, 'Big', { fontSize: 40 })
+    S().applyTextStyle(id, [twin().id], big)
+    S().setText(id, label, 'Changed in main') // main edit
+    S().updateStyles(id, [main], { backgroundColor: '#eeeeee' })
+    expect(node(inst).instance?.overrides?.[label]?.textStyle).toBe(big)
+    expect(twin().textStyle).toBe(big)
+    expect(twin().style.fontSize).toBe(40)
+    expect(twin().text).toBe('Changed in main')
+    S().updateTextStyle(id, big, { fontSize: 55 })
+    expect(twin().style.fontSize).toBe(55)
+    expect(node(label).style.fontSize).toBe(16) // main stays untouched
+  })
+
+  it('a style edit and a main edit inside one transaction are one undo step', () => {
+    const main = S().createNode(id, { type: 'frame', name: 'Card' }, root())
+    const label = S().createNode(id, { type: 'text', text: 'Hi' }, main)
+    const stage = S().createNode(id, { type: 'frame', name: 'Stage' }, root())
+    S().createComponent(id, [main])
+    const inst = S().createInstance(id, main, stage)
+    const sid = S().createTextStyle(id, 'Body', { fontSize: 16 })
+    S().applyTextStyle(id, [label], sid)
+    const twin = (): CNode => kids(inst).find((n) => n.srcId === label)!
+    oneUndo(() =>
+      S().transact(id, 'Both', () => {
+        S().updateTextStyle(id, sid, { fontSize: 48 })
+        S().updateStyles(id, [main], { backgroundColor: '#123456' })
+      })
+    )
+    S().transact(id, 'Both', () => {
+      S().updateTextStyle(id, sid, { fontSize: 48 })
+      S().updateStyles(id, [main], { backgroundColor: '#123456' })
+    })
+    expect(twin().style.fontSize).toBe(48)
+    expect(node(inst).style.backgroundColor).toBe('#123456')
+  })
+
+  it('applying to a non-text node or with a missing style changes nothing and adds no undo entry', () => {
+    const { a } = setup()
+    const f = S().createNode(id, { type: 'frame' }, root())
+    const sid = S().createTextStyle(id, 'Body', { fontSize: 22 })
+    const snap = JSON.stringify(doc().nodes)
+    S().applyTextStyle(id, [f], sid)
+    S().applyTextStyle(id, [a], 'nope')
+    expect(JSON.stringify(doc().nodes)).toBe(snap)
+  })
+
+  it('duplicating a linked node keeps the link and follows later edits', () => {
+    const { a } = setup()
+    const sid = S().createTextStyle(id, 'Body', { fontSize: 16 })
+    S().applyTextStyle(id, [a], sid)
+    const [copy] = S().duplicateNodes(id, [a])
+    expect(node(copy).textStyle).toBe(sid)
+    S().updateTextStyle(id, sid, { fontSize: 31 })
+    expect(node(copy).style.fontSize).toBe(31)
+  })
+})
