@@ -17,7 +17,7 @@ export const PAGE_BACKGROUND = '#282828'
 export const TEXT_DEFAULTS: Style = {
   fontFamily: 'system-ui, sans-serif',
   fontSize: 16,
-  lineHeight: '20px',
+  lineHeight: '1.25', // unitless: scales with the font size, so Fit containers grow with the text
   color: '#000000',
   width: 'fit-content'
 }
@@ -500,19 +500,10 @@ export function removeNode(doc: Doc, id: string): void {
 }
 
 export function applyStylePatch(style: Style, patch: StylePatch): void {
-  // A font-size change keeps the untouched default line height (1.25 × size, 16/20) proportional;
-  // with a fixed 20px a 48px text is still one 20px line tall and its Fit container wouldn't grow.
-  const newSize = numericSize(patch.fontSize ?? undefined)
-  const scaleLine =
-    newSize !== null &&
-    newSize > 0 &&
-    patch.lineHeight === undefined &&
-    style.lineHeight === `${Math.round((numericSize(style.fontSize) ?? 16) * 1.25)}px`
   for (const [k, v] of Object.entries(patch)) {
     if (v === null || v === undefined || v === '') delete style[k]
     else style[k] = v
   }
-  if (scaleLine) style.lineHeight = `${Math.round((newSize as number) * 1.25)}px`
 }
 
 /**

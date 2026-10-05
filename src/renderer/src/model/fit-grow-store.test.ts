@@ -21,14 +21,13 @@ describe('typography change through the store', () => {
   }
   const st = (n: string) => S().docs[id].nodes[n].style
 
-  it('font size via updateStyles rescales the default line height; one undo restores it', () => {
+  it('font size via updateStyles keeps the unitless line height; one undo restores the size', () => {
     const { text } = build()
     S().updateStyles(id, [text], { fontSize: 48 })
     expect(st(text).fontSize).toBe(48)
-    expect(st(text).lineHeight).toBe('60px')
+    expect(st(text).lineHeight).toBe('1.25')
     S().undo(id)
     expect(st(text).fontSize).toBe(16)
-    expect(st(text).lineHeight).toBe('20px')
   })
 
   it('leaves no fixed height on the text or on nested Fit frames, so every Fit parent can grow', () => {
@@ -47,7 +46,7 @@ describe('typography change through the store', () => {
     expect(st(fixed).height).toBe(100)
   })
 
-  it('an explicit line height set by the user is not rescaled', () => {
+  it('an explicit px line height (inspector or MCP) stays fixed when the font size changes', () => {
     const { text } = build()
     S().updateStyles(id, [text], { lineHeight: '24px' })
     S().updateStyles(id, [text], { fontSize: 48 })
