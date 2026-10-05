@@ -308,3 +308,48 @@ describe('performance', () => {
     expect(swap).toBeLessThan(500)
   }, 30_000)
 })
+
+describe('test station: adversarial', () => {
+  it('deleting the default variant moves its instances to the remaining variant, one undo restores', () => {
+    const { button, second, inst } = withVariant()
+    expect(node(inst).instance?.of).toBe(button)
+    S().deleteNodes(id, [button])
+    expect(node(button)).toBeUndefined()
+    expect(node(inst).instance?.of).toBe(second)
+    expect(node(inst).style.width).toBe(200)
+    S().undo(id)
+    expect(node(button)).toBeDefined()
+    expect(node(inst).instance?.of).toBe(button)
+    expect(node(inst).style.width).toBe(120)
+  })
+
+  it('choosing the option the instance already has changes nothing and drops nothing', () => {
+    const { button, inst, prop } = withVariant()
+    const opt = node(button).component!.variant![prop]
+    const before = JSON.stringify(doc().nodes)
+    expect(S().setVariantValue(id, inst, prop, opt)).toBe(0)
+    expect(JSON.stringify(doc().nodes)).toBe(before)
+  })
+
+  it('switch then undo then redo lands on the switched state with overrides intact', () => {
+    const { second, inst, prop } = withVariant()
+    S().setText(id, kids(inst)[0].id, 'Mine')
+    S().setVariantValue(id, inst, prop, 'Variant 2')
+    const switched = JSON.stringify(doc().nodes)
+    expect(node(inst).instance?.of).toBe(second)
+    S().undo(id)
+    expect(node(inst).instance?.of).not.toBe(second)
+    S().redo(id)
+    expect(JSON.stringify(doc().nodes)).toBe(switched)
+  })
+
+  it('a duplicated set does not steal instances from the original', () => {
+    const { button, setId, inst } = withVariant()
+    const [copy] = S().duplicateNodes(id, [setId])
+    expect(node(inst).instance?.of).toBe(button)
+    expect(node(copy).componentSet).toBeDefined()
+    const copyMains = kids(copy)
+    expect(copyMains.length).toBe(2)
+    for (const m of copyMains) expect(m.component?.set).toBe(copy)
+  })
+})
