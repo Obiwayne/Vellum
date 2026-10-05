@@ -3,7 +3,7 @@
 // is materialised from the main by syncInstances (each copy carries `srcId`). Policy (undo steps,
 // toasts, which edits become overrides) belongs to the store; this file only knows the mechanics.
 import { ancestors, applyStylePatch, descendants, insertNode, isPageRoot, newId, removeNode, textPreview, wrapNodes } from './ops'
-import type { CNode, Doc, NodeOverride, StylePatch, WorldRect } from './types'
+import type { CNode, Doc, NodeOverride, PropDef, StylePatch, WorldRect } from './types'
 
 export const isMain = (n: CNode | undefined): boolean => Boolean(n?.component)
 export const isInstance = (n: CNode | undefined): boolean => Boolean(n?.instance)
@@ -27,10 +27,17 @@ export function instancesOf(doc: Doc, mainId?: string): string[] {
     .map((n) => n.id)
 }
 
+/** Property definitions that apply to a main: its set's (shared by every variant) or its own when it is a lone main. */
+export function propDefsOf(doc: Doc, mainId: string): PropDef[] {
+  const main = doc.nodes[mainId]
+  const set = main?.component?.set ? doc.nodes[main.component.set] : undefined
+  return set?.componentSet?.props ?? main?.component?.props ?? []
+}
+
 export const CYCLE_MSG = 'A component cannot contain an instance of itself'
 
 /** True when `from`'s subtree (through nested instances) contains an instance of `target`. */
-function reaches(doc: Doc, from: string, target: string, seen = new Set<string>()): boolean {
+export function reaches(doc: Doc, from: string, target: string, seen = new Set<string>()): boolean {
   if (from === target) return true
   if (seen.has(from)) return false
   seen.add(from)
@@ -212,8 +219,37 @@ function applyOverride(dst: CNode, o: NodeOverride | undefined, src?: CNode): vo
   if (o.y !== undefined) dst.y = o.y
 }
 
+/** Property definitions and the instance's values, for applying `bind`s while syncing. */
+interface PropCtx {
+  defs: PropDef[]
+  values: Record<string, string | boolean> | undefined
+}
+
+/** A bound prop's current value (instance value, else the default), checked against the aspect's type. */
+function boundValue(ctx: PropCtx | undefined, id: string | undefined, type: PropDef['type']): string | boolean | undefined {
+  const def = id !== undefined ? ctx?.defs.find((d) => d.id === id && d.type === type) : undefined
+  return def ? ctx?.values?.[def.id] ?? def.default : undefined
+}
+
+/**
+ * Apply the property bindings of main-side node `s` to its twin: boolean → visible, text → text.
+ * Returns the main a swap prop wants this nested instance to show (else undefined).
+ */
+function applyBindings(doc: Doc, s: CNode, twin: CNode, ctx: PropCtx | undefined): string | undefined {
+  if (!s.bind || !ctx) return undefined
+  const vis = boundValue(ctx, s.bind.visible, 'boolean')
+  if (vis !== undefined && twin.visible !== Boolean(vis)) twin.visible = Boolean(vis)
+  const text = s.type === 'text' ? boundValue(ctx, s.bind.text, 'text') : undefined
+  if (text !== undefined) {
+    if (twin.text !== String(text)) twin.text = String(text)
+    if (isAutoName(s)) twin.name = textPreview(String(text)) || 'Text'
+  }
+  const swap = s.instance ? boundValue(ctx, s.bind.swap, 'swap') : undefined
+  return typeof swap === 'string' && swap !== s.instance?.of && doc.nodes[swap]?.component ? swap : undefined
+}
+
 /** Make `dst`'s children mirror `src`'s (by srcId), recursively. */
-function reconcile(doc: Doc, src: CNode, dst: CNode, overrides: Record<string, NodeOverride> | undefined): void {
+function reconcile(doc: Doc, src: CNode, dst: CNode, overrides: Record<string, NodeOverride> | undefined, props?: PropCtx): void {
   const existing = new Map<string, string>()
   for (const cid of dst.children) {
     const s = doc.nodes[cid]?.srcId
@@ -234,9 +270,14 @@ function reconcile(doc: Doc, src: CNode, dst: CNode, overrides: Record<string, N
     }
     twin.parent = dst.id
     copyFields(s, twin, false)
+    const swapTo = applyBindings(doc, s, twin, props)
     applyOverride(twin, overrides?.[sid], s)
     next.push(twin.id)
-    reconcile(doc, s, twin, overrides)
+    if (swapTo) {
+      // swap prop: this nested instance shows another main (its own box stays), overrides then key on that main's nodes
+      copyFields(doc.nodes[swapTo], twin, true)
+      reconcile(doc, doc.nodes[swapTo], twin, overrides)
+    } else reconcile(doc, s, twin, overrides, props)
   }
   for (const cid of existing.values()) removeNode(doc, cid) // source is gone
   if (!sameList(dst.children, next)) dst.children = next
@@ -254,9 +295,16 @@ export function syncInstance(doc: Doc, instId: string): void {
     for (const k of Object.keys(ov)) if (!live.has(k)) delete ov[k]
     if (!Object.keys(ov).length) delete inst.instance.overrides
   }
+  const defs = propDefsOf(doc, main.id)
+  const vals = inst.instance.props
+  if (vals) {
+    // drop values whose definition is gone or changed type
+    for (const k of Object.keys(vals)) if (!defs.some((d) => d.id === k && d.type !== 'variant' && typeof vals[k] === (d.type === 'boolean' ? 'boolean' : 'string'))) delete vals[k]
+    if (!Object.keys(vals).length) delete inst.instance.props
+  }
   copyFields(main, inst, true)
   applyOverride(inst, ov?.[''], main)
-  reconcile(doc, main, inst, inst.instance.overrides)
+  reconcile(doc, main, inst, inst.instance.overrides, { defs, values: inst.instance.props })
 }
 
 /**
