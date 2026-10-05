@@ -4,12 +4,13 @@ import { create } from 'zustand'
 import { original, produce, produceWithPatches } from 'immer'
 import type { Patch } from 'immer'
 import { nanoid } from 'nanoid'
-import type { Camera, CNode, CommentThread, Doc, EditorState, NodeType, Page, PropDef, StylePatch, TabId, Token, Tool, WorldRect } from './types'
+import type { Camera, CNode, CommentThread, Doc, EditorState, NodeType, Page, PropDef, Style, StylePatch, TabId, Token, Tool, WorldRect } from './types'
 import { history } from './history'
 import * as ops from './ops'
 import * as comp from './components'
 import * as variants from './variants'
 import * as props from './properties'
+import * as tstyle from './textStyles'
 import { htmlToNodes } from './html'
 import { MODE_ATTR, MODE_NAME_RE } from './modes'
 
@@ -81,7 +82,8 @@ export interface Store {
   // nodes (undoable)
   createNode(docId: string, partial: Partial<CNode> & { type: NodeType }, parentId: string, index?: number): string
   insertHtml(docId: string, parentId: string, html: string, index?: number): string[]
-  updateStyles(docId: string, ids: string[], patch: StylePatch, opts?: MutateOptions): void
+  /** Merge a style patch into nodes. Returns the "Detached from text style X" message when a typography key unlinked a node from its text style, else null. */
+  updateStyles(docId: string, ids: string[], patch: StylePatch, opts?: MutateOptions): string | null
   updateNode(docId: string, id: string, patch: Partial<CNode>, opts?: MutateOptions): void
   setText(docId: string, id: string, text: string, opts?: MutateOptions): void
   renameNode(docId: string, id: string, name: string): void
@@ -111,6 +113,17 @@ export interface Store {
   bindProp(docId: string, nodeId: string, aspect: 'visible' | 'text' | 'swap', propId: string | null): void
   /** set an instance's value for a boolean / text / swap property */
   setInstanceProp(docId: string, instId: string, propId: string, value: string | boolean): void
+  /** save a text style: from a text node's typography (id) or explicit keys. Returns the style id. */
+  createTextStyle(docId: string, name: string, from: string | Style): string
+  renameTextStyle(docId: string, styleId: string, name: string): void
+  /** change a style's keys (null removes one); every linked node follows, in the same undo step */
+  updateTextStyle(docId: string, styleId: string, patch: StylePatch): void
+  /** remove a style; linked nodes keep their values */
+  deleteTextStyle(docId: string, styleId: string): void
+  /** link text nodes to a style and copy its keys (inside an instance this becomes an override) */
+  applyTextStyle(docId: string, ids: string[], styleId: string): void
+  /** unlink text nodes from their style; values stay */
+  detachTextStyle(docId: string, ids: string[]): void
   /** select the main component of an instance (or of a node inside one) and switch to its page; false when there is none */
   goToMain(docId: string, id: string): boolean
   /** generic escape hatch: run an arbitrary recipe on the doc draft as one undoable step */
@@ -486,17 +499,23 @@ export const useStore = create<Store>()((set, get) => {
     },
 
     updateStyles(docId, ids, patch, opts) {
+      const detached = new Set<string>()
       mutate(
         docId,
         'Update styles',
         (d) => {
           for (const id of ids) {
             const n = d.nodes[id]
-            if (n) ops.applyStylePatch(n.style, patch)
+            if (!n) continue
+            // a manual typography edit unlinks the node from its text style; values stay as edited
+            const was = tstyle.detachOnEdit(d, n, patch)
+            if (was) detached.add(was)
+            ops.applyStylePatch(n.style, patch)
           }
         },
         opts
       )
+      return detached.size ? tstyle.detachedMessage([...detached].join(', ')) : null
     },
 
     updateNode(docId, id, patch, opts) {
@@ -660,6 +679,46 @@ export const useStore = create<Store>()((set, get) => {
 
     setInstanceProp(docId, instId, propId, value) {
       mutate(docId, 'Set property', (d) => props.setInstanceProp(d, instId, propId, value), { derived: true })
+    },
+
+    createTextStyle(docId, name, from) {
+      let id = ''
+      mutate(docId, 'Create text style', (d) => {
+        id = tstyle.createTextStyle(d, name, from)
+      }, { derived: true })
+      return id
+    },
+
+    renameTextStyle(docId, styleId, name) {
+      mutate(docId, 'Rename text style', (d) => void tstyle.renameTextStyle(d, styleId, name), { derived: true })
+    },
+
+    updateTextStyle(docId, styleId, patch) {
+      mutate(docId, 'Edit text style', (d) => {
+        const using = tstyle.instancesUsing(d, styleId)
+        if (!tstyle.updateTextStyle(d, styleId, patch)) return
+        for (const inst of using) comp.syncInstance(d, inst) // overrides that follow this style
+      }, { derived: true })
+    },
+
+    deleteTextStyle(docId, styleId) {
+      mutate(docId, 'Delete text style', (d) => {
+        const using = tstyle.instancesUsing(d, styleId)
+        if (!tstyle.deleteTextStyle(d, styleId)) return
+        for (const inst of using) comp.syncInstance(d, inst)
+      }, { derived: true })
+    },
+
+    applyTextStyle(docId, ids, styleId) {
+      mutate(docId, 'Apply text style', (d) => {
+        for (const id of ids) tstyle.applyTextStyle(d, id, styleId)
+      })
+    },
+
+    detachTextStyle(docId, ids) {
+      mutate(docId, 'Detach text style', (d) => {
+        for (const id of ids) tstyle.detachTextStyle(d, id)
+      })
     },
 
     goToMain(docId, id) {
