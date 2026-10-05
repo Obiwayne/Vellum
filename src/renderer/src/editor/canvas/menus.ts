@@ -5,6 +5,7 @@ import { getStore } from '../../model/store'
 import { ancestors, isPageRoot } from '../../model/ops'
 import { NodeIcon } from '../left/LayersTree'
 import * as A from './actions'
+import { componentMenu } from './componentActions'
 import { getWorldEl } from './geometry'
 
 const sep = { type: 'separator' } as const
@@ -112,6 +113,7 @@ function buildNodeMenu(docId: string, at: { x: number; y: number }): MenuEntry[]
     { label: 'Ungroup', shortcut: 'Ctrl+Shift+G', onSelect: () => A.ungroupSelection(docId) },
     { label: 'Frame selection', shortcut: 'Shift+F / Ctrl+Alt+G', onSelect: () => A.frameSelection(docId) },
     { label: 'Wrap in flex', shortcut: 'Shift+A', onSelect: () => A.wrapOrAddFlex(docId) },
+    ...componentMenu(docId, sel),
     sep,
     { label: 'Bring to front', shortcut: ']', onSelect: () => A.reorder(docId, 'front') },
     { label: 'Send to back', shortcut: '[', onSelect: () => A.reorder(docId, 'back') },

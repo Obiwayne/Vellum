@@ -555,3 +555,45 @@ body.lp-dragging * {
 .lp-token-editor__reset:hover {
   text-decoration: underline;
 }
+
+/* Components list (main components of the file) and component marks in Layers */
+.lp-components {
+  flex-shrink: 0;
+  max-height: 25%;
+  overflow-y: auto;
+  padding: 4px 0;
+  border-top: 1px solid var(--hairline);
+}
+.lp-components__title {
+  padding: 4px 12px;
+  color: var(--text-3);
+  font-weight: var(--weight-medium);
+}
+.lp-component {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  height: 28px;
+  padding: 0 12px 0 18px;
+  background: none;
+  border: 0;
+  color: var(--text-2);
+  text-align: left;
+  cursor: pointer;
+}
+.lp-component:hover {
+  background: var(--row-selected);
+}
+.lp-component__icon {
+  flex-shrink: 0;
+  color: var(--component, #9747ff);
+}
+.lp-component__count {
+  margin-left: auto;
+  color: var(--text-3);
+}
+.lp-layer--component .lp-layer__icon,
+.lp-layer--component .lp-layer__name {
+  color: var(--component, #9747ff);
+}
