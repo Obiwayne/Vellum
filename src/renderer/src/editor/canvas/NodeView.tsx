@@ -56,7 +56,7 @@ export const NodeView = memo(function NodeView({ docId, id, topLevel }: Props): 
     default: {
       const flow = isFlowLayout(node.style)
       return (
-        <div data-node-id={id} style={style}>
+        <div data-node-id={id} data-component-set={node.componentSet ? '' : undefined} style={node.componentSet ? { ...style, outline: '1px dashed #9747ff', outlineOffset: 0 } : style}>
           {node.children.map((c) => (
             <NodeView key={c} docId={docId} id={c} parentFlow={flow} topLevel={false} />
           ))}

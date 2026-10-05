@@ -4,6 +4,7 @@ import type { MenuEntry } from '../../ui'
 import { getStore } from '../../model/store'
 import * as ops from '../../model/ops'
 import { instanceRootOf, instancesOf, isMain } from '../../model/components'
+import { pickMain, setOf, variantValues, variantsOf } from '../../model/variants'
 import type { CNode, Doc, Page, WorldRect } from '../../model/types'
 import { visibleWorldRect } from './camera'
 import { clientToWorld, measure, union } from './geometry'
@@ -150,6 +151,7 @@ export function componentMenu(docId: string, ids: string[]): MenuEntry[] {
   }
   if (mains.length === 1 && ids.length === 1) {
     out.push({ label: 'Create instance', onSelect: () => void insertInstance(docId, mains[0]) })
+    out.push({ label: 'Add variant', onSelect: run(() => addVariantToSelection(docId)) })
   }
   if (inInstance) {
     out.push({ label: 'Go to main component', onSelect: run(() => goToMainOfSelection(docId)) })
@@ -157,6 +159,32 @@ export function componentMenu(docId: string, ids: string[]): MenuEntry[] {
     out.push({ label: 'Detach instance', shortcut: 'Ctrl+Alt+B', onSelect: run(() => detachSelection(docId)) })
   }
   return out
+}
+
+/** "Size=Large, Tone=Loud" for a variant main (its values with the set's defaults), or null for a lone component. */
+export function variantLabel(doc: Doc, mainId: string): string | null {
+  const setId = setOf(doc, mainId)
+  if (!setId) return null
+  const have = variantValues(doc, mainId)
+  return (doc.nodes[setId].componentSet?.props ?? [])
+    .filter((p) => p.type === 'variant')
+    .map((p) => `${p.name}=${have[p.id]}`)
+    .join(', ')
+}
+
+/** The set frame a node belongs to as a variant main, or the node itself when it is a set. */
+export const setFrameOf = (doc: Doc, id: string): string | null => (doc.nodes[id]?.componentSet ? id : setOf(doc, id))
+
+/** Add variant: duplicate the selected main as a new variant beside it (a lone main is wrapped in a set first). */
+export function addVariantToSelection(docId: string): void {
+  const doc = docOf(docId)
+  const sel = selectionOf(docId)
+  if (!doc || sel.length !== 1 || !doc.nodes[sel[0]]?.component) return
+  const id = guarded(() => S().addVariant(docId, sel[0]))
+  if (id) {
+    S().select(docId, [id])
+    toast('Added variant')
+  }
 }
 
 // ------------------------------------------------------------------------------------------------
@@ -169,8 +197,10 @@ export interface AssetItem {
   /** the main component */
   id: string
   name: string
-  /** instances of it in the file */
+  /** instances of it in the file (all variants of a set together) */
   instances: number
+  /** variant mains in its set (1 for a lone component); a set is listed once, by its default variant */
+  variants: number
 }
 
 export interface AssetGroup {
@@ -183,12 +213,23 @@ export function assetGroups(doc: Doc, query = ''): AssetGroup[] {
   const q = query.trim().toLowerCase()
   const out: AssetGroup[] = []
   for (const page of doc.pages) {
+    const seen = new Set<string>()
     const items: AssetItem[] = []
     for (const id of ops.descendants(doc, page.rootId)) {
       const n = doc.nodes[id]
       if (!n?.component) continue
+      const setId = setOf(doc, id)
+      if (setId) {
+        if (seen.has(setId)) continue
+        seen.add(setId)
+        const mains = variantsOf(doc, setId)
+        const name = doc.nodes[setId].componentSet?.name ?? n.component.name
+        if (q && !name.toLowerCase().includes(q) && !mains.some((m) => m.name.toLowerCase().includes(q))) continue
+        items.push({ id: pickMain(doc, setId) ?? id, name, instances: mains.reduce((t, m) => t + instancesOf(doc, m.id).length, 0), variants: mains.length })
+        continue
+      }
       if (q && !n.component.name.toLowerCase().includes(q)) continue
-      items.push({ id, name: n.component.name, instances: instancesOf(doc, id).length })
+      items.push({ id, name: n.component.name, instances: instancesOf(doc, id).length, variants: 1 })
     }
     if (items.length) out.push({ page, items })
   }

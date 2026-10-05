@@ -67,6 +67,7 @@ export function ComponentsSection({ docId }: { docId: string }): JSX.Element | n
               ) : (
                 <span className="lp-ellipsis">{it.name}</span>
               )}
+              {it.variants > 1 && <span className="lp-component__count">{it.variants} variants</span>}
               <span className="lp-component__count">{it.instances}</span>
             </div>
           ))}

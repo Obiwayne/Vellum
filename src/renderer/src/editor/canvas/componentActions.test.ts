@@ -113,7 +113,7 @@ describe('component actions', () => {
     expect(labels([title])).toContain('Create component')
     S().select(id, [card])
     C.createComponentFromSelection(id)
-    expect(labels([card])).toEqual(['-', 'Create component', 'Create instance'])
+    expect(labels([card])).toEqual(['-', 'Create component', 'Create instance', 'Add variant'])
     expect(C.componentMenu(id, [card])[1]).toMatchObject({ disabled: true }) // already a component
     expect(C.componentMenu(id, [])).toEqual([])
   })
@@ -146,10 +146,10 @@ describe('Assets panel', () => {
     const groups = C.assetGroups(doc())
     expect(groups.map((g) => g.page.name)).toEqual([doc().pages[0].name, 'Second'])
     expect(groups[0].items).toEqual([
-      { id: a, name: 'Card', instances: 2 },
-      { id: b, name: 'Button', instances: 0 }
+      { id: a, name: 'Card', instances: 2, variants: 1 },
+      { id: b, name: 'Button', instances: 0, variants: 1 }
     ])
-    expect(groups[1].items).toEqual([{ id: c, name: 'Card small', instances: 0 }])
+    expect(groups[1].items).toEqual([{ id: c, name: 'Card small', instances: 0, variants: 1 }])
   })
 
   it('search is case-insensitive, matches across pages and drops empty pages', () => {
