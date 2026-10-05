@@ -45,7 +45,11 @@ export interface NodeOverride {
   attrs?: Record<string, string>
   svg?: string
   visible?: boolean
+  locked?: boolean
   name?: string
+  /** offset inside the parent (positioned children only) */
+  x?: number
+  y?: number
 }
 
 export interface Page {
