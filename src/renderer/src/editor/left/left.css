@@ -597,3 +597,30 @@ body.lp-dragging * {
 .lp-layer--component .lp-layer__name {
   color: var(--component, #9747ff);
 }
+.lp-components__search {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0 12px 4px;
+  padding: 0 8px;
+  height: 24px;
+  border-radius: 4px;
+  background: var(--raised, rgba(255, 255, 255, 0.06));
+  color: var(--text-3);
+}
+.lp-components__search input {
+  flex: 1;
+  min-width: 0;
+  background: none;
+  border: 0;
+  outline: 0;
+  color: var(--text);
+}
+.lp-components__page,
+.lp-components__empty {
+  padding: 4px 12px;
+  color: var(--text-3);
+}
+.lp-component[draggable='true'] {
+  cursor: grab;
+}

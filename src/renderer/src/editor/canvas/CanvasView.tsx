@@ -16,6 +16,7 @@ import { clampZoom, registerViewport } from './camera'
 import { clientToWorld, contains, intersects, measure, rectFromPoints, registerWorld, union } from './geometry'
 import { containerAt, drillNode, nodeIdFromTarget, pickNode } from './selection'
 import * as A from './actions'
+import { COMPONENT_DRAG_TYPE, dropComponent } from './componentActions'
 import { canvasMenu, layersMenu, nodeMenu } from './menus'
 import { toast } from './toast'
 import { applyCropKeys, clampToImage, cropStart, cropStyle, type CropStart } from './crop'
@@ -1287,7 +1288,7 @@ export function CanvasView({ docId }: { docId: string }): JSX.Element | null {
       onContextMenu={onContextMenu}
       onDragOver={(e) => {
         const types = [...e.dataTransfer.types]
-        if (types.includes('Files') || types.includes('text/uri-list') || types.includes('text/html')) {
+        if (types.includes(COMPONENT_DRAG_TYPE) || types.includes('Files') || types.includes('text/uri-list') || types.includes('text/html')) {
           e.preventDefault()
           e.dataTransfer.dropEffect = 'copy'
         }
@@ -1295,6 +1296,11 @@ export function CanvasView({ docId }: { docId: string }): JSX.Element | null {
       onDrop={(e) => {
         e.preventDefault()
         const { clientX, clientY } = e
+        const main = e.dataTransfer.getData(COMPONENT_DRAG_TYPE)
+        if (main) {
+          dropComponent(docId, main, clientX, clientY)
+          return
+        }
         void A.dropMedia(docId, e.dataTransfer, clientX, clientY).then((ok) => {
           if (!ok) toast('Drop image files (PNG, JPG, GIF, WebP, SVG…) to add them')
         })
