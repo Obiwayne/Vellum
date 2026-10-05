@@ -1,11 +1,12 @@
 // MCP tools: code generation (get_jsx) and the render payload used for screenshots/exports.
-import { computeNodeStyle, cssValue, nodeToHtml, nodeToJsx, nodeToRenderHtml, tagOf, toCamel, toKebab } from '../model/html'
+import { computeNodeStyle, cssValue, jsxWhen, nodeToHtml, nodeToJsx, nodeToRenderHtml, tagOf, toCamel, toKebab, type JsxHooks } from '../model/html'
 import { cleanAttrs, sanitizeSvgMarkup } from '../model/sanitize'
 import { descendants, isPageRoot, pageOf, topLevelOf } from '../model/ops'
 import type { CNode, Doc } from '../model/types'
 import { effectiveMode, modeVars, nodeMode, tokensCssWithModes } from '../model/modes'
 import { inheritedStyle } from './tools-read'
 import { styleToTailwind } from './tailwind'
+import { jsxWithComponents } from './jsx-components'
 import { geometry, getDoc, registerHandler, requireNode, resolveDocId, scoped, str } from './registry'
 
 export { nodeToRenderHtml }
@@ -97,9 +98,16 @@ function svgInnerToJsx(markup: string): string {
     .replace(/\sxlink:href=/g, ' href=')
 }
 
-export function nodeToTailwindJsx(doc: Doc, id: string, indent: string, asRoot: boolean): string {
+export function nodeToTailwindJsx(doc: Doc, id: string, indent: string, asRoot: boolean, hooks?: JsxHooks): string {
   const n = doc.nodes[id]
   if (!n) return ''
+  const swapped = hooks?.replace?.(n, hooks.when?.(n) ? indent + '  ' : indent)
+  if (swapped) return jsxWhen(n, swapped, indent, hooks)
+  return jsxWhen(n, tailwindPlain(doc, n, hooks?.when?.(n) ? indent + '  ' : indent, asRoot, hooks), indent, hooks)
+}
+
+function tailwindPlain(doc: Doc, n: CNode, indent: string, asRoot: boolean, hooks?: JsxHooks): string {
+  const id = n.id
   const classes = styleToTailwind(computeNodeStyle(doc, id, { asRoot, export: true }))
   if (asRoot) classes.unshift('[font-synthesis:none]', 'antialiased')
   const cls = classes.length ? ` className="${classes.join(' ')}"` : ''
@@ -107,10 +115,10 @@ export function nodeToTailwindJsx(doc: Doc, id: string, indent: string, asRoot: 
   if (n.type === 'image') return `${indent}<img${jsxAttrs(n)}${cls} />`
   if (n.type === 'svg') return `${indent}<svg xmlns="http://www.w3.org/2000/svg"${jsxAttrs(n)}${cls}>${svgInnerToJsx(sanitizeSvgMarkup(n.svg))}</svg>`
   if (n.type === 'text') {
-    const t = jsxText(n.text ?? '')
+    const t = hooks?.text?.(n) ?? jsxText(n.text ?? '')
     return t.length > 60 ? `${indent}<${tag}${jsxAttrs(n)}${cls}>\n${indent}  ${t}\n${indent}</${tag}>` : `${indent}<${tag}${jsxAttrs(n)}${cls}>${t}</${tag}>`
   }
-  const kids = n.children.filter((c) => doc.nodes[c]?.visible !== false).map((c) => nodeToTailwindJsx(doc, c, indent + '  ', false))
+  const kids = n.children.filter((c) => doc.nodes[c]?.visible !== false || hooks?.when?.(doc.nodes[c])).map((c) => nodeToTailwindJsx(doc, c, indent + '  ', false, hooks))
   if (!kids.length) return `${indent}<${tag}${jsxAttrs(n)}${cls} />`
   return `${indent}<${tag}${jsxAttrs(n)}${cls}>\n${kids.join('\n')}\n${indent}</${tag}>`
 }
@@ -120,6 +128,8 @@ registerHandler('get_jsx', (args) => {
   const doc = getDoc(docId)
   const n = requireNode(doc, args.nodeId)
   const format = str(args.format) === 'inline-styles' ? 'inline-styles' : 'tailwind'
+  const withComponents = jsxWithComponents(doc, n.id, format)
+  if (withComponents !== null) return scoped(docId, withComponents)
   const jsx = format === 'tailwind' ? nodeToTailwindJsx(doc, n.id, '    ', true) : nodeToJsx(doc, n.id, 'inline-styles', '    ')
   return scoped(docId, `(\n${jsx}\n  )`)
 })

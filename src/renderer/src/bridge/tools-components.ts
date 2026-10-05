@@ -3,7 +3,8 @@
 // override path; writing HTML into an instance is refused (see write_html).
 import { getStore } from '../model/store'
 import { instanceRootOf, instancesOf, mainOf, propDefsOf } from '../model/components'
-import { setOf, variantValues, variantsOf } from '../model/variants'
+import { setOf, setVariantValue, variantValues, variantsOf } from '../model/variants'
+import { setInstanceProp } from '../model/properties'
 import type { CNode, Doc, PropDef } from '../model/types'
 import { arr, getDoc, markWorking, registerHandler, requireNode, resolveDocId, resolvePage, scoped, str } from './registry'
 
@@ -182,32 +183,32 @@ registerHandler('set_instance_props', (args) => {
   const reset = args.reset
   if (!Object.keys(props).length && !Object.keys(variants).length && !reset) throw new Error('Pass props, variants and/or reset')
   let dropped = 0
-  getStore().transact(docId, 'Set instance properties', () => {
-    const s = getStore()
-    // variants first: switching re-points the instance and the property list may change with it
-    for (const [k, v] of Object.entries(variants)) {
-      const cur = getDoc(docId)
-      const root = cur.nodes[inst.id]
-      const setId = setOf(cur, root.instance?.of ?? '')
-      if (!setId) throw new Error('This instance\'s component has no variants')
-      if (typeof v !== 'string') throw new Error(`Variant value for "${k}" must be a string`)
-      dropped += s.setVariantValue(docId, inst.id, findProp(cur.nodes[setId].componentSet?.props ?? [], k, 'variant').id, v)
-    }
-    if (reset) {
-      const cur = getDoc(docId).nodes[inst.id]
-      const defs = propDefsOf(getDoc(docId), cur.instance?.of ?? '')
-      for (const k of Array.isArray(reset) ? (reset as string[]) : Object.keys(cur.instance?.props ?? {})) {
-        const id = Array.isArray(reset) ? findProp(defs, k).id : k
-        if (cur.instance?.props?.[id] !== undefined) s.setInstanceProp(docId, inst.id, id, defs.find((d) => d.id === id)?.default as Scalar)
+  // one recipe on one draft: any refused key or value throws and nothing is applied (no partial update)
+  getStore().mutate(
+    docId,
+    'Set instance properties',
+    (d) => {
+      // variants first: switching re-points the instance and the property list may change with it
+      for (const [k, v] of Object.entries(variants)) {
+        const setId = setOf(d, d.nodes[inst.id].instance?.of ?? '')
+        if (!setId) throw new Error("This instance's component has no variants")
+        if (typeof v !== 'string') throw new Error(`Variant value for "${k}" must be a string`)
+        dropped += setVariantValue(d, inst.id, findProp(d.nodes[setId].componentSet?.props ?? [], k, 'variant').id, v)
       }
-    }
-    for (const [k, v] of Object.entries(props)) {
-      const cur = getDoc(docId)
-      const defs = propDefsOf(cur, cur.nodes[inst.id].instance?.of ?? '')
-      if (typeof v !== 'string' && typeof v !== 'boolean') throw new Error(`Value for "${k}" must be a string or boolean`)
-      s.setInstanceProp(docId, inst.id, findProp(defs, k).id, v)
-    }
-  })
+      if (reset) {
+        const cur = d.nodes[inst.id]
+        const defs = propDefsOf(d, cur.instance?.of ?? '')
+        const ids = Array.isArray(reset) ? (reset as string[]).map((k) => findProp(defs, k).id) : Object.keys(cur.instance?.props ?? {})
+        for (const id of ids) if (cur.instance?.props?.[id] !== undefined) setInstanceProp(d, inst.id, id, defs.find((x) => x.id === id)?.default as Scalar)
+      }
+      for (const [k, v] of Object.entries(props)) {
+        if (typeof v !== 'string' && typeof v !== 'boolean') throw new Error(`Value for "${k}" must be a string or boolean`)
+        const defs = propDefsOf(d, d.nodes[inst.id].instance?.of ?? '')
+        setInstanceProp(d, inst.id, findProp(defs, k).id, v)
+      }
+    },
+    { derived: true }
+  )
   markWorking(docId, [inst.id])
   const after = getDoc(docId)
   return scoped(docId, { instanceId: inst.id, ...componentInfo(after, after.nodes[inst.id], true), droppedOverrides: dropped, instanceCount: instancesOf(after, after.nodes[inst.id].instance?.of ?? '').length })

@@ -6,6 +6,7 @@ import { handlers } from './registry'
 import './tools-read'
 import './tools-write'
 import './tools-components'
+import './tools-render'
 
 const S = getStore
 let fileId: string
@@ -242,15 +243,83 @@ describe('test station: gaps and adversarial cases', () => {
     return { frame, label, inst }
   }
 
-  // Acceptance: get_jsx exports an instance as component usage (<Button .../>) plus a definition per main.
-  // Known gap reported to the builder (tools-render.ts is unchanged): drop `.fails` once implemented.
-  it.fails('get_jsx exports an instance as component usage plus a definition for the main', async () => {
+  // get_jsx: instances become component usage, every main they use becomes a definition above (docs/MCP.md)
+  const jsx = async (nodeId: string, format = 'inline-styles'): Promise<string> => (await call('get_jsx', { nodeId, format })) as unknown as string
+
+  it('get_jsx exports an instance as component usage plus a definition for the main', async () => {
     const { frame, inst } = await withTextProp()
     S().updateNode(fileId, frame, { name: 'Button' })
-    const res = (await handlers.get_jsx({ fileId, nodeId: inst, format: 'inline-styles' })) as unknown
-    const text = typeof res === 'string' ? res : JSON.stringify(res)
-    expect(text).toMatch(/<Button\b[^>]*Heading=/)
-    expect(text).toMatch(/function Button|const Button/)
+    await call('set_instance_props', { nodeId: inst, props: { Heading: 'Bye' } })
+    for (const format of ['inline-styles', 'tailwind']) {
+      const text = await jsx(inst, format)
+      expect(text).toContain('<Button heading="Bye" />')
+      expect(text).toContain('function Button({ heading = "Hi" })')
+      expect(text).toContain('{heading}') // the bound text reads the prop
+    }
+  })
+
+  it('get_jsx on the main itself outputs the definition only', async () => {
+    const { frame } = await withTextProp()
+    S().updateNode(fileId, frame, { name: 'Button' })
+    const out = await jsx(frame)
+    expect(out).toMatch(/^function Button\(/)
+    expect(out).not.toMatch(/<Button\b/)
+    expect(await jsx(frame, 'tailwind')).toMatch(/^function Button\(/)
+  })
+
+  it('get_jsx with a set, an instance of a non-default variant, a text prop, a boolean prop and a nested instance', async () => {
+    const { frame, label, icon } = button()
+    await call('create_component', { nodeIds: [frame], name: 'Button' })
+    const v = await call('create_variant', { componentId: frame })
+    const prop = v.properties[0]
+    S().mutate(fileId, 'name options', (d) => {
+      const p = d.nodes[v.componentSetId].componentSet!.props[0]
+      p.name = 'Size'
+      p.options = ['md', 'lg']
+      p.default = 'md'
+      d.nodes[frame].component!.variant = { [p.id]: 'md' }
+      d.nodes[v.variantId].component!.variant = { [p.id]: 'lg' }
+    })
+    await call('add_component_prop', { componentId: frame, name: 'Label', type: 'text', defaultValue: 'Click' })
+    await call('add_component_prop', { componentId: frame, name: 'Show icon', type: 'boolean' })
+    // props are shared by the set: bind the layers of both variants
+    const vLabel = doc().nodes[v.variantId].children.map((c) => doc().nodes[c]).find((n) => n.type === 'text')!
+    const vIcon = doc().nodes[v.variantId].children.map((c) => doc().nodes[c]).find((n) => n.name === 'Icon')!
+    for (const [t, i] of [[label, icon], [vLabel.id, vIcon.id]]) {
+      await call('bind_component_prop', { nodeId: t, aspect: 'text', property: 'Label' })
+      await call('bind_component_prop', { nodeId: i, aspect: 'visible', property: 'Show icon' })
+    }
+    const inst = (await call('create_instance', { componentId: v.variantId })).instanceId as string
+    await call('set_instance_props', { nodeId: inst, props: { Label: 'Buy', 'Show icon': false } })
+    const card = S().createNode(fileId, { type: 'frame', name: 'Card', style: { width: 300, height: 100, display: 'flex' } }, doc().pages[0].rootId)
+    const nested = (await call('create_instance', { componentId: v.variantId, parentId: card })).instanceId as string
+    await call('set_instance_props', { nodeId: nested, props: { Label: 'Buy' } })
+    for (const format of ['inline-styles', 'tailwind']) {
+      const alone = await jsx(inst, format)
+      expect(alone).toContain('<Button size="lg" label="Buy" showIcon={false} />')
+      // one definition for the whole set: the lg variant first, the default (md) last
+      expect(alone.match(/function Button\(/g)?.length).toBe(1)
+      expect(alone).toContain('function Button({ size = "md", label = "Click", showIcon = true })')
+      expect(alone).toMatch(/if \(size === "lg"\) \{[\s\S]*\{label\}[\s\S]*return \(/)
+      expect(alone).toContain('{showIcon && (')
+      expect(alone.indexOf('function Button')).toBeLessThan(alone.indexOf('<Button size'))
+      // a plain container holding an instance: usage inside the markup, one definition above
+      const wrapped = await jsx(card, format)
+      expect(wrapped).toContain('<Button size="lg" label="Buy" />')
+      expect(wrapped.match(/function Button\(/g)?.length).toBe(1)
+    }
+    // overrides that are not properties are not exported (documented): same output after an override
+    const before = await jsx(inst)
+    const twin = doc().nodes[inst].children.map((c) => doc().nodes[c]).find((n) => n.type === 'text')!
+    await call('update_styles', { updates: [{ nodeIds: [twin.id], styles: { color: 'red' } }] })
+    expect(await jsx(inst)).toBe(before)
+    expect(prop.type).toBe('variant')
+  })
+
+  it('a plain node without components exports exactly as before', async () => {
+    const { frame } = button()
+    expect(await jsx(frame)).toMatch(/^\(\n/)
+    expect(await jsx(frame)).not.toMatch(/function /)
   })
 
   it('set_instance_props is one undo step', async () => {
@@ -264,7 +333,7 @@ describe('test station: gaps and adversarial cases', () => {
 
   // Defect reported to the builder: a bad name later in props leaves the earlier prop applied (the call throws
   // but "Bye" stays set). Drop `.fails` once the call validates first or rolls back.
-  it.fails('a failing set_instance_props call changes nothing', async () => {
+  it('a failing set_instance_props call changes nothing', async () => {
     const { inst } = await withTextProp()
     const before = JSON.stringify(doc().nodes)
     const err = await fails('set_instance_props', { nodeId: inst, props: { Heading: 'Bye', Nope: 'x' } })

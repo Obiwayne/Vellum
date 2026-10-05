@@ -199,6 +199,8 @@ async function main() {
   ok(setP.body.instanceProperties?.Heading === 'Hi there' && textProp.body.propertyId, 'add/bind/set component text property')
   const instTree = await call('get_tree_summary', { nodeId: instId })
   ok(instTree.body.summary.includes('Hi there') && !(await call('get_tree_summary', { nodeId: cardId })).body.summary.includes('Hi there'), 'the instance shows the property value, the main keeps its text')
+  const compJsx = await call('get_jsx', { nodeId: instId })
+  ok(typeof compJsx.body === 'string' && compJsx.body.includes('<E2ECard heading="Hi there" />') && compJsx.body.includes('function E2ECard('), 'get_jsx exports the instance as component usage plus a definition')
   let refused = ''
   try {
     await call('write_html', { targetNodeId: instId, mode: 'insert-children', html: '<div style="width:10px;height:10px"></div>' })

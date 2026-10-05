@@ -71,7 +71,7 @@ The server's `instructions` tell the model to load `get_guide({topic:"vellum-mcp
 | `get_node_info` | `nodeId` | `id,name,component,width,height,worldX,worldY,x,y,isVisible,isLocked,parentId,childIds,childCount,artboardId,textContent` |
 | `get_tree_summary` | `nodeId, depth=3 (max 10)` | `{summary: 'Frame "Hero" (id) 1440×900\n  Text "Title" (id) 320×40 "…"', nodeId, depth}` |
 | `find_nodes` | `query \| name, type, textValue, filters[{styleName,styleValue}], pageId?, nodeId?` | `nodes[{id,name,component,pageId,artboardId,matched}]` |
-| `get_jsx` | `nodeId, format: tailwind (default) \| inline-styles` | JSX string |
+| `get_jsx` | `nodeId, format: tailwind (default) \| inline-styles` | JSX string. With components: see "get_jsx and components" below. |
 | `get_computed_styles` | `nodeIds` | `{styles:{[id]: CSSProperties}}`. Text nodes include their inherited typography, read from the live DOM when the node is on screen. |
 | `get_screenshot` | `nodeId, scale=1` (max 4) | PNG image at full size (large nodes are captured in tiles, never with scrollbars); only clamped to the MCP image limit (8000 px per side, ~5 MB) |
 | `export` | `nodeId + format + scale`, or `nodes{[id]:[{format,scale}]}`, or `pageId` (all artboards); `outputDir?` | `{outputDir, exported[{nodeId,name,format,path,width?,height?}]}`. Formats: `png`, `jpg` (flattened onto the artboard's fill, else the page background), `webp`, `svg` (HTML in `foreignObject`), `html` (standalone page), `jsx` (component file), `pdf` (vector, page = node size, scale ignored). Scale can be `2`, `"2x"`, `"512w"`, `"512h"` or `"720p"`. `format: "pdf"` with only `pageId` (or nothing) writes one multi-page PDF of every artboard on the page (`exported[{nodeIds, name, format, path, pages[{width,height}]}]`). |
@@ -86,6 +86,26 @@ The server's `instructions` tell the model to load `get_guide({topic:"vellum-mcp
 | `reply_to_comment_thread` | `threadId, body, resolve?` | `{threadId, number, status, messageCount}`; the reply shows as "AI" in the thread |
 | `set_comment_thread_status` | `threadId, status: open \| resolved` | `{threadId, number, status}` |
 | `list_comment_thread_authors` | – | `{authors}` |
+
+**get_jsx and components.** A node that contains instances exports each instance as component usage and, above the expression, one definition per component it uses (both formats):
+
+```jsx
+function Button({ size = "md", label = "Click", showIcon = true }) {
+  if (size === "lg") {
+    return ( ... )
+  }
+  return ( ... )
+}
+
+(
+    <Button size="lg" label="Buy" showIcon={false} />
+  )
+```
+
+- Props are the **variant values** and the **component properties** (names in camelCase; swap props are capitalized and take a component). Only values that differ from the default are written on the usage; the definition's parameters carry the defaults. A set is one definition with one `if` branch per non-default variant and the default variant last.
+- In the definition, bound text layers render `{label}`, layers bound to a boolean render `{showIcon && (...)}`, a nested instance bound to a swap prop renders `<Icon />`, other nested instances render as usages.
+- **Not exported:** per-layer overrides that are not properties (changed colours, text edited in place, ...), and the instance's own size and position. Call `detach_instance` first to export an overridden instance as plain markup.
+- `get_jsx` on a main, a variant or the set frame outputs the definition only. Nodes without components export exactly as before.
 
 Each mutating tool call is a single undo step in the app (`store.mutate` / `store.transact`). Nodes created or edited by the agent put their **artboard** into `editor.workingNodes`, which the canvas draws with the teal outline and "Claude" tag. `finish_working_on_nodes` clears them.
 
