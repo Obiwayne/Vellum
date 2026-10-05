@@ -73,7 +73,8 @@ export function removeProp(doc: Doc, mainId: string, propId: string): void {
 
 /**
  * Bind a layer inside a main to a property (or clear the binding with null): boolean → visible,
- * text → a text layer's text, swap → a nested instance's component. Re-syncs the instances.
+ * text → a text layer's text, swap → a nested instance's component. The first layer bound to a property gives it
+ * its default (the layer's current visibility / text / component). Re-syncs the instances.
  */
 export function bindProp(doc: Doc, nodeId: string, aspect: Aspect, propId: string | null): void {
   const node = doc.nodes[nodeId]
@@ -94,10 +95,12 @@ export function bindProp(doc: Doc, nodeId: string, aspect: Aspect, propId: strin
   if (!def) throw new Error(`Property ${propId} not found`)
   if (def.type !== ASPECT_TYPE[aspect]) throw new Error(`A ${def.type} property cannot drive ${aspect}`)
   if (aspect === 'text' && node.type !== 'text') throw new Error('Only a text layer can follow a text property')
-  if (aspect === 'swap') {
-    if (!node.instance) throw new Error('Only a nested instance can follow a swap property')
-    if (reaches(doc, def.default as string, mainId)) throw new Error(CYCLE_MSG)
-  }
+  if (aspect === 'swap' && !node.instance) throw new Error('Only a nested instance can follow a swap property')
+  // the first layer bound to a property gives it its default: instances look unchanged until someone edits the value
+  const taken = sharing(doc, mainId).some((m) => [m, ...descendants(doc, m)].some((d) => d !== nodeId && doc.nodes[d]?.bind?.[aspect] === propId))
+  const adopted = taken ? def.default : aspect === 'visible' ? node.visible : aspect === 'text' ? node.text ?? '' : (node.instance as { of: string }).of
+  if (aspect === 'swap' && reaches(doc, adopted as string, mainId)) throw new Error(CYCLE_MSG)
+  def.default = adopted
   ;(node.bind ??= {})[aspect] = propId
   resync(doc, mainId)
 }
@@ -135,4 +138,32 @@ export function resetInstanceProps(doc: Doc, instId: string, propId?: string): v
     if (!Object.keys(inst.instance.props).length) delete inst.instance.props
   }
   syncInstance(doc, instId)
+}
+
+/** Rename a property and/or change its default (same checks as addProp); instances re-sync. Variant props are not edited here. */
+export function updateProp(doc: Doc, mainId: string, propId: string, patch: { name?: string; default?: string | boolean }): void {
+  requireMain(doc, mainId)
+  const owner = defsOwner(doc, mainId)
+  const def = owner.props?.find((d) => d.id === propId)
+  if (!def) throw new Error(`Property ${propId} not found`)
+  if (def.type === 'variant') throw new Error('Variant properties are edited through the component set')
+  if (patch.name !== undefined) {
+    const name = patch.name.trim()
+    if (!name) throw new Error('A property needs a name')
+    if (propDefsOf(doc, mainId).some((d) => d.id !== propId && d.name === name)) throw new Error(`A property named "${name}" already exists`)
+    def.name = name
+  }
+  if (patch.default !== undefined) {
+    const typeOk = def.type === 'boolean' ? typeof patch.default === 'boolean' : typeof patch.default === 'string'
+    if (!typeOk) throw new Error(`Default of a ${def.type} property must be a ${def.type === 'boolean' ? 'boolean' : 'string'}`)
+    if (def.type === 'swap') {
+      if (!doc.nodes[patch.default as string]?.component) throw new Error('A swap property defaults to a main component')
+      for (const m of sharing(doc, mainId)) {
+        const bound = [m, ...descendants(doc, m)].some((d) => doc.nodes[d]?.bind?.swap === propId)
+        if (bound && reaches(doc, patch.default as string, m)) throw new Error(CYCLE_MSG)
+      }
+    }
+    def.default = patch.default
+  }
+  resync(doc, mainId)
 }

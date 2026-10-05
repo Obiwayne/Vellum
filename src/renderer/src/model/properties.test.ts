@@ -187,10 +187,13 @@ describe('swap', () => {
     p.setInstanceProp(doc, inHeart, sw, star.id)
   })
 
-  it('a swap default that would nest the main in itself is refused at bind time', () => {
-    const { doc, card, slot } = swapSetup()
+  it('binding adopts the nested instance main as the default, so the default can never nest the main in itself', () => {
+    const { doc, card, slot, star } = swapSetup()
     const self = p.addProp(doc, card.id, { name: 'Self', type: 'swap', default: card.id })
-    expect(() => p.bindProp(doc, slot, 'swap', self)).toThrow(c.CYCLE_MSG)
+    p.bindProp(doc, slot, 'swap', self)
+    expect(doc.nodes[card.id].component!.props!.find((d) => d.id === self)!.default).toBe(star.id)
+    // changing the default of a bound swap prop to the main itself is still refused
+    expect(() => p.updateProp(doc, card.id, self, { default: card.id })).toThrow(c.CYCLE_MSG)
   })
 
   it('only nested instances can follow a swap prop', () => {

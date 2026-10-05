@@ -692,6 +692,47 @@
   background: var(--component, #9747ff);
   flex-shrink: 0;
 }
+.insp-prop {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  align-items: center;
+  gap: 4px 8px;
+  padding: 0 12px 8px;
+}
+.insp-prop__default {
+  grid-column: 1 / -1;
+}
+.insp-prop__type {
+  color: var(--text-3);
+}
+.insp-prop__input {
+  min-width: 0;
+  width: 100%;
+  height: 24px;
+  padding: 0 8px;
+  border-radius: 4px;
+  border: 0;
+  outline: 0;
+  background: var(--raised, rgba(255, 255, 255, 0.06));
+  color: var(--text);
+}
+.insp-prop__list {
+  padding: 0 12px 8px;
+}
+.insp-prop__row,
+.insp-prop__bind {
+  display: grid;
+  grid-template-columns: 90px 1fr;
+  align-items: center;
+  gap: 8px;
+  padding: 2px 12px 4px;
+}
+.insp-prop__list .insp-prop__row {
+  padding: 2px 0 4px;
+}
+.insp-prop__name {
+  color: var(--text-2);
+}
 
 /* Text style row: picker + detach + create */
 .insp-tstyle {
@@ -705,4 +746,7 @@
 }
 .insp-tstyle__on {
   color: var(--accent);
+}
+.insp-variant {
+  padding: 2px 12px 4px;
 }

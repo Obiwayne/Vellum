@@ -362,3 +362,60 @@ describe('component sets are not components', () => {
     expect(node(setId).componentSet).toBeDefined()
   })
 })
+
+describe('renaming the variant property and its values', () => {
+  it('renames the property and the layer names that followed it; one undo', () => {
+    const { button, second, setId, prop } = withVariant()
+    S().renameVariantProp(id, setId, prop, 'State')
+    expect(node(setId).componentSet!.props[0].name).toBe('State')
+    expect(node(button).name).toBe('State=Default')
+    expect(node(second).name).toBe('State=Variant 2')
+    S().undo(id)
+    expect(node(setId).componentSet!.props[0].name).toBe('Variant')
+    expect(node(button).name).toBe('Variant=Default')
+  })
+
+  it('renames a value for the set: options, default, mains; instances keep their choice; one undo', () => {
+    const { button, second, setId, prop, inst } = withVariant()
+    S().setVariantValue(id, inst, prop, 'Variant 2')
+    S().renameVariantOption(id, setId, prop, 'Variant 2', 'Hover')
+    S().renameVariantOption(id, setId, prop, 'Default', 'Rest')
+    const p = node(setId).componentSet!.props[0]
+    expect(p.options).toEqual(['Rest', 'Hover'])
+    expect(p.default).toBe('Rest')
+    expect(node(second).component!.variant![prop]).toBe('Hover')
+    expect(node(button).component!.variant![prop]).toBe('Rest')
+    expect(node(second).name).toBe('Variant=Hover')
+    expect(node(inst).instance?.of).toBe(second) // the instance kept its variant
+    S().setVariantValue(id, inst, prop, 'Rest') // and the new names work for switching
+    expect(node(inst).instance?.of).toBe(button)
+    S().undo(id) // the switch
+    S().undo(id) // Default -> Rest
+    expect(node(setId).componentSet!.props[0].options).toEqual(['Default', 'Hover'])
+    S().undo(id) // Variant 2 -> Hover
+    expect(node(setId).componentSet!.props[0].options).toEqual(['Default', 'Variant 2'])
+  })
+
+  it('a custom layer name is not overwritten', () => {
+    const { second, setId, prop } = withVariant()
+    S().renameNode(id, second, 'My hover')
+    S().renameVariantOption(id, setId, prop, 'Variant 2', 'Hover')
+    expect(node(second).name).toBe('My hover')
+  })
+
+  it('refuses blank, duplicate and unknown names and changes nothing', () => {
+    const { setId, prop, button } = withVariant()
+    const addProp = S().addProp(id, button, { name: 'Show', type: 'boolean', default: true })
+    const before = doc()
+    expect(() => S().renameVariantProp(id, setId, prop, ' ')).toThrow(/needs a name/)
+    expect(() => S().renameVariantProp(id, setId, prop, 'Show')).toThrow(/already exists/)
+    expect(() => S().renameVariantProp(id, setId, addProp, 'X')).toThrow(/not found/) // not a variant prop
+    expect(() => S().renameVariantProp(id, button, prop, 'X')).toThrow(/not a component set/)
+    expect(() => S().renameVariantOption(id, setId, prop, 'Variant 2', 'Default')).toThrow(/already exists/)
+    expect(() => S().renameVariantOption(id, setId, prop, 'Nope', 'X')).toThrow(/not an option/)
+    expect(() => S().renameVariantOption(id, setId, prop, 'Variant 2', '  ')).toThrow(/needs a name/)
+    expect(doc()).toBe(before)
+    S().renameVariantOption(id, setId, prop, 'Variant 2', 'Variant 2') // same name: no-op
+    expect(doc()).toBe(before)
+  })
+})

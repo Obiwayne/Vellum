@@ -416,6 +416,7 @@ function diffNode(before: CNode, after: CNode, root: boolean): NodeOverride | nu
  */
 export function settleEdits(doc: Doc, base: Doc, repoint?: (instId: string) => boolean): void {
   const edits: [string, string, NodeOverride][] = []
+  const propEdits: [string, PropDef, string | boolean][] = []
   for (const b of Object.values(base.nodes)) {
     if (b.srcId === undefined && !b.instance) continue
     const n = doc.nodes[b.id]
@@ -424,9 +425,33 @@ export function settleEdits(doc: Doc, base: Doc, repoint?: (instId: string) => b
     if (!root) continue
     if (!sameList(b.children, n.children)) throw new Error(STRUCTURE_MSG)
     const o = diffNode(b, n, root === b.id)
-    if (o) edits.push([root, root === b.id ? (base.nodes[root].instance as { of: string }).of : (b.srcId as string), o])
+    if (o && root !== b.id && b.srcId !== undefined) {
+      // a bound field (text / visibility driven by a property) edits the instance's property value, not an override
+      const bind = base.nodes[b.srcId]?.bind
+      const defs = propDefsOf(base, (base.nodes[root].instance as { of: string }).of)
+      const def = (id: string | undefined, type: PropDef['type']): PropDef | undefined => defs.find((d) => d.id === id && d.type === type)
+      const text = b.type === 'text' && o.text !== undefined ? def(bind?.text, 'text') : undefined
+      if (text) {
+        propEdits.push([root, text, o.text as string])
+        delete o.text
+      }
+      const vis = o.visible !== undefined ? def(bind?.visible, 'boolean') : undefined
+      if (vis) {
+        propEdits.push([root, vis, o.visible as boolean])
+        delete o.visible
+      }
+    }
+    if (o && Object.keys(o).length) edits.push([root, root === b.id ? (base.nodes[root].instance as { of: string }).of : (b.srcId as string), o])
   }
   for (const [root, src, o] of edits) if (doc.nodes[root]?.instance) setOverride(doc, root, src, o)
+  for (const [root, def, value] of propEdits) {
+    const inst = doc.nodes[root]?.instance
+    if (!inst) continue
+    const props = (inst.props ??= {})
+    if (value === def.default) delete props[def.id]
+    else props[def.id] = value
+    if (!Object.keys(props).length) delete inst.props
+  }
   const insts = instancesOf(doc)
   for (const id of insts) {
     if (doc.nodes[doc.nodes[id].instance?.of ?? '']?.component) continue

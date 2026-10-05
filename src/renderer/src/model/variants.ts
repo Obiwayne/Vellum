@@ -225,3 +225,56 @@ export function repointToDefault(doc: Doc, base: Doc, instId: string): boolean {
   switchVariant(doc, instId, target, base)
   return true
 }
+
+// ---------------------------------------------------------------------------------------------
+// renaming the variant property and its values
+
+/** "State=Hover, Size=Large": what an untouched variant main is called. */
+function labelOfMain(doc: Doc, setId: string, mainId: string): string {
+  const have = variantValues(doc, mainId)
+  return variantProps(doc.nodes[setId]).map((p) => `${p.name}=${have[p.id]}`).join(', ')
+}
+
+/** Run `change`, then give every variant main whose layer name was its auto label the new label. */
+function relabelAround(doc: Doc, setId: string, change: () => void): void {
+  const before = new Map(variantsOf(doc, setId).map((m) => [m.id, labelOfMain(doc, setId, m.id)]))
+  change()
+  for (const m of variantsOf(doc, setId)) if (m.name === before.get(m.id)) m.name = labelOfMain(doc, setId, m.id)
+}
+
+function variantProp(doc: Doc, setId: string, propId: string): PropDef {
+  const set = doc.nodes[setId]
+  if (!set?.componentSet) throw new Error(`${setId} is not a component set`)
+  const prop = set.componentSet.props.find((p) => p.id === propId && p.type === 'variant')
+  if (!prop) throw new Error(`Variant property ${propId} not found`)
+  return prop
+}
+
+/** Rename a variant property ("Variant" -> "State"). Names stay unique in the set; auto-named variant mains follow. */
+export function renameVariantProp(doc: Doc, setId: string, propId: string, name: string): void {
+  const prop = variantProp(doc, setId, propId)
+  const next = name.trim()
+  if (!next) throw new Error('A property needs a name')
+  if (doc.nodes[setId].componentSet!.props.some((p) => p.id !== propId && p.name === next)) throw new Error(`A property named "${next}" already exists`)
+  relabelAround(doc, setId, () => {
+    prop.name = next
+  })
+}
+
+/**
+ * Rename one value of a variant property ("Variant 2" -> "Hover") for the whole set: the option list, the default
+ * and every main that has it. Instances keep their choice (they point at a main, not at a name).
+ */
+export function renameVariantOption(doc: Doc, setId: string, propId: string, from: string, to: string): void {
+  const prop = variantProp(doc, setId, propId)
+  const next = to.trim()
+  if (!prop.options?.includes(from)) throw new Error(`"${from}" is not an option of ${prop.name}`)
+  if (!next) throw new Error('A value needs a name')
+  if (next === from) return
+  if (prop.options.includes(next)) throw new Error(`"${next}" already exists`)
+  relabelAround(doc, setId, () => {
+    prop.options = prop.options!.map((o) => (o === from ? next : o))
+    if (prop.default === from) prop.default = next
+    for (const m of variantsOf(doc, setId)) if (m.component?.variant?.[propId] === from) m.component.variant[propId] = next
+  })
+}

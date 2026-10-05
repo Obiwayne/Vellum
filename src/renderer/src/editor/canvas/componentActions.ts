@@ -3,7 +3,7 @@
 import type { MenuEntry } from '../../ui'
 import { getStore } from '../../model/store'
 import * as ops from '../../model/ops'
-import { instanceRootOf, instancesOf, isMain } from '../../model/components'
+import { instanceRootOf, instancesOf, isMain, propDefsOf } from '../../model/components'
 import { pickMain, setOf, variantValues, variantsOf } from '../../model/variants'
 import type { CNode, Doc, Page, WorldRect } from '../../model/types'
 import { visibleWorldRect } from './camera'
@@ -293,3 +293,54 @@ export function dropComponent(docId: string, mainId: string, clientX: number, cl
   if (id) S().select(docId, [id])
   return id
 }
+
+// ------------------------------------------------------------------------------------------------
+// component properties and variant switching (inspector)
+
+export type PropKind = 'boolean' | 'text' | 'swap'
+
+/** The main whose definitions an inspector selection edits: a main itself, or a set's first variant. */
+export function propsOwner(doc: Doc, id: string): string | null {
+  const n = doc.nodes[id]
+  if (n?.component) return id
+  if (n?.componentSet) return variantsOf(doc, id)[0]?.id ?? null
+  return null
+}
+
+/** Add a property of a kind to a main (or its set) with a unique default name; returns its id. */
+export function addPropertyTo(docId: string, mainId: string, kind: PropKind): string | undefined {
+  const doc = docOf(docId)
+  if (!doc?.nodes[mainId]?.component) return undefined
+  const defs = propDefsOf(doc, mainId)
+  const base = kind === 'boolean' ? 'Show' : kind === 'text' ? 'Label' : 'Swap'
+  let name = base
+  for (let i = 2; defs.some((d) => d.name === name); i++) name = `${base} ${i}`
+  const swapTo = mainsOf(doc).find((m) => m.id !== mainId)?.id ?? mainId
+  const def = kind === 'boolean' ? { name, type: kind, default: true } : kind === 'text' ? { name, type: kind, default: 'Text' } : { name, type: kind, default: swapTo }
+  return guarded(() => S().addProp(docId, mainId, def))
+}
+
+export const renameProperty = (docId: string, mainId: string, propId: string, name: string): void =>
+  void guarded(() => S().updateProp(docId, mainId, propId, { name }))
+export const setPropertyDefault = (docId: string, mainId: string, propId: string, value: string | boolean): void =>
+  void guarded(() => S().updateProp(docId, mainId, propId, { default: value }))
+export const deleteProperty = (docId: string, mainId: string, propId: string): void => void guarded(() => S().removeProp(docId, mainId, propId))
+
+/** Bind (or unbind with null) a layer inside a main to a property. */
+export const bindLayer = (docId: string, nodeId: string, aspect: 'visible' | 'text' | 'swap', propId: string | null): void =>
+  void guarded(() => S().bindProp(docId, nodeId, aspect, propId))
+
+/** Set an instance's value for a boolean / text / swap property. */
+export const setInstanceValue = (docId: string, instId: string, propId: string, value: string | boolean): void =>
+  void guarded(() => S().setInstanceProp(docId, instId, propId, value))
+
+/** Choose a variant option on an instance; a toast says how many overrides could not carry over. */
+export function chooseVariant(docId: string, instId: string, propId: string, option: string): void {
+  const dropped = guarded(() => S().setVariantValue(docId, instId, propId, option))
+  if (dropped) toast(`${dropped} override${dropped === 1 ? '' : 's'} could not carry over`)
+}
+
+export const renameVariantProperty = (docId: string, setId: string, propId: string, name: string): void =>
+  void guarded(() => S().renameVariantProp(docId, setId, propId, name))
+export const renameVariantValue = (docId: string, setId: string, propId: string, from: string, to: string): void =>
+  void guarded(() => S().renameVariantOption(docId, setId, propId, from, to))
