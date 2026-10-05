@@ -79,7 +79,7 @@ export function ComponentSection({ docId, ids }: { docId: string; ids: string[] 
       {boundRows.map((b) => (
         <div key={b.aspect} className="insp-comp__layer" data-bound={b.aspect}>
           <span className="insp-comp__dot" aria-hidden />
-          <span>{b.aspect} follows property "{b.name}"</span>
+          <span>{b.aspect} follows property "{b.name}": editing it sets the property</span>
         </div>
       ))}
       <div className="insp-comp__row">

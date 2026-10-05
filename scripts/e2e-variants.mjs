@@ -126,12 +126,26 @@ try {
   await page.evaluate(() => document.activeElement?.blur())
   await page.locator('.insp-prop__row[data-prop-type="boolean"] [role=checkbox]').click() // icon back on
   await page.waitForTimeout(300)
+  // an override on the instance root (red fill) must survive the switch
+  const inst = page.locator('[data-node-id]:has(> [data-node-id]:text-is("Go"))').first()
+  const ib = await inst.boundingBox()
+  await page.keyboard.press('Escape')
+  await page.mouse.click(ib.x + 6, ib.y + ib.height - 5)
+  await page.waitForTimeout(300)
+  const fill = page.locator('input[value="FFFFFF"]').first()
+  await fill.fill('FF0000')
+  await fill.press('Enter')
+  await blur()
+  await page.waitForTimeout(400)
+  const reds = () => page.evaluate(() => [...document.querySelectorAll('[data-node-id]')].filter((e) => getComputedStyle(e).backgroundColor === 'rgb(255, 0, 0)').length)
+  check((await reds()) === 1, `an override: the instance has a red fill (${await reds()} red frame)`)
   const variantRow = '.insp-prop__row[data-prop-type="variant"]'
   const before = await page.locator('[data-variant]').first().textContent()
   await pick(variantRow, 'Default')
   await shot('switched-to-default')
   const after = await page.locator('[data-variant]').first().textContent()
   check(before === 'Variant=Variant 2' && after === 'Variant=Default', `variant switch re-points the instance (${before} -> ${after})`)
+  check((await reds()) === 1, `the override is carried over by the switch (${await reds()} red frame)`)
 
   // one undo reverts the switch
   await blur()

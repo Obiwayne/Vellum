@@ -732,6 +732,7 @@
 }
 .insp-prop__name {
   color: var(--text-2);
+}
 
 /* Text style row: picker + detach + create */
 .insp-tstyle {

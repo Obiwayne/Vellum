@@ -77,3 +77,47 @@ describe('updateProp / removeProp / resetInstanceProps', () => {
     expect(node(other).component!.props![0].default).toBe(btn)
   })
 })
+
+describe('editing a bound field edits the property', () => {
+  it('text and visibility edits on a bound layer of an instance set the instance value, not an override', () => {
+    const { btn, label, inst, text } = setup()
+    const icon = S().createNode(id, { type: 'rect', name: 'Icon' }, btn)
+    const show = S().addProp(id, btn, { name: 'Show', type: 'boolean', default: true })
+    S().bindProp(id, icon, 'visible', show)
+    const twinLabel = node(inst).children[0]
+    const twinIcon = node(inst).children[1]
+
+    S().setText(id, twinLabel, 'Hi')
+    expect(node(inst).instance?.props).toEqual({ [text]: 'Hi' })
+    expect(node(inst).instance?.overrides).toBeUndefined()
+    expect(node(twinLabel).text).toBe('Hi')
+
+    S().updateNode(id, twinIcon, { visible: false })
+    expect(node(inst).instance?.props).toEqual({ [text]: 'Hi', [show]: false })
+    expect(node(inst).instance?.overrides).toBeUndefined()
+    expect(node(twinIcon).visible).toBe(false)
+
+    // another instance is unaffected, and a main edit still reaches this one
+    const other = S().createInstance(id, btn, root())
+    expect(node(node(other).children[0]).text).toBe('Click')
+    S().setText(id, label, 'Main') // the main's own text is shadowed by the property default? the bound layer shows the prop
+    expect(node(twinLabel).text).toBe('Hi')
+
+    // setting the default again removes the stored value
+    S().setText(id, twinLabel, 'Click')
+    expect(node(inst).instance?.props).toEqual({ [show]: false })
+    S().undo(id)
+    expect(node(twinLabel).text).toBe('Hi')
+  })
+
+  it('an unbound field and other keys of a bound layer still become overrides', () => {
+    const { label, inst, text } = setup()
+    const twinLabel = node(inst).children[0]
+    S().setText(id, twinLabel, 'Hi')
+    S().updateStyles(id, [twinLabel], { color: 'red' })
+    expect(node(inst).instance?.props).toEqual({ [text]: 'Hi' })
+    expect(node(inst).instance?.overrides?.[label]).toEqual({ style: { color: 'red' } })
+    S().updateNode(id, twinLabel, { visible: false }) // visibility is not bound here
+    expect(node(inst).instance?.overrides?.[label]).toMatchObject({ visible: false })
+  })
+})
