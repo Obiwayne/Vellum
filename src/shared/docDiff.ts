@@ -8,6 +8,7 @@ export interface DiffableDoc {
   nodes?: Record<string, DiffNode>
   tokens?: { name: string; value: string; modes?: Record<string, string> }[]
   modes?: string[]
+  textStyles?: { id: string; name: string; style?: Record<string, unknown> }[]
 }
 
 interface DiffNode {
@@ -31,6 +32,8 @@ interface DiffNode {
   component?: unknown
   componentSet?: unknown
   bind?: unknown
+  /** id of the text style this node follows */
+  textStyle?: string
 }
 
 /** What about a layer changed. */
@@ -59,6 +62,10 @@ export interface DocDiff {
   tokensAdded: string[]
   tokensRemoved: string[]
   tokensChanged: string[]
+  /** text style names (Doc.textStyles) */
+  textStylesAdded: string[]
+  textStylesRemoved: string[]
+  textStylesChanged: string[]
   modesChanged: boolean
 }
 
@@ -93,7 +100,7 @@ function pageIndex(doc: DiffableDoc): (id: string) => string | null {
 
 function aspects(a: DiffNode, b: DiffNode): ChangeAspect[] {
   const out: ChangeAspect[] = []
-  if (!same(a.style, b.style)) out.push('style')
+  if (!same(a.style, b.style) || a.textStyle !== b.textStyle) out.push('style')
   if ((a.text ?? '') !== (b.text ?? '')) out.push('text')
   if ((a.x ?? 0) !== (b.x ?? 0) || (a.y ?? 0) !== (b.y ?? 0)) out.push('position')
   if (a.name !== b.name) out.push('name')
@@ -119,6 +126,9 @@ export function diffDocs(before: DiffableDoc | null, after: DiffableDoc): DocDif
     tokensAdded: [],
     tokensRemoved: [],
     tokensChanged: [],
+    textStylesAdded: [],
+    textStylesRemoved: [],
+    textStylesChanged: [],
     modesChanged: false
   }
   if (!before) return d
@@ -167,6 +177,14 @@ export function diffDocs(before: DiffableDoc | null, after: DiffableDoc): DocDif
     else if (o.value !== t.value || !same(o.modes, t.modes)) d.tokensChanged.push(name)
   }
   for (const name of oldTokens.keys()) if (!newTokens.has(name)) d.tokensRemoved.push(name)
+  const oldStyles = new Map((before.textStyles ?? []).map((t) => [t.id, t]))
+  const newStyles = new Map((after.textStyles ?? []).map((t) => [t.id, t]))
+  for (const [sid, t] of newStyles) {
+    const o = oldStyles.get(sid)
+    if (!o) d.textStylesAdded.push(t.name)
+    else if (o.name !== t.name || !same(o.style, t.style)) d.textStylesChanged.push(t.name)
+  }
+  for (const [sid, t] of oldStyles) if (!newStyles.has(sid)) d.textStylesRemoved.push(t.name)
   d.modesChanged = !same(before.modes, after.modes)
   return d
 

@@ -3,7 +3,9 @@
 // is materialised from the main by syncInstances (each copy carries `srcId`). Policy (undo steps,
 // toasts, which edits become overrides) belongs to the store; this file only knows the mechanics.
 import { ancestors, applyStylePatch, descendants, insertNode, isPageRoot, newId, removeNode, textPreview, wrapNodes } from './ops'
+import { TEXT_STYLE_KEYS } from './types'
 import type { CNode, Doc, NodeOverride, PropDef, StylePatch, WorldRect } from './types'
+import { getTextStyle, materialise } from './textStyles'
 
 export const isMain = (n: CNode | undefined): boolean => Boolean(n?.component)
 export const isInstance = (n: CNode | undefined): boolean => Boolean(n?.instance)
@@ -184,6 +186,10 @@ function copyFields(src: CNode, dst: CNode, keepRootBox: boolean): void {
     if (dst.visible !== src.visible) dst.visible = src.visible
     if (dst.locked !== src.locked) dst.locked = src.locked
   }
+  if (src.textStyle !== dst.textStyle) {
+    if (src.textStyle === undefined) delete dst.textStyle
+    else dst.textStyle = src.textStyle
+  }
   for (const k of ['text', 'svg'] as const) {
     if (src[k] === undefined) {
       if (dst[k] !== undefined) delete dst[k]
@@ -205,9 +211,17 @@ const sameList = (a: string[], b: string[]): boolean => a.length === b.length &&
 
 const isAutoName = (n: CNode): boolean => n.type === 'text' && (n.name === textPreview(n.text ?? '') || n.name === 'Text')
 
-function applyOverride(dst: CNode, o: NodeOverride | undefined, src?: CNode): void {
+function applyOverride(doc: Doc, dst: CNode, o: NodeOverride | undefined, src?: CNode): void {
   if (!o) return
   if (o.style) applyStylePatch(dst.style, o.style)
+  if (o.textStyle !== undefined) {
+    // '' = detached from the main's text style; an id = follows that style (its keys are written here, not stored in the override)
+    const ts = getTextStyle(doc, o.textStyle)
+    if (ts) {
+      materialise(dst, ts)
+      dst.textStyle = ts.id
+    } else delete dst.textStyle
+  }
   if (o.text !== undefined) dst.text = o.text
   if (o.svg !== undefined) dst.svg = o.svg
   if (o.attrs) dst.attrs = { ...dst.attrs, ...o.attrs }
@@ -276,7 +290,7 @@ function reconcile(doc: Doc, src: CNode, dst: CNode, overrides: Record<string, N
     twin.parent = dst.id
     copyFields(s, twin, false)
     const swapTo = applyBindings(doc, s, twin, props)
-    applyOverride(twin, overrides?.[sid], s)
+    applyOverride(doc, twin, overrides?.[sid], s)
     next.push(twin.id)
     if (swapTo) {
       // swap prop: this nested instance shows another main (its own box stays), overrides then key on that main's nodes
@@ -313,7 +327,7 @@ export function syncInstance(doc: Doc, instId: string): void {
     if (!Object.keys(ov).length) delete inst.instance.overrides
   }
   copyFields(main, inst, true)
-  applyOverride(inst, ov?.[''], main)
+  applyOverride(doc, inst, ov?.[''], main)
   reconcile(doc, main, inst, inst.instance.overrides, ctx)
 }
 
@@ -363,11 +377,19 @@ export const STRUCTURE_MSG = 'Detach instance to change structure'
 function diffNode(before: CNode, after: CNode, root: boolean): NodeOverride | null {
   const o: NodeOverride = {}
   const style: StylePatch = {}
+  // a newly applied text style travels as its id; its keys are rewritten from the style on sync, not pinned
+  const linked = after.textStyle !== undefined && after.textStyle !== before.textStyle
   for (const k of new Set([...Object.keys(before.style), ...Object.keys(after.style)])) {
     if (root && (k === 'width' || k === 'height')) continue
+    if (linked && (TEXT_STYLE_KEYS as readonly string[]).includes(k)) continue
     if (before.style[k] !== after.style[k]) style[k] = after.style[k] ?? null
   }
+  // detached from the main's text style: pin the current typography so later style edits do not move it
+  if (before.textStyle !== undefined && after.textStyle === undefined) {
+    for (const k of TEXT_STYLE_KEYS) if (after.style[k] !== undefined) style[k] = after.style[k]
+  }
   if (Object.keys(style).length) o.style = style
+  if (after.textStyle !== before.textStyle) o.textStyle = after.textStyle ?? ''
   if (before.text !== after.text && after.text !== undefined) o.text = after.text
   if (before.svg !== after.svg && after.svg !== undefined) o.svg = after.svg
   const attrs: Record<string, string> = {}
