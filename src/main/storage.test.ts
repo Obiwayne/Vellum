@@ -79,6 +79,16 @@ describe('saveDoc / loadDoc / listDocs over IPC', () => {
     expect((await listDocs()).map((x) => x.id).sort()).toEqual(['d1', 'old1'])
   })
 
+  it('keeps text styles and node links through save and load', async () => {
+    const d = doc('d2', 'Styled', {
+      version: 5,
+      textStyles: [{ id: '9-0', name: 'Heading/H1', style: { fontSize: 'var(--text-lg)', fontWeight: 700 } }],
+      nodes: { '1-0': { id: '1-0', type: 'text', textStyle: '9-0', style: { fontSize: 'var(--text-lg)' } } }
+    })
+    await call(IPC.saveDoc, d)
+    expect(await call(IPC.loadDoc, 'd2')).toEqual(d)
+  })
+
   it('loads an old (v1) doc as stored; version migration happens in the renderer (ops.test.ts)', async () => {
     expect(((await call(IPC.loadDoc, 'old1')) as { version: number }).version).toBe(1)
   })
