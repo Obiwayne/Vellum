@@ -6,7 +6,7 @@ import { numericSize } from '../model/ops'
 import type { Doc } from '../model/types'
 import { loadDocFonts } from '../editor/canvas/useDocFonts'
 
-const CONTENT_DEFAULTS: CSSProperties = {
+export const CONTENT_DEFAULTS: CSSProperties = {
   fontFamily: 'system-ui, sans-serif',
   fontSize: 16,
   lineHeight: 'normal',
@@ -14,7 +14,7 @@ const CONTENT_DEFAULTS: CSSProperties = {
 }
 const MAX_NODES = 3000
 
-function ThumbNode({ doc, id, top }: { doc: Doc; id: string; top?: { x: number; y: number } }): JSX.Element | null {
+export function ThumbNode({ doc, id, top }: { doc: Doc; id: string; top?: { x: number; y: number } }): JSX.Element | null {
   const n = doc.nodes[id]
   if (!n) return null
   const style = computeNodeStyle(doc, id) as CSSProperties
@@ -51,7 +51,7 @@ function ThumbNode({ doc, id, top }: { doc: Doc; id: string; top?: { x: number; 
 }
 
 /** Approximate world bounds of the first page's top-level nodes (fit-content sizes are measured after render). */
-function subtreeSize(doc: Doc, id: string): number {
+export function subtreeSize(doc: Doc, id: string): number {
   const n = doc.nodes[id]
   return n ? 1 + n.children.reduce((t, c) => t + subtreeSize(doc, c), 0) : 0
 }

@@ -624,3 +624,45 @@ body.lp-dragging * {
 .lp-component[draggable='true'] {
   cursor: grab;
 }
+
+/* Assets: component thumbnails, set rows and their variants */
+.lp-component {
+  height: auto;
+  min-height: 44px;
+  padding-top: 2px;
+  padding-bottom: 2px;
+}
+.lp-component--variant {
+  padding-left: 34px;
+}
+.lp-component__chev {
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+  width: 14px;
+  margin-left: -14px;
+  color: var(--text-3);
+}
+.lp-thumb {
+  position: relative;
+  flex-shrink: 0;
+  width: 56px;
+  height: 40px;
+  overflow: hidden;
+  border-radius: 3px;
+  background: var(--raised, rgba(255, 255, 255, 0.06));
+}
+.lp-thumb--icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--component, #9747ff);
+}
+.lp-thumb__world {
+  position: absolute;
+  left: 0;
+  top: 0;
+  transform-origin: 0 0;
+  pointer-events: none;
+  width: max-content;
+}
