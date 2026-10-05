@@ -535,20 +535,23 @@ export function reparent(doc: Doc, id: string, newParentId: string, index?: numb
 }
 
 /** Deep-clone subtree with fresh ids. Returns new root id (not inserted into a parent). */
-export function cloneSubtree(doc: Doc, id: string): string {
+export function cloneSubtree(doc: Doc, id: string, keepMain = false): string {
   const src = doc.nodes[id]
   if (!src) throw new Error(`Node ${id} not found`)
   const copy: CNode = JSON.parse(JSON.stringify(src))
   copy.id = newId(doc)
   copy.parent = null
   copy.children = []
-  delete copy.component // a copy of a main is a plain frame; a copy of an instance stays an instance
+  // a copy of a main is a plain frame (except the variant mains inside a copied set); a copy of an instance stays an instance
+  if (!keepMain) delete copy.component
   doc.nodes[copy.id] = copy
   for (const c of src.children) {
-    const cid = cloneSubtree(doc, c)
+    const cid = cloneSubtree(doc, c, Boolean(src.componentSet) && doc.nodes[c]?.component?.set === id)
     doc.nodes[cid].parent = copy.id
     copy.children.push(cid)
   }
+  // a copy of a component set owns copies of its variant mains: they belong to the new set
+  if (copy.componentSet) for (const cid of copy.children) if (doc.nodes[cid].component?.set === id) doc.nodes[cid].component!.set = copy.id
   return copy.id
 }
 

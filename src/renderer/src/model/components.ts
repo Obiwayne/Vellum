@@ -388,10 +388,10 @@ function diffNode(before: CNode, after: CNode, root: boolean): NodeOverride | nu
  * Run on the draft after an edit recipe, with `base` = the doc before it:
  *  - structural edits inside an instance (children added, removed, moved, reordered) throw;
  *  - other edits to an instance's nodes become overrides on that instance;
- *  - instances whose main is gone are detached.
+ *  - instances whose main is gone are detached (unless `repoint` handles them, e.g. a deleted variant).
  * Then bring everything up to date with staleAfter + syncStale on the result.
  */
-export function settleEdits(doc: Doc, base: Doc): void {
+export function settleEdits(doc: Doc, base: Doc, repoint?: (instId: string) => boolean): void {
   const edits: [string, string, NodeOverride][] = []
   for (const b of Object.values(base.nodes)) {
     if (b.srcId === undefined && !b.instance) continue
@@ -405,7 +405,11 @@ export function settleEdits(doc: Doc, base: Doc): void {
   }
   for (const [root, src, o] of edits) if (doc.nodes[root]?.instance) setOverride(doc, root, src, o)
   const insts = instancesOf(doc)
-  for (const id of insts) if (!doc.nodes[doc.nodes[id].instance?.of ?? '']?.component) detachInstance(doc, id)
+  for (const id of insts) {
+    if (doc.nodes[doc.nodes[id].instance?.of ?? '']?.component) continue
+    // `repoint` may move an instance whose variant main was deleted to another variant; otherwise it detaches
+    if (!repoint?.(id)) detachInstance(doc, id)
+  }
   // a move must not put an instance inside its own main (directly or through nested instances)
   for (const id of insts) {
     if (!doc.nodes[id]?.instance) continue
