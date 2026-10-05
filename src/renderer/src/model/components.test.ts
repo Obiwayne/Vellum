@@ -151,6 +151,83 @@ describe('syncInstances', () => {
   })
 })
 
+describe('adversarial cases', () => {
+  it('reorder in the main: instances follow the new order and keep their twins (same ids)', () => {
+    const { doc, card, title, box, stage } = setup()
+    const i = c.createInstance(doc, card.id, stage.id)
+    const before = new Map(doc.nodes[i].children.map((x) => [doc.nodes[x].srcId, x]))
+    doc.nodes[card.id].children = [box.id, title.id]
+    c.syncInstances(doc, card.id)
+    const kids = doc.nodes[i].children
+    expect(kids.map((x) => doc.nodes[x].srcId)).toEqual([box.id, title.id])
+    for (const k of kids) expect(before.get(doc.nodes[k].srcId)).toBe(k)
+  })
+  it('nested instance inside a main: the outer instance shows the inner content, flattened', () => {
+    const { doc, card, title, stage } = setup()
+    const page = ops.makeNode(doc, { type: 'frame', name: 'Page' })
+    ops.insertNode(doc, page, stage.id)
+    c.createComponent(doc, page.id)
+    const inner = c.createInstance(doc, card.id, page.id)
+    c.setOverride(doc, inner, title.id, { text: 'Inner override' })
+    const outer = c.createInstance(doc, page.id, stage.id)
+    const copyOfInner = doc.nodes[outer].children[0]
+    expect(doc.nodes[copyOfInner].instance).toBeUndefined()
+    expect(doc.nodes[copyOfInner].children).toHaveLength(2)
+    const texts = Object.values(doc.nodes).filter((n) => n.type === 'text' && ops.isAncestor(doc, outer, n.id)).map((n) => n.text)
+    expect(texts).toEqual(['Inner override'])
+    // editing the innermost main reaches the outermost instance, and the inner override still wins
+    doc.nodes[title.id].style.color = 'green'
+    c.syncInstances(doc, card.id)
+    const t = Object.values(doc.nodes).find((n) => n.type === 'text' && ops.isAncestor(doc, outer, n.id))!
+    expect(t.style.color).toBe('green')
+    expect(t.text).toBe('Inner override')
+    expect(c.instancesOf(doc, page.id)).toEqual([outer])
+  })
+  it('cycle via a nested instance is refused in both directions and across three levels', () => {
+    const { doc, card, stage } = setup()
+    const mk = (name: string) => {
+      const n = ops.makeNode(doc, { type: 'frame', name })
+      ops.insertNode(doc, n, stage.id)
+      c.createComponent(doc, n.id)
+      return n.id
+    }
+    const a = mk('A')
+    const b = mk('B')
+    c.createInstance(doc, card.id, a) // A holds Card
+    c.createInstance(doc, a, b) // B holds A (holds Card)
+    expect(() => c.createInstance(doc, b, a)).toThrow(/itself/) // A would hold B
+    expect(() => c.createInstance(doc, b, card.id)).toThrow(/itself/) // Card would hold B -> A -> Card
+    expect(() => c.createInstance(doc, a, card.id)).toThrow(/itself/)
+    expect(() => c.createInstance(doc, card.id, stage.id)).not.toThrow() // unrelated host is fine
+  })
+  it('syncInstances on a hand-edited cyclic doc terminates', () => {
+    const { doc, card, stage } = setup()
+    const a = ops.makeNode(doc, { type: 'frame', name: 'A' })
+    ops.insertNode(doc, a, stage.id)
+    c.createComponent(doc, a.id)
+    const i = c.createInstance(doc, card.id, a.id)
+    doc.nodes[i].instance!.of = a.id // A holds an instance of A
+    expect(() => c.syncInstances(doc)).not.toThrow()
+  })
+  it('override on a node later deleted from the main is dropped, others stay', () => {
+    const { doc, card, title, box, stage } = setup()
+    const i = c.createInstance(doc, card.id, stage.id)
+    c.setOverride(doc, i, box.id, { name: 'Gone soon' })
+    c.setOverride(doc, i, title.id, { text: 'Stays' })
+    ops.removeNode(doc, box.id)
+    c.syncInstances(doc, card.id)
+    expect(Object.keys(doc.nodes[i].instance!.overrides!)).toEqual([title.id])
+    expect(twin(doc, i, title.id).text).toBe('Stays')
+  })
+  it('instances of a deleted main are left alone by sync (no crash, content kept)', () => {
+    const { doc, card, stage } = setup()
+    const i = c.createInstance(doc, card.id, stage.id)
+    ops.removeNode(doc, card.id)
+    expect(() => c.syncInstances(doc)).not.toThrow()
+    expect(doc.nodes[i].children).toHaveLength(2)
+  })
+})
+
 describe('overrides', () => {
   it('apply over the main and survive main edits', () => {
     const { doc, card, title, stage } = setup()
@@ -233,6 +310,35 @@ describe('as an immer recipe (store usage)', () => {
     })
     expect(twin(next, i, title.id).text).toBe('Via recipe')
     expect(twin(doc, i, title.id).text).toBe('Title')
+  })
+})
+
+describe('migrateDoc v2 -> v3 on a real doc', () => {
+  it('keeps every node untouched (also text without an explicit line-height) and adds no component fields', () => {
+    const d = ops.makeDoc('d', 'Real v2')
+    const root = d.pages[0].rootId
+    const f = ops.makeNode(d, { type: 'frame', style: { width: 100 } })
+    ops.insertNode(d, f, root)
+    const t = ops.makeNode(d, { type: 'text', text: 'hi' }, false)
+    ops.insertNode(d, t, f.id)
+    d.version = 2
+    const before = JSON.stringify(d.nodes)
+    const m = ops.migrateDoc(d)
+    expect(m.version).toBe(3)
+    expect(JSON.stringify(m.nodes)).toBe(before)
+    expect(m.nodes[t.id].style.lineHeight).toBeUndefined()
+    expect(Object.values(m.nodes).some((n) => n.component || n.instance || n.srcId)).toBe(false)
+    expect(d.version).toBe(2) // input not mutated
+    expect(ops.migrateDoc(m)).toBe(m)
+  })
+  it('a v1 doc goes all the way to v3 (line-height pin + version)', () => {
+    const d = ops.makeDoc('d', 'Real v1')
+    const t = ops.makeNode(d, { type: 'text', text: 'x' }, false)
+    ops.insertNode(d, t, d.pages[0].rootId)
+    d.version = 1
+    const m = ops.migrateDoc(d)
+    expect(m.version).toBe(3)
+    expect(m.nodes[t.id].style.lineHeight).toBe('20px')
   })
 })
 
