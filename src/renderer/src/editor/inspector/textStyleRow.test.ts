@@ -148,3 +148,82 @@ describe('actions', () => {
     expect(row().dataset.textStyle).toBe('none')
   })
 })
+
+describe('test station: adversarial', () => {
+  it('picking from a Mixed selection links both; the label follows a rename and a delete', () => {
+    const { a, b } = two()
+    const s1 = S().createTextStyle(id, 'One', { fontSize: 10 })
+    const s2 = S().createTextStyle(id, 'Two', { fontSize: 20 })
+    S().applyTextStyle(id, [a], s1)
+    S().applyTextStyle(id, [b], s2)
+    render([a, b])
+    expect(row().dataset.textStyle).toBe('mixed')
+    pick('Two')
+    expect(doc().nodes[a].textStyle).toBe(s2)
+    expect(doc().nodes[a].style.fontSize).toBe(20)
+    expect(row().dataset.textStyle).toBe(s2)
+    act(() => S().renameTextStyle(id, s2, 'Renamed'))
+    expect(host.querySelector('.c-select__value')?.textContent).toBe('Renamed')
+    act(() => S().deleteTextStyle(id, s2))
+    expect(row().dataset.textStyle).toBe('none')
+    expect(host.querySelector('.c-select__value')?.textContent).toBe('None')
+    expect(doc().nodes[a].style.fontSize).toBe(20)
+  })
+
+  it('a style edit shows through while the row is mounted', () => {
+    const { a } = two()
+    const sid = S().createTextStyle(id, 'Body', { fontSize: 16 })
+    S().applyTextStyle(id, [a], sid)
+    render([a])
+    act(() => S().updateTextStyle(id, sid, { fontSize: 44 }))
+    expect(doc().nodes[a].style.fontSize).toBe(44)
+    expect(row().dataset.textStyle).toBe(sid)
+  })
+
+  it('create on a layer that already follows a style makes a second style and relinks to it', () => {
+    const { a } = two()
+    const s1 = S().createTextStyle(id, 'Body', { fontSize: 16 })
+    S().applyTextStyle(id, [a], s1)
+    render([a])
+    act(() => button('Create text style from selection')!.click())
+    expect(doc().textStyles).toHaveLength(2)
+    expect(doc().textStyles![1].name).toBe('Text style')
+    expect(doc().nodes[a].textStyle).toBe(doc().textStyles![1].id)
+    act(() => button('Detach from text style')!.click())
+    act(() => button('Create text style from selection')!.click())
+    expect(doc().textStyles![2].name).toBe('Text style 2') // unique names
+  })
+
+  it('inside a component instance: picking links via an override, detach pins, one undo each', () => {
+    const r = doc().pages[0].rootId
+    const main = S().createNode(id, { type: 'frame', name: 'Card' }, r)
+    const label = S().createNode(id, { type: 'text', text: 'Hi' }, main)
+    const stage = S().createNode(id, { type: 'frame', name: 'Stage' }, r)
+    S().createComponent(id, [main])
+    const inst = S().createInstance(id, main, stage)
+    const twin = (): string => doc().nodes[inst].children.find((c) => doc().nodes[c].srcId === label)!
+    const sid = S().createTextStyle(id, 'Big', { fontSize: 40 })
+    render([twin()])
+    pick('Big')
+    expect(doc().nodes[inst].instance?.overrides?.[label]?.textStyle).toBe(sid)
+    expect(row().dataset.textStyle).toBe(sid)
+    S().undo(id)
+    expect(doc().nodes[inst].instance?.overrides?.[label]?.textStyle).toBeUndefined()
+    expect(doc().nodes[twin()].textStyle).toBeUndefined()
+    S().redo(id)
+    act(() => button('Detach from text style')!.click())
+    expect(row().dataset.textStyle).toBe('none')
+    S().updateTextStyle(id, sid, { fontSize: 99 })
+    expect(doc().nodes[twin()].style.fontSize).toBe(40) // pinned
+  })
+
+  it('the picker lists every style once, with None first', () => {
+    const { a } = two()
+    S().createTextStyle(id, 'Body', { fontSize: 16 })
+    S().createTextStyle(id, 'Heading/H1', { fontSize: 32 })
+    render([a])
+    act(() => (host.querySelector('.c-select') as HTMLElement).click())
+    const labels = [...document.querySelectorAll('[role="menuitem"]')].map((e) => e.textContent)
+    expect(labels).toEqual(['None', 'Body', 'Heading/H1'])
+  })
+})
