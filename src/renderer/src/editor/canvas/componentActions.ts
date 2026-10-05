@@ -4,6 +4,7 @@ import type { MenuEntry } from '../../ui'
 import { getStore } from '../../model/store'
 import * as ops from '../../model/ops'
 import { instanceRootOf, instancesOf, isMain } from '../../model/components'
+import { pickMain, setOf, variantValues, variantsOf } from '../../model/variants'
 import type { CNode, Doc, Page, WorldRect } from '../../model/types'
 import { visibleWorldRect } from './camera'
 import { clientToWorld, measure, union } from './geometry'
@@ -165,12 +166,22 @@ export function componentMenu(docId: string, ids: string[]): MenuEntry[] {
 /** drag-and-drop payload type: the id of the main component to insert */
 export const COMPONENT_DRAG_TYPE = 'application/x-vellum-component'
 
+export interface AssetVariant {
+  /** the variant's main component */
+  id: string
+  /** its values, e.g. "Large · Loud" */
+  label: string
+  instances: number
+}
+
 export interface AssetItem {
-  /** the main component */
+  /** the main component (a set: its default variant, what a click inserts) */
   id: string
   name: string
-  /** instances of it in the file */
+  /** instances of it in the file (a set: of all its variants) */
   instances: number
+  /** a component set: its variants in order (a lone component has none) */
+  variants?: AssetVariant[]
 }
 
 export interface AssetGroup {
@@ -178,17 +189,34 @@ export interface AssetGroup {
   items: AssetItem[]
 }
 
-/** Components per page, filtered by a case-insensitive name search; pages without hits are left out. */
+/** Components per page, filtered by a case-insensitive name search; pages without hits are left out. A set is one item. */
 export function assetGroups(doc: Doc, query = ''): AssetGroup[] {
   const q = query.trim().toLowerCase()
+  const has = (t: string): boolean => !q || t.toLowerCase().includes(q)
   const out: AssetGroup[] = []
   for (const page of doc.pages) {
     const items: AssetItem[] = []
+    const seenSets = new Set<string>()
     for (const id of ops.descendants(doc, page.rootId)) {
       const n = doc.nodes[id]
       if (!n?.component) continue
-      if (q && !n.component.name.toLowerCase().includes(q)) continue
-      items.push({ id, name: n.component.name, instances: instancesOf(doc, id).length })
+      const setId = setOf(doc, id)
+      if (!setId) {
+        if (has(n.component.name)) items.push({ id, name: n.component.name, instances: instancesOf(doc, id).length })
+        continue
+      }
+      if (seenSets.has(setId)) continue
+      seenSets.add(setId)
+      const variants = variantsOf(doc, setId).map((m) => ({
+        id: m.id,
+        label: Object.values(variantValues(doc, m.id)).join(' · ') || m.component?.name || m.name,
+        instances: instancesOf(doc, m.id).length
+      }))
+      const name = doc.nodes[setId].componentSet?.name ?? n.component.name
+      // a name hit shows every variant; otherwise only the variants whose values match
+      const shown = has(name) ? variants : variants.filter((v) => has(v.label))
+      if (!shown.length) continue
+      items.push({ id: pickMain(doc, setId) ?? shown[0].id, name, instances: variants.reduce((t, v) => t + v.instances, 0), variants: shown })
     }
     if (items.length) out.push({ page, items })
   }
