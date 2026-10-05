@@ -152,13 +152,49 @@ describe('edge cases', () => {
   })
 })
 
+describe('applyStylePatch stays unaware of text styles', () => {
+  it('patching a linked node keeps node.textStyle (detach-on-edit is store work)', () => {
+    const { d, a } = setup()
+    const id = ts.createTextStyle(d, 'S', { fontSize: 20 })
+    ts.applyTextStyle(d, a, id)
+    ops.applyStylePatch(d.nodes[a].style, { fontSize: 33 })
+    expect(d.nodes[a].style.fontSize).toBe(33)
+    expect(d.nodes[a].textStyle).toBe(id)
+  })
+})
+
 describe('migration to v5', () => {
-  it('v4 doc gets version 5 and no textStyles field', () => {
-    const d = ops.makeDoc('d', 'D')
-    d.version = 4
+  it('DOC_VERSION is 5 (master is 4)', () => {
+    expect(ops.DOC_VERSION).toBe(5)
+  })
+
+  it.each([1, 2, 3, 4])('v%i doc reaches v5 and gains no textStyles', (v) => {
+    const { d, a } = setup()
+    d.nodes[a].style = { fontSize: 12, lineHeight: '1.5' }
+    d.version = v
     const m = ops.migrateDoc(d)
     expect(m.version).toBe(5)
     expect(m.textStyles).toBeUndefined()
-    expect(d.version).toBe(4)
+    expect(m.nodes[a].textStyle).toBeUndefined()
+    expect(d.version).toBe(v)
+  })
+
+  it('a v1 doc still gets the v2 line-height pin on unset text', () => {
+    const { d, a } = setup()
+    delete d.nodes[a].style.lineHeight
+    d.version = 1
+    expect(ops.migrateDoc(d).nodes[a].style.lineHeight).toBe('20px')
+  })
+
+  it('a v5 doc is returned as is', () => {
+    const { d } = setup()
+    expect(ops.migrateDoc(d)).toBe(d)
+  })
+
+  it('a doc with textStyles survives migration untouched', () => {
+    const { d } = setup()
+    ts.createTextStyle(d, 'S', { fontSize: 20 })
+    d.version = 4
+    expect(ops.migrateDoc(d).textStyles).toEqual(d.textStyles)
   })
 })
