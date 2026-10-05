@@ -85,7 +85,7 @@ export function createInstance(doc: Doc, mainId: string, parentId: string, index
   const main = doc.nodes[mainId]
   if (!main?.component) throw new Error(`${mainId} is not a component`)
   if (!doc.nodes[parentId]) throw new Error(`Parent ${parentId} not found`)
-  if (instanceRootOf(doc, parentId)) throw new Error('Detach the instance to change its structure')
+  if (instanceRootOf(doc, parentId)) throw new Error(STRUCTURE_MSG)
   const host = mainOf(doc, parentId)
   if (host && reaches(doc, mainId, host)) throw new Error(CYCLE_MSG)
 
@@ -299,7 +299,7 @@ export function usesComponents(doc: Doc): boolean {
   return v
 }
 
-export const STRUCTURE_MSG = 'Detach the instance to change its structure'
+export const STRUCTURE_MSG = 'Detach instance to change structure'
 
 /** What an edit changed on a materialised node, as an override (null when nothing). The root keeps its own box and placement. */
 function diffNode(before: CNode, after: CNode, root: boolean): NodeOverride | null {
