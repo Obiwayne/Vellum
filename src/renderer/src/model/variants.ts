@@ -1,9 +1,9 @@
 // Component sets and variants (docs/factory/T17-plan.md, task T-A). Pure helpers meant for an immer draft,
 // like components.ts. A set is a frame (`componentSet`) whose direct children are the variant mains of one
 // component; each main carries `component.set` and `component.variant` (variant prop id -> option).
-import { cloneSubtree, insertNode, makeNode, newId } from './ops'
-import { instanceRootOf } from './components'
-import type { CNode, Doc, PropDef } from './types'
+import { cloneSubtree, descendants, insertNode, makeNode, newId } from './ops'
+import { instanceRootOf, syncInstance } from './components'
+import type { CNode, Doc, NodeOverride, PropDef } from './types'
 
 /** The set frame a main belongs to, or null (a lone component). */
 export function setOf(doc: Doc, mainId: string): string | null {
@@ -122,4 +122,106 @@ export function createVariant(doc: Doc, mainId: string, values?: Record<string, 
   copy.component = { name: main.component.name, set: setId, variant: vals }
   copy.name = name?.trim() || props.map((p) => `${p.name}=${vals[p.id]}`).join(', ')
   return cid
+}
+
+// ---------------------------------------------------------------------------------------------
+// switching an instance to another variant
+
+/**
+ * Match the nodes of one main to the nodes of another by tree position and type (a name match breaks ties):
+ * for each child, the closest-by-index unused child of the same type; equal distance prefers the same name.
+ * Returns main-side id -> id in the other main, root included. Layers with no counterpart are absent.
+ */
+export function matchTrees(from: Doc, fromRoot: string, to: Doc, toRoot: string): Map<string, string> {
+  const map = new Map<string, string>([[fromRoot, toRoot]])
+  const walk = (a: string, b: string): void => {
+    const bs = (to.nodes[b]?.children ?? []).map((id) => to.nodes[id]).filter(Boolean)
+    const used = new Set<string>()
+    ;(from.nodes[a]?.children ?? []).forEach((aid, i) => {
+      const an = from.nodes[aid]
+      if (!an) return
+      let best: CNode | undefined
+      let bestScore = Infinity
+      bs.forEach((bn, j) => {
+        if (used.has(bn.id) || bn.type !== an.type) return
+        const score = Math.abs(i - j) * 2 + (bn.name === an.name ? 0 : 1)
+        if (score < bestScore) {
+          best = bn
+          bestScore = score
+        }
+      })
+      if (!best) return
+      used.add(best.id)
+      map.set(aid, best.id)
+      walk(aid, best.id)
+    })
+  }
+  walk(fromRoot, toRoot)
+  return map
+}
+
+/**
+ * Point an instance at another main of its set and carry its overrides over (matchTrees). Overrides whose
+ * layer has no counterpart are dropped; their number is returned. The instance takes the new main's size.
+ * `fromDoc` is where the old main still lives (the doc before an edit that deleted it).
+ */
+export function switchVariant(doc: Doc, instId: string, toMainId: string, fromDoc: Doc = doc): number {
+  const inst = doc.nodes[instId]
+  if (!inst?.instance) throw new Error(`${instId} is not an instance`)
+  const to = doc.nodes[toMainId]
+  const oldId = inst.instance.of
+  const from = fromDoc.nodes[oldId]
+  if (!to?.component || !from?.component) throw new Error('Not a component')
+  if (!to.component.set || to.component.set !== from.component.set) throw new Error('A variant must belong to the same component set')
+  if (oldId === toMainId) return 0
+  const map = matchTrees(fromDoc, oldId, doc, toMainId)
+  const old = new Set(descendants(fromDoc, oldId))
+  const ov = inst.instance.overrides
+  let dropped = 0
+  if (ov) {
+    const next: Record<string, NodeOverride> = {}
+    for (const [k, o] of Object.entries(ov)) {
+      if (k === '') next[''] = o
+      else if (old.has(k)) {
+        const t = map.get(k)
+        if (t) next[t] = o
+        else dropped++
+      } else next[k] = o // a node of a swapped-in main: sync keeps or prunes it
+    }
+    if (Object.keys(next).length) inst.instance.overrides = next
+    else delete inst.instance.overrides
+  }
+  inst.instance.of = toMainId
+  for (const k of ['width', 'height']) {
+    if (to.style[k] === undefined) delete inst.style[k]
+    else inst.style[k] = to.style[k]
+  }
+  syncInstance(doc, instId)
+  return dropped
+}
+
+/** Choose a variant option on an instance: re-points it to the matching main of its set (see pickMain). Returns the dropped override count. */
+export function setVariantValue(doc: Doc, instId: string, propId: string, option: string): number {
+  const inst = doc.nodes[instId]
+  if (!inst?.instance) throw new Error(`${instId} is not an instance`)
+  const setId = setOf(doc, inst.instance.of)
+  const prop = setId ? doc.nodes[setId].componentSet?.props.find((p) => p.id === propId && p.type === 'variant') : undefined
+  if (!setId || !prop) throw new Error(`Variant property ${propId} not found`)
+  if (!prop.options?.includes(option)) throw new Error(`"${option}" is not an option of ${prop.name}`)
+  const target = pickMain(doc, setId, { ...variantValues(doc, inst.instance.of), [propId]: option })
+  return target ? switchVariant(doc, instId, target) : 0
+}
+
+/**
+ * For an instance whose main was deleted (it is gone from `doc`, still in `base`): move it to the default
+ * variant of the set when one is left. False when there is nothing to move to (the caller detaches it).
+ */
+export function repointToDefault(doc: Doc, base: Doc, instId: string): boolean {
+  const oldId = doc.nodes[instId]?.instance?.of
+  const setId = oldId ? base.nodes[oldId]?.component?.set : undefined
+  if (!setId || !doc.nodes[setId]?.componentSet) return false
+  const target = pickMain(doc, setId)
+  if (!target) return false
+  switchVariant(doc, instId, target, base)
+  return true
 }
