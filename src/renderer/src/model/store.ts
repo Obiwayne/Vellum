@@ -1,11 +1,13 @@
 // Central zustand store: docs, tabs, per-doc editor state and every mutation (undoable ones go
 // through `mutate`, which records immer patches in model/history.ts).
 import { create } from 'zustand'
-import { produce, produceWithPatches } from 'immer'
+import { original, produce, produceWithPatches } from 'immer'
+import type { Patch } from 'immer'
 import { nanoid } from 'nanoid'
-import type { Camera, CNode, CommentThread, Doc, EditorState, NodeType, Page, StylePatch, TabId, Token, Tool } from './types'
+import type { Camera, CNode, CommentThread, Doc, EditorState, NodeType, Page, StylePatch, TabId, Token, Tool, WorldRect } from './types'
 import { history } from './history'
 import * as ops from './ops'
+import * as comp from './components'
 import { htmlToNodes } from './html'
 import { MODE_ATTR, MODE_NAME_RE } from './modes'
 
@@ -25,6 +27,8 @@ export interface MutateOptions {
   coalesce?: string
   /** skip history (e.g. thumbnails) */
   noHistory?: boolean
+  /** the recipe maintains instances itself: do not read its changes to instance nodes as user edits (see components.settleEdits) */
+  derived?: boolean
 }
 
 export interface Store {
@@ -87,6 +91,16 @@ export interface Store {
   switchLayout(docId: string, id: string, to: 'flex' | 'grid'): void
   wrapInFlex(docId: string, ids: string[]): string | null
   removeFlex(docId: string, id: string): void
+
+  // components (undoable; see model/components.ts, docs/COMPONENTS.md)
+  /** make a component from the ids: a single frame becomes the main, anything else is wrapped in a frame first. `geometry` = measured world rects when the UI has them. Returns the main's id. */
+  createComponent(docId: string, ids: string[], geometry?: ComponentGeometry, name?: string): string
+  createInstance(docId: string, mainId: string, parentId: string, index?: number, at?: { x: number; y: number }): string
+  detachInstance(docId: string, id: string): void
+  /** drop one node's override (srcId = the main-side node id) or all of the instance's */
+  resetOverrides(docId: string, instanceId: string, srcId?: string): void
+  /** select the main component of an instance (or of a node inside one) and switch to its page; false when there is none */
+  goToMain(docId: string, id: string): boolean
   /** generic escape hatch: run an arbitrary recipe on the doc draft as one undoable step */
   mutate(docId: string, label: string, recipe: (draft: Doc) => void, opts?: MutateOptions): void
 
@@ -127,6 +141,12 @@ export interface Store {
   setPref(key: string, value: unknown): void
 }
 
+/** World geometry for wrapping a multi-node selection into a component (see ops.wrapNodes). */
+export interface ComponentGeometry {
+  rects: Map<string, WorldRect | null>
+  bounds: WorldRect
+  origin: { x: number; y: number }
+}
 export type CommentAnchor = Pick<CommentThread, 'pageId' | 'nodeId' | 'ox' | 'oy' | 'x' | 'y'>
 export interface CommentAuthor {
   kind: 'user' | 'agent'
@@ -154,7 +174,23 @@ export const useStore = create<Store>()((set, get) => {
   function mutate(docId: string, label: string, recipe: (d: Doc) => void, opts: MutateOptions = {}): boolean {
     const doc = get().docs[docId]
     if (!doc) return false
-    const [next, patches, inverse] = produceWithPatches(doc, recipe)
+    let [next, patches, inverse] = produceWithPatches(doc, (d) => {
+      recipe(d)
+      // instance edits become overrides; structural ones throw; orphaned instances detach
+      if (!opts.derived && comp.usesComponents(doc)) comp.settleEdits(d, original(d) as Doc)
+    })
+    if (comp.usesComponents(doc) || comp.usesComponents(next)) {
+      // derived instance nodes follow their mains (same undo step: the patches are concatenated)
+      const changed = new Set<string>()
+      for (const p of patches) if (p.path[0] === 'nodes' && p.path.length >= 2) changed.add(String(p.path[1]))
+      const stale = comp.staleAfter(doc, next, changed)
+      if (stale.mains.size || stale.roots.size) {
+        const [n2, p2, i2] = produceWithPatches(next, (d) => comp.syncStale(d, stale))
+        next = n2
+        patches = [...patches, ...p2] as Patch[]
+        inverse = [...i2, ...inverse] as Patch[]
+      }
+    }
     if (!patches.length) return true
     const stamped = { ...next, updatedAt: Date.now() }
     if (!opts.noHistory) history.record(docId, label, patches, inverse, opts.coalesce)
@@ -553,6 +589,47 @@ export const useStore = create<Store>()((set, get) => {
       mutate(docId, 'Remove flex', (d) => ops.removeFlex(d, id))
     },
 
+    createComponent(docId, ids, geometry, name) {
+      let main = ''
+      mutate(docId, 'Create component', (d) => {
+        const list = ops.sortByTreeOrder(d, ops.topmostOnly(d, ids))
+        const rects = geometry?.rects ?? new Map(list.map((id) => [id, ops.worldRect(d, id)]))
+        const boxes = [...rects.values()].filter((r): r is WorldRect => Boolean(r))
+        const bounds = geometry?.bounds ?? unionRects(boxes)
+        const parent = list[0] ? d.nodes[list[0]]?.parent : null
+        const origin = geometry?.origin ?? (parent ? (ops.worldRect(d, parent) ?? { x: 0, y: 0 }) : { x: 0, y: 0 })
+        main = comp.createComponentFrom(d, list, rects, bounds, { x: origin.x, y: origin.y }, name)
+      }, { derived: true })
+      return main
+    },
+
+    createInstance(docId, mainId, parentId, index, at) {
+      let id = ''
+      mutate(docId, 'Create instance', (d) => {
+        id = comp.createInstance(d, mainId, parentId, index, at)
+      }, { derived: true })
+      return id
+    },
+
+    detachInstance(docId, id) {
+      mutate(docId, 'Detach instance', (d) => comp.detachInstance(d, id), { derived: true })
+    },
+
+    goToMain(docId, id) {
+      const doc = get().docs[docId]
+      const root = doc && comp.instanceRootOf(doc, id)
+      const main = root ? doc.nodes[doc.nodes[root].instance?.of ?? ''] : undefined
+      const page = main && ops.pageOf(doc, main.id)
+      if (!main || !page) return false
+      get().setActivePage(docId, page.id)
+      get().select(docId, [main.id])
+      return true
+    },
+
+    resetOverrides(docId, instanceId, srcId) {
+      mutate(docId, 'Reset overrides', (d) => comp.resetOverrides(d, instanceId, srcId), { derived: true })
+    },
+
     mutate(docId, label, recipe, opts) {
       mutate(docId, label, recipe, opts)
       pruneEditor(docId)
@@ -848,3 +925,10 @@ export function activePage(s: Store, docId: string): Page | undefined {
 }
 
 export const getStore = (): Store => useStore.getState()
+
+function unionRects(rects: WorldRect[]): WorldRect {
+  if (!rects.length) return { x: 0, y: 0, width: 0, height: 0 }
+  const x = Math.min(...rects.map((r) => r.x))
+  const y = Math.min(...rects.map((r) => r.y))
+  return { x, y, width: Math.max(...rects.map((r) => r.x + r.width)) - x, height: Math.max(...rects.map((r) => r.y + r.height)) - y }
+}

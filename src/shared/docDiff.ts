@@ -24,6 +24,9 @@ interface DiffNode {
   attrs?: Record<string, string>
   visible?: boolean
   locked?: boolean
+  /** components: instance link + overrides; srcId marks a node derived from a main (not listed in the diff) */
+  instance?: unknown
+  srcId?: string
 }
 
 /** What about a layer changed. */
@@ -91,7 +94,9 @@ function aspects(a: DiffNode, b: DiffNode): ChangeAspect[] {
   if ((a.x ?? 0) !== (b.x ?? 0) || (a.y ?? 0) !== (b.y ?? 0)) out.push('position')
   if (a.name !== b.name) out.push('name')
   if (Boolean(a.visible) !== Boolean(b.visible) || Boolean(a.locked) !== Boolean(b.locked)) out.push('visibility')
-  if (a.parent !== b.parent || !same(a.children, b.children)) out.push('layers')
+  // an instance's children are derived from its main: only the main's own change is a layers change
+  if (a.parent !== b.parent || (!b.instance && !same(a.children, b.children))) out.push('layers')
+  if (!same(a.instance, b.instance) && !out.includes('content')) out.push('content')
   if ((a.svg ?? '') !== (b.svg ?? '') || !same(a.attrs, b.attrs) || a.type !== b.type) out.push('content')
   return out
 }
@@ -131,8 +136,10 @@ export function diffDocs(before: DiffableDoc | null, after: DiffableDoc): DocDif
   const oldPage = pageIndex(before)
   const newPage = pageIndex(after)
   const roots = new Set([...oldPages.values(), ...newPages.values()].map((p) => p.rootId))
+  // nodes derived from a main component (instance children) are not listed: their main or the instance root is
+  const derived = (n: DiffNode): boolean => n.srcId !== undefined && !n.instance
   for (const [id, n] of Object.entries(newNodes)) {
-    if (roots.has(id)) continue
+    if (roots.has(id) || derived(n)) continue
     const o = oldNodes[id]
     const entry = { id, name: n.name, type: n.type, pageId: newPage(id), parent: n.parent }
     if (!o) d.added.push(entry)
@@ -142,7 +149,7 @@ export function diffDocs(before: DiffableDoc | null, after: DiffableDoc): DocDif
     }
   }
   for (const [id, n] of Object.entries(oldNodes)) {
-    if (!roots.has(id) && !newNodes[id]) d.removed.push({ id, name: n.name, type: n.type, pageId: oldPage(id), parent: n.parent })
+    if (!roots.has(id) && !newNodes[id] && !derived(n)) d.removed.push({ id, name: n.name, type: n.type, pageId: oldPage(id), parent: n.parent })
   }
   // a parent whose only change is gaining/losing the added/removed children is noise
   d.changed = d.changed.filter((c) => !(c.aspects?.length === 1 && c.aspects[0] === 'layers' && childOnly(c.id, d)))
