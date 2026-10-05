@@ -57,11 +57,12 @@ describe('createVariant: failures', () => {
     expect(JSON.stringify(doc)).toBe(before)
   })
 
-  it('KNOWN (minor): on a plain doc an unknown prop id throws only after a lone main was wrapped in a set', () => {
+  it('an unknown prop id is refused before a lone main is wrapped: the plain doc is untouched', () => {
     const { doc, button } = setup()
+    const before = JSON.stringify(doc)
     expect(() => v.createVariant(doc, button.id, { nope: 'x' })).toThrow(/Unknown variant property/)
-    // the wrap already happened; inside a store mutation (immer draft) the throw discards it, see the test above
-    expect(v.setOf(doc, button.id)).not.toBeNull()
+    expect(JSON.stringify(doc)).toBe(before)
+    expect(v.setOf(doc, button.id)).toBeNull()
   })
 })
 
