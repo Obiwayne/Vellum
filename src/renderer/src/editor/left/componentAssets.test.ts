@@ -151,3 +151,41 @@ describe('Assets panel rendering', () => {
     expect(data[C.COMPONENT_DRAG_TYPE]).toBe(large)
   })
 })
+
+describe('T34 acceptance gaps found at the test station', () => {
+  // Spec: a set is one row with its variant count ("Button · 4 variants"). The build shows only the instance count.
+  // Known defect reported to the builder: drop `.fails` once the row shows the variant count.
+  it.fails('a collapsed set row shows its variant count', () => {
+    const { button } = setup()
+    makeSet(button)
+    render()
+    const setRow = host.querySelector('.lp-component') as HTMLElement
+    expect(setRow.textContent).toMatch(/2 variants/)
+  })
+
+  it('30 components render with a thumbnail each, within a generous time budget', () => {
+    const r = doc().pages[0].rootId
+    for (let i = 0; i < 30; i++) {
+      const f = S().createNode(id, { type: 'frame', name: `C${i}`, style: { width: 100, height: 40 } }, r)
+      S().createNode(id, { type: 'text', text: `t${i}` }, f)
+      S().select(id, [f])
+      C.createComponentFromSelection(id)
+    }
+    const t0 = performance.now()
+    render()
+    const ms = performance.now() - t0
+    expect(rows().length).toBe(30)
+    expect(host.querySelectorAll('.lp-thumb').length).toBe(30)
+    expect(ms).toBeLessThan(3000)
+  })
+
+  it('a component over the node cap falls back to the icon thumbnail', () => {
+    const r = doc().pages[0].rootId
+    const big = S().createNode(id, { type: 'frame', name: 'Big', style: { width: 100, height: 100 } }, r)
+    for (let i = 0; i < 130; i++) S().createNode(id, { type: 'rect' }, big)
+    S().select(id, [big])
+    C.createComponentFromSelection(id)
+    render()
+    expect(host.querySelectorAll('.lp-thumb--icon').length).toBe(1)
+  })
+})
