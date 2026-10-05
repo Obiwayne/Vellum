@@ -5,9 +5,11 @@ on:
     branches: [master]
   pull_request:
 
+# A newer push to a pull request supersedes its older run. Every master push gets its own group, so runs
+# neither cancel nor replace each other (a shared group would drop all but the newest queued run).
 concurrency:
-  group: ci-${{ github.ref }}
-  cancel-in-progress: true
+  group: ci-${{ github.event_name == 'pull_request' && github.ref || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   check:
