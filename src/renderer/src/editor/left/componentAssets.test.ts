@@ -153,14 +153,28 @@ describe('Assets panel rendering', () => {
 })
 
 describe('T34 acceptance gaps found at the test station', () => {
-  // Spec: a set is one row with its variant count ("Button · 4 variants"). The build shows only the instance count.
-  // Known defect reported to the builder: drop `.fails` once the row shows the variant count.
-  it.fails('a collapsed set row shows its variant count', () => {
+  it('a collapsed set row shows its variant count next to the instance count', () => {
     const { button } = setup()
     makeSet(button)
     render()
     const setRow = host.querySelector('.lp-component') as HTMLElement
     expect(setRow.textContent).toMatch(/2 variants/)
+    expect(setRow.querySelector('.lp-component__variants')?.textContent).toBe('2 variants')
+    expect(setRow.querySelector('.lp-component__count')?.textContent).toBe('0')
+    expect([...host.querySelectorAll('.lp-component')].find((r) => r.textContent?.startsWith('Card'))?.querySelector('.lp-component__variants')).toBeNull()
+  })
+
+  it('a set with a single variant says "1 variant"', () => {
+    const { button } = setup()
+    makeSet(button)
+    S().mutate(id, 'Drop', (d) => {
+      const set = d.nodes[button].component!.set as string
+      const other = d.nodes[set].children.find((c) => c !== button) as string
+      d.nodes[set].children = [button]
+      delete d.nodes[other]
+    })
+    render()
+    expect(host.querySelector('.lp-component__variants')?.textContent).toBe('1 variant')
   })
 
   it('30 components render with a thumbnail each, within a generous time budget', () => {
@@ -187,5 +201,60 @@ describe('T34 acceptance gaps found at the test station', () => {
     C.createComponentFromSelection(id)
     render()
     expect(host.querySelectorAll('.lp-thumb--icon').length).toBe(1)
+  })
+})
+
+describe('lazy thumbnails', () => {
+  type IO = { cb: IntersectionObserverCallback; el: Element | null; disconnected: boolean }
+  const observers: IO[] = []
+  beforeEach(() => {
+    observers.length = 0
+    ;(globalThis as { IntersectionObserver?: unknown }).IntersectionObserver = class {
+      rec: IO
+      constructor(cb: IntersectionObserverCallback) {
+        this.rec = { cb, el: null, disconnected: false }
+        observers.push(this.rec)
+      }
+      observe(el: Element): void {
+        this.rec.el = el
+      }
+      disconnect(): void {
+        this.rec.disconnected = true
+      }
+    }
+  })
+  afterEach(() => {
+    delete (globalThis as { IntersectionObserver?: unknown }).IntersectionObserver
+  })
+
+  it('a row renders its preview only after it scrolls into view, and stops observing then', () => {
+    setup()
+    render()
+    expect(host.querySelectorAll('.lp-thumb--lazy').length).toBe(2)
+    expect(host.querySelector('.lp-thumb')?.textContent).not.toContain('Click') // placeholder only
+    const first = observers.find((o) => o.el === host.querySelector('.lp-thumb--lazy'))!
+    act(() => first.cb([{ isIntersecting: true, target: first.el } as unknown as IntersectionObserverEntry], {} as IntersectionObserver))
+    expect(host.querySelectorAll('.lp-thumb--lazy').length).toBe(1)
+    expect(host.querySelector('.lp-thumb')?.textContent).toContain('Click')
+    expect(first.disconnected).toBe(true)
+  })
+
+  it('a non-intersecting callback keeps the placeholder', () => {
+    setup()
+    render()
+    const first = observers[0]
+    act(() => first.cb([{ isIntersecting: false, target: first.el } as unknown as IntersectionObserverEntry], {} as IntersectionObserver))
+    expect(host.querySelectorAll('.lp-thumb--lazy').length).toBe(2)
+  })
+
+  it('big components keep the icon fallback and are never observed', () => {
+    const r = doc().pages[0].rootId
+    const big = S().createNode(id, { type: 'frame', name: 'Big' }, r)
+    for (let i = 0; i < 130; i++) S().createNode(id, { type: 'rect' }, big)
+    S().select(id, [big])
+    C.createComponentFromSelection(id)
+    render()
+    expect(host.querySelectorAll('.lp-thumb--icon').length).toBe(1)
+    expect(observers.length).toBe(0)
   })
 })

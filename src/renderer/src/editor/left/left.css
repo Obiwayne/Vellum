@@ -635,12 +635,16 @@ body.lp-dragging * {
 .lp-component--variant {
   padding-left: 34px;
 }
+.lp-component {
+  position: relative;
+}
 .lp-component__chev {
+  position: absolute;
+  left: 3px;
+  top: 50%;
   display: inline-flex;
   align-items: center;
-  flex-shrink: 0;
-  width: 14px;
-  margin-left: -14px;
+  transform: translateY(-50%);
   color: var(--text-3);
 }
 .lp-thumb {
@@ -665,4 +669,12 @@ body.lp-dragging * {
   transform-origin: 0 0;
   pointer-events: none;
   width: max-content;
+}
+.lp-component__variants {
+  margin-left: auto;
+  color: var(--text-3);
+  white-space: nowrap;
+}
+.lp-component__variants + .lp-component__count {
+  margin-left: 8px;
 }

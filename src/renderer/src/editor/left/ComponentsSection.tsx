@@ -35,7 +35,7 @@ export function ComponentsSection({ docId }: { docId: string }): JSX.Element | n
           {doc.pages.length > 1 ? <div className="lp-components__page">{g.page.name}</div> : null}
           {g.items.map((it) => {
             const expanded = Boolean(it.variants) && (open.has(it.id) || Boolean(query.trim()))
-            const row = (id: string, name: string, count: number, thumbId: string, extra?: JSX.Element, renamable = true, nested = false): JSX.Element => (
+            const row = (id: string, name: string, count: number, thumbId: string, extra?: JSX.Element, renamable = true, nested = false, variantCount = 0): JSX.Element => (
               <div
                 key={id + (nested ? ':v' : '')}
                 role="button"
@@ -72,6 +72,9 @@ export function ComponentsSection({ docId }: { docId: string }): JSX.Element | n
                 ) : (
                   <span className="lp-ellipsis">{name}</span>
                 )}
+                {variantCount > 0 && (
+                  <span className="lp-component__variants">{variantCount === 1 ? '1 variant' : `${variantCount} variants`}</span>
+                )}
                 <span className="lp-component__count">{count}</span>
               </div>
             )
@@ -95,7 +98,7 @@ export function ComponentsSection({ docId }: { docId: string }): JSX.Element | n
             ) : undefined
             return (
               <div key={it.id}>
-                {row(it.id, it.name, it.instances, it.id, chevron, !it.variants)}
+                {row(it.id, it.name, it.instances, it.id, chevron, !it.variants, false, it.variants?.length ?? 0)}
                 {expanded && it.variants?.map((v) => row(v.id, v.label, v.instances, v.id, undefined, false, true))}
               </div>
             )
