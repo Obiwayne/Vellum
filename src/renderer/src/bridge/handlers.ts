@@ -8,6 +8,7 @@ import { markActivity } from '../profile/profile'
 import './tools-files'
 import './tools-read'
 import './tools-write'
+import './tools-components'
 import './tools-render'
 
 export { registerHandler, resolveDocId, handlers } from './registry'

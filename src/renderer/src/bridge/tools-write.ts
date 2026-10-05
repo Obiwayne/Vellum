@@ -2,6 +2,7 @@
 import { getStore } from '../model/store'
 import * as ops from '../model/ops'
 import { htmlToNodes } from '../model/html'
+import { STRUCTURE_MSG, instanceRootOf } from '../model/components'
 import type { Doc, StylePatch } from '../model/types'
 import {
   arr,
@@ -87,6 +88,9 @@ registerHandler('write_html', (args) => {
   if (!targetArg) throw new Error('targetNodeId is required')
   const target = resolveParent(doc, targetArg)
   requireNode(doc, target)
+  // an instance's subtree is derived from its main: the same refusal as editing its structure in the UI
+  const inInstance = instanceRootOf(doc, target)
+  if (inInstance && (mode === 'insert-children' || inInstance !== target)) throw new Error(`${STRUCTURE_MSG}: node ${target} is part of the instance ${inInstance}. Edit the main component instead, or call detach_instance.`)
 
   let created: string[] = []
   let parentId: string

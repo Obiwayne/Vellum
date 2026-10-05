@@ -184,6 +184,33 @@ async function main() {
   const info2 = await call('get_basic_info')
   ok(info2.body.artboardCount === before + 1, 'artboard count increased by one')
 
+  // components, variants and properties
+  const comp = await call('create_component', { nodeIds: [cardId], name: 'E2E Card' })
+  ok(comp.body.componentId === cardId, 'create_component turns the card frame into a component')
+  const inst = await call('create_instance', { componentId: cardId, parentId: artboardId })
+  const instId = inst.body.instanceId
+  ok(typeof instId === 'string', 'create_instance')
+  const instInfo = await call('get_node_info', { nodeId: instId })
+  ok(instInfo.body.instanceOf === cardId, 'get_node_info reports instanceOf')
+  ok((await call('get_node_info', { nodeId: cardId })).body.isComponent === true, 'get_node_info reports isComponent')
+  const textProp = await call('add_component_prop', { componentId: cardId, name: 'Heading', type: 'text', defaultValue: 'Hello from Vellum' })
+  await call('bind_component_prop', { nodeId: titleId, aspect: 'text', property: 'Heading' })
+  const setP = await call('set_instance_props', { nodeId: instId, props: { Heading: 'Hi there' } })
+  ok(setP.body.instanceProperties?.Heading === 'Hi there' && textProp.body.propertyId, 'add/bind/set component text property')
+  const instTree = await call('get_tree_summary', { nodeId: instId })
+  ok(instTree.body.summary.includes('Hi there') && !(await call('get_tree_summary', { nodeId: cardId })).body.summary.includes('Hi there'), 'the instance shows the property value, the main keeps its text')
+  let refused = ''
+  try {
+    await call('write_html', { targetNodeId: instId, mode: 'insert-children', html: '<div style="width:10px;height:10px"></div>' })
+  } catch (e) {
+    refused = e.message
+  }
+  ok(refused.includes('Detach instance to change structure'), `write_html into an instance is refused (${refused || 'no error'})`)
+  const variant = await call('create_variant', { componentId: cardId })
+  ok(variant.body.variants?.length === 2 && variant.body.properties?.[0]?.type === 'variant', 'create_variant wraps the component in a set')
+  const det = await call('detach_instance', { nodeId: instId })
+  ok(det.body.detachedNodeId === instId && (await call('get_node_info', { nodeId: instId })).body.instanceOf === undefined, 'detach_instance')
+
   // leave the file as we found it
   if (!process.env.KEEP) {
     await call('delete_nodes', { nodeIds: [artboardId] })

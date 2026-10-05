@@ -3,6 +3,7 @@ import { getStore } from '../model/store'
 import { descendants, isPageRoot } from '../model/ops'
 import { computeNodeStyle, toCamel } from '../model/html'
 import type { CNode, Doc } from '../model/types'
+import { componentInfo } from './tools-components'
 import {
   arr,
   artboardOf,
@@ -38,6 +39,7 @@ registerHandler('get_selection', (args) => {
       artboardName: ab ? doc.nodes[ab]?.name ?? null : null,
       parentId: n.parent,
       childCount: n.children.length,
+      ...componentInfo(doc, n),
       ...(n.type === 'text' ? { textContent: n.text ?? '' } : {})
     }
   })
@@ -64,6 +66,7 @@ registerHandler('get_children', (args) => {
         worldY: g.worldY,
         x: g.x,
         y: g.y,
+        ...componentInfo(doc, k),
         ...(k.visible ? {} : { isVisible: false })
       }
     })
@@ -92,6 +95,7 @@ registerHandler('get_node_info', (args) => {
     childCount: n.children.length,
     artboardId: artboardOf(doc, n.id),
     textContent: n.type === 'text' ? n.text ?? '' : null,
+    ...componentInfo(doc, n, true),
     ...(n.type === 'image' ? { src: n.attrs?.src ?? null } : {})
   })
 })
@@ -285,6 +289,7 @@ registerHandler('find_nodes', (args) => {
         component: componentName(n),
         pageId: pageFor(id),
         artboardId: artboardOf(doc, id),
+        ...componentInfo(doc, n),
         ...(n.type === 'text' ? { textContent: preview(n.text ?? '', 80) } : {}),
         matched
       })
