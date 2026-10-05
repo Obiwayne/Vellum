@@ -107,7 +107,7 @@ export function makeDoc(id: string, name: string): Doc {
 }
 
 /** Current document format version (Doc.version). */
-export const DOC_VERSION = 4
+export const DOC_VERSION = 5
 
 /**
  * Upgrade a loaded document to DOC_VERSION without changing how it looks. Returns the same object

@@ -101,7 +101,7 @@ describe('pickMain: odd inputs', () => {
 })
 
 describe('migration', () => {
-  it('a v1 doc ends at DOC_VERSION 4 and keeps the v2 line-height pin', () => {
+  it('a v1 doc ends at DOC_VERSION 5 and keeps the v2 line-height pin', () => {
     const d = ops.makeDoc('d', 'Old')
     const root = d.pages[0].rootId
     const t = ops.makeNode(d, { type: 'text', text: 'x' }, false)
@@ -110,8 +110,8 @@ describe('migration', () => {
     d.nodes[root].children.push(t.id)
     const old = { ...d, version: 1 }
     const up = ops.migrateDoc(old)
-    expect(up.version).toBe(4)
-    expect(ops.DOC_VERSION).toBe(4)
+    expect(up.version).toBe(5)
+    expect(ops.DOC_VERSION).toBe(5)
     expect(up.nodes[t.id].style.lineHeight).toBe('20px')
   })
 
