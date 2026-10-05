@@ -71,6 +71,20 @@ try {
   const undone = await read()
   log('after one undo', undone)
   results.push(`${undone.flex?.h === before.flex?.h && undone.text?.h === before.text?.h ? 'passed' : 'FAILED'}: one undo restores the sizes`)
+  // line-height field: the Fit frame follows, the fixed artboard around it does not
+  const artboard = () =>
+    page.evaluate(() => Math.max(...[...document.querySelectorAll('[data-node-id]')].map((el) => Math.round(el.getBoundingClientRect().height))))
+  const artH = await artboard()
+  await page.locator('[data-node-id]', { hasText: /^Hello$/ }).last().click({ force: true, modifiers: ['Control'] })
+  const lh = page.locator('[title="Line height"] input')
+  await lh.fill('80')
+  await lh.press('Enter')
+  await page.waitForTimeout(400)
+  await shot('after-line-height-80')
+  const lhRead = await read()
+  log('line height 80', lhRead)
+  results.push(`${lhRead.flex?.h === 80 ? 'passed' : 'FAILED'}: Fit frame follows the line-height field (${lhRead.flex?.h})`)
+  results.push(`${(await artboard()) === artH ? 'passed' : 'FAILED'}: fixed artboard stays fixed (${artH})`)
 } finally {
   console.log(results.join('\n'))
   await Promise.race([app.close(), new Promise((r) => setTimeout(r, 8000))])
