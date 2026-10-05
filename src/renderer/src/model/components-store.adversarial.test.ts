@@ -140,7 +140,7 @@ describe('adversarial: store hooks', () => {
     S().updateStyles(id, [title], { color: 'red' })
     expect(performance.now() - t0).toBeLessThan(500)
     expect(card).toBeTruthy()
-  })
+  }, 30000) // building 2000 nodes through the store is slow; only the edit is timed
 })
 
 describe('goToMain', () => {
