@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { ChevronDown, ChevronRight, Plus, Search, X } from 'lucide-react'
 import { modesOf, tokenValueIn } from '../../model/modes'
-import { Button, ColorPicker, IconButton, Menu, Popover, parseColor, useContextMenu, type MenuEntry } from '../../ui'
+import { Button, ColorPicker, IconButton, Menu, Popover, Segmented, parseColor, useContextMenu, type MenuEntry } from '../../ui'
 import { getStore, useStore } from '../../model/store'
 import type { Token } from '../../model/types'
 import { STARTER_THEME } from './starterTheme'
@@ -19,6 +19,7 @@ import {
   type TokenGroup
 } from './tokenUtils'
 import { InlineEdit } from './InlineEdit'
+import { StylesPanel } from './StylesPanel'
 
 const collapsedGroups = new Map<string, Set<TokenGroup>>()
 
@@ -36,6 +37,9 @@ function ThemeEmptyIcon(): JSX.Element {
   )
 }
 
+/** Tokens or Styles view of the Theme tab, per doc. */
+const viewByDoc = new Map<string, 'tokens' | 'styles'>()
+
 /** Mode being viewed/edited in the Theme panel, per doc. */
 const modeByDoc = new Map<string, string>()
 
@@ -48,6 +52,11 @@ export function ThemePanel({ docId }: { docId: string }): JSX.Element {
   const setMode = (m: string): void => {
     modeByDoc.set(docId, m)
     setModeState(m)
+  }
+  const [view, setViewState] = useState<'tokens' | 'styles'>(() => viewByDoc.get(docId) ?? 'tokens')
+  const setView = (v: 'tokens' | 'styles'): void => {
+    viewByDoc.set(docId, v)
+    setViewState(v)
   }
   const [renamingMode, setRenamingMode] = useState<string | null>(null)
   const [query, setQuery] = useState('')
@@ -169,8 +178,50 @@ export function ThemePanel({ docId }: { docId: string }): JSX.Element {
     if (editing && !editingToken) setEditing(null)
   }, [editing, editingToken])
 
+  const tabs = (
+    <div className="lp-theme-tabs">
+      <Segmented<'tokens' | 'styles'>
+        full
+        value={view}
+        options={[
+          { value: 'tokens', label: 'Tokens' },
+          { value: 'styles', label: 'Styles' }
+        ]}
+        onChange={setView}
+      />
+    </div>
+  )
+
+  if (view === 'styles') {
+    return (
+      <div className="lp-theme">
+        {tabs}
+        {modes.length > 0 && <ModeTabs modes={modes} mode={mode} onPick={setMode} />}
+        <StylesPanel docId={docId} mode={mode} onEditToken={(name, anchor) => setEditing(editing?.name === name ? null : { name, anchor })} />
+        <Popover open={Boolean(editing && editingToken)} anchor={editing?.anchor ?? null} onClose={() => setEditing(null)} placement="right-start" offset={8}>
+          {editing && editingToken && (
+            <TokenEditor
+              key={editing.name}
+              docId={docId}
+              token={editingToken}
+              mode={mode}
+              baseMode={modes[0] ?? null}
+              onRename={(v) => {
+                const name = normalizeName(v)
+                renameToken(editing.name, v)
+                if (name && s().docs[docId]?.tokens.some((t) => t.name === name)) setEditing({ ...editing, name })
+              }}
+              onClose={() => setEditing(null)}
+            />
+          )}
+        </Popover>
+      </div>
+    )
+  }
+
   return (
     <div className="lp-theme">
+      {tabs}
       <div className="lp-theme-head">
         {searching ? (
           <input
@@ -315,6 +366,19 @@ export function ThemePanel({ docId }: { docId: string }): JSX.Element {
           />
         )}
       </Popover>
+    </div>
+  )
+}
+
+/** Light mode switch used by the Styles view (the Tokens view has its own with rename and menu). */
+function ModeTabs({ modes, mode, onPick }: { modes: string[]; mode: string | null; onPick: (m: string) => void }): JSX.Element {
+  return (
+    <div className="lp-modes">
+      {modes.map((m) => (
+        <div key={m} className={['lp-mode', m === mode && 'lp-mode--active'].filter(Boolean).join(' ')} onClick={() => onPick(m)}>
+          {m}
+        </div>
+      ))}
     </div>
   )
 }

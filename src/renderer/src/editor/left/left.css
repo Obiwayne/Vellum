@@ -678,3 +678,102 @@ body.lp-dragging * {
 .lp-component__variants + .lp-component__count {
   margin-left: 8px;
 }
+
+/* Theme tab: Tokens | Styles switch and the Styles view */
+.lp-theme-tabs {
+  padding: 8px 12px 0;
+  flex-shrink: 0;
+}
+.lp-styles {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding-bottom: 12px;
+}
+.lp-styles__msg {
+  margin: 8px 12px 0;
+  padding: 6px 8px;
+  border-radius: var(--radius-sm, 4px);
+  background: color-mix(in srgb, var(--accent) 16%, transparent);
+  color: var(--text-1);
+  font-size: 12px;
+}
+.lp-styles__head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 32px;
+  padding: 0 8px 0 12px;
+  margin-top: 4px;
+}
+.lp-styles__title {
+  font-weight: var(--weight-medium);
+}
+.lp-styles__spacer {
+  flex: 1;
+}
+.lp-styles__empty {
+  padding: 4px 12px 8px;
+  color: var(--text-2);
+  font-size: 12px;
+}
+.lp-styles__group {
+  padding-left: 20px;
+}
+.lp-style {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 32px;
+  padding: 0 12px;
+  cursor: default;
+}
+.lp-style:hover,
+.lp-style--active {
+  background: var(--hover, rgba(255, 255, 255, 0.06));
+}
+.lp-style__preview {
+  width: 34px;
+  flex-shrink: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  color: var(--text-1);
+}
+.lp-style__name {
+  flex: 1;
+  min-width: 0;
+}
+.lp-style__caption {
+  color: var(--text-2);
+  font-size: 11px;
+  white-space: nowrap;
+}
+.lp-style__count {
+  min-width: 14px;
+  text-align: right;
+  color: var(--text-2);
+  font-size: 11px;
+}
+.lp-style__swatch {
+  width: 16px;
+  height: 16px;
+  border-radius: 4px;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.18);
+  flex-shrink: 0;
+}
+.lp-style__swatches {
+  display: flex;
+  gap: 2px;
+  flex-shrink: 0;
+}
+.lp-style__swatch--on {
+  box-shadow: inset 0 0 0 1px var(--accent);
+}
+.lp-style-editor__actions {
+  display: flex;
+  gap: 8px;
+  padding: 4px 12px 8px;
+}
+.lp-style-editor__delete {
+  color: var(--danger, #f24822);
+}
