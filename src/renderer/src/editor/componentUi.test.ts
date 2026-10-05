@@ -156,7 +156,17 @@ describe('variants UI', () => {
     S().createInstance(id, second, doc().pages[0].rootId)
     const { assetGroups } = await import('./canvas/componentActions')
     const items = assetGroups(doc()).flatMap((g) => g.items)
-    expect(items).toEqual([{ id: btn, name: 'Button', instances: 2, variants: 2 }])
+    expect(items).toEqual([
+      {
+        id: btn,
+        name: 'Button',
+        instances: 2,
+        variants: [
+          { id: btn, label: 'Default', instances: 1 },
+          { id: second, label: 'Variant 2', instances: 1 }
+        ]
+      }
+    ])
     expect(assetGroups(doc(), 'variant 2').flatMap((g) => g.items)).toHaveLength(1) // matches a variant's layer name
     expect(assetGroups(doc(), 'zzz')).toEqual([])
   })

@@ -61,7 +61,7 @@ try {
   const meta = await page.locator('.insp-comp__meta').first().textContent()
   check(meta === 'Variant=Variant 2', `the new variant is selected and labelled (${meta})`)
   const assets = await page.locator('.lp-component').count()
-  const badge = await page.locator('.lp-component__count').first().textContent()
+  const badge = await page.locator('.lp-component__variants').first().textContent()
   check(assets === 1 && badge === '2 variants', `Assets lists the set once with "2 variants" (${assets} rows, ${badge})`)
 
   // the right-click menu adds a third variant to the same set; the set frame itself is not offered Create component
@@ -72,7 +72,7 @@ try {
   await shot('third-variant-from-menu')
   const l3 = await layers()
   check(l3.sets === 1 && l3.mains === 3, `context menu Add variant: one set, three variants (${l3.sets} sets, ${l3.mains} mains)`)
-  check((await page.locator('.lp-component__count').first().textContent()) === '3 variants', 'Assets shows "3 variants"')
+  check((await page.locator('.lp-component__variants').first().textContent()) === '3 variants', 'Assets shows "3 variants"')
   await page.locator('.lp-layer svg.lucide-component').first().click()
   await page.waitForTimeout(300)
   await page.locator('.lp-layer--selected').first().click({ button: 'right' })

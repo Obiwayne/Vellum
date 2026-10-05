@@ -146,10 +146,10 @@ describe('Assets panel', () => {
     const groups = C.assetGroups(doc())
     expect(groups.map((g) => g.page.name)).toEqual([doc().pages[0].name, 'Second'])
     expect(groups[0].items).toEqual([
-      { id: a, name: 'Card', instances: 2, variants: 1 },
-      { id: b, name: 'Button', instances: 0, variants: 1 }
+      { id: a, name: 'Card', instances: 2 },
+      { id: b, name: 'Button', instances: 0 }
     ])
-    expect(groups[1].items).toEqual([{ id: c, name: 'Card small', instances: 0, variants: 1 }])
+    expect(groups[1].items).toEqual([{ id: c, name: 'Card small', instances: 0 }])
   })
 
   it('search is case-insensitive, matches across pages and drops empty pages', () => {

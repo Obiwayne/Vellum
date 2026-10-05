@@ -1,5 +1,7 @@
 // Drives the built app (npm run build first) through the Assets panel: components on two pages, rename and
-// go-to from the row's context menu, search, drag onto an artboard / a nested frame / empty canvas, undo.
+// go-to from the row's context menu, search, drag onto an artboard / a nested frame / empty canvas, undo, then a
+// variant set (3 variants, built through the e2e test hook): thumbnails, the collapsed row's variant count, expand,
+// and dragging the set onto an artboard places its default variant.
 // Usage: node scripts/e2e-assets.mjs <out-dir>. Needs `npm i -D playwright`.
 import { _electron as electron } from 'playwright'
 import { mkdirSync, mkdtempSync, rmSync } from 'node:fs'
@@ -67,6 +69,10 @@ const renameRow = async (index, name) => {
   await page.waitForTimeout(300)
 }
 try {
+  await page.waitForTimeout(1500)
+  // turn on the test hook (read at startup), then restart the renderer
+  await page.evaluate(() => localStorage.setItem('vellum.e2e', '1'))
+  await page.reload()
   await page.waitForTimeout(2500)
   await page.locator('input:not([type=file])').first().fill('Tester')
   await page.getByRole('button', { name: 'Create profile' }).click()
@@ -164,6 +170,55 @@ try {
   check(after === before - 1, `one undo removes the dropped instance (${before} -> ${after})`)
   const count2 = (await page.locator('.lp-component .lp-component__count').first().textContent()) ?? ''
   check(count2 === '2', `the Card row is back to 2 instances (${count2})`)
+
+  // ---- variant set: Card + 2 variants -------------------------------------------------------------
+  // we are on page 1 (go-to main), Card's row is first; its thumbnail carries the main's id
+  const cardId = await page.locator('.lp-component').nth(0).locator('[data-thumb]').getAttribute('data-thumb')
+  const made = await page.evaluate((id) => {
+    const v = window.__vellum
+    if (!v) return null
+    const s = v.getStore()
+    const docId = s.activeTab
+    const ids = []
+    s.mutate(docId, 'Add variants', (d) => {
+      ids.push(v.variants.createVariant(d, id))
+      ids.push(v.variants.createVariant(d, id))
+    })
+    const set = v.getStore().docs[docId].nodes[id].component.set
+    return { docId, set, copies: ids }
+  }, cardId)
+  check(Boolean(made && made.set), 'test hook: Card became a set with two more variants')
+  await page.waitForTimeout(600)
+  await shot('assets-with-variant-set')
+  const setRow = page.locator('.lp-component').filter({ hasText: 'Card' }).first()
+  const setText = (await setRow.textContent()) ?? ''
+  check(/3 variants/.test(setText), `the collapsed set row shows its variant count (${setText})`)
+  const thumbsShown = await page.locator('.lp-thumb:not(.lp-thumb--lazy)').count()
+  check(thumbsShown >= (await rows()), `every visible row has its thumbnail rendered (${thumbsShown} thumbs, ${await rows()} rows)`)
+  const previewText = (await setRow.locator('.lp-thumb').textContent()) ?? ''
+  check(previewText.includes('Hello'), `the set row's thumbnail previews the default variant (text "${previewText}")`)
+  check((await rows()) === 2, `collapsed: one row for the set plus Banner (${await rows()} rows)`)
+  await setRow.locator('.lp-component__chev').click()
+  await page.waitForTimeout(300)
+  await shot('variant-set-expanded')
+  check((await page.locator('.lp-component--variant').count()) === 3, 'expanding the set lists its 3 variants')
+
+  // collapse again and drag the set onto the artboard: the default variant is placed
+  await setRow.locator('.lp-component__chev').click()
+  await page.waitForTimeout(300)
+  const instBefore = await page.evaluate(([docId]) => Object.values(window.__vellum.getStore().docs[docId].nodes).filter((n) => n.instance).map((n) => n.id), [made.docId])
+  await dragRow(0, 840, 190)
+  await shot('set-dropped-on-artboard')
+  const placed = await page.evaluate(
+    ([docId, before]) => {
+      const nodes = window.__vellum.getStore().docs[docId].nodes
+      const fresh = Object.values(nodes).filter((n) => n.instance && !before.includes(n.id))
+      return fresh.map((n) => ({ of: n.instance.of, parent: n.parent }))
+    },
+    [made.docId, instBefore]
+  )
+  check(placed.length === 1 && placed[0].of === cardId, `dragging the set places one instance of the default variant (${JSON.stringify(placed)})`)
+  check(placed.length === 1 && placed[0].parent === artboard, `and parents it on the artboard (${placed[0]?.parent} vs ${artboard})`)
 } finally {
   console.log(results.join('\n'))
   await Promise.race([app.close(), new Promise((r) => setTimeout(r, 8000))])
