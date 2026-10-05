@@ -213,6 +213,23 @@ async function main() {
   const det = await call('detach_instance', { nodeId: instId })
   ok(det.body.detachedNodeId === instId && (await call('get_node_info', { nodeId: instId })).body.instanceOf === undefined, 'detach_instance')
 
+  // text styles
+  const ts = await call('create_text_style', { name: 'E2E/Heading', style: { fontSize: 40, fontWeight: 700 } })
+  ok(typeof ts.body.id === 'string' && ts.body.name === 'E2E/Heading', 'create_text_style')
+  const ap = await call('apply_text_style', { nodeIds: [titleId], styleId: 'e2e/heading' })
+  ok(ap.body.appliedNodeIds?.[0] === titleId, 'apply_text_style (by name)')
+  const csA = await call('get_computed_styles', { nodeIds: [titleId] })
+  ok(csA.body.styles?.[titleId]?.fontSize === '40px', 'the node shows the style typography')
+  ok((await call('get_node_info', { nodeId: titleId })).body.textStyle?.name === 'E2E/Heading', 'get_node_info reports textStyle')
+  await call('update_text_style', { styleId: ts.body.id, style: { fontSize: 48 } })
+  const csB = await call('get_computed_styles', { nodeIds: [titleId] })
+  ok(csB.body.styles?.[titleId]?.fontSize === '48px', 'editing the style updates the linked node')
+  ok((await call('get_text_styles')).body.styles?.some((s) => s.id === ts.body.id && s.linkedNodeCount === 1), 'get_text_styles lists it with its linked count')
+  const detached = await call('update_styles', { updates: [{ nodeIds: [titleId], styles: { fontSize: '30px' } }] })
+  ok(detached.body.detachedTextStyles?.[0] === 'E2E/Heading', 'a manual typography edit detaches the node')
+  const delStyle = await call('delete_text_style', { styleId: ts.body.id })
+  ok(delStyle.body.deletedStyleId === ts.body.id, 'delete_text_style')
+
   // leave the file as we found it
   if (!process.env.KEEP) {
     await call('delete_nodes', { nodeIds: [artboardId] })
