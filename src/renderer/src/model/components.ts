@@ -3,7 +3,7 @@
 // is materialised from the main by syncInstances (each copy carries `srcId`). Policy (undo steps,
 // toasts, which edits become overrides) belongs to the store; this file only knows the mechanics.
 import { ancestors, applyStylePatch, descendants, insertNode, isPageRoot, newId, removeNode, wrapNodes } from './ops'
-import type { CNode, Doc, NodeOverride, WorldRect } from './types'
+import type { CNode, Doc, NodeOverride, StylePatch, WorldRect } from './types'
 
 export const isMain = (n: CNode | undefined): boolean => Boolean(n?.component)
 export const isInstance = (n: CNode | undefined): boolean => Boolean(n?.instance)
@@ -160,27 +160,39 @@ export function resetOverrides(doc: Doc, instId: string, srcId?: string): void {
 
 /** Copy what a main-side node looks like onto its materialised twin (structure is handled by the caller). */
 function copyFields(src: CNode, dst: CNode, keepRootBox: boolean): void {
-  const keep = keepRootBox ? { width: dst.style.width, height: dst.style.height } : null
-  dst.type = src.type
-  dst.style = { ...src.style }
-  if (keep) {
-    if (keep.width !== undefined) dst.style.width = keep.width
-    if (keep.height !== undefined) dst.style.height = keep.height
+  const style = { ...src.style }
+  if (keepRootBox) {
+    if (dst.style.width !== undefined) style.width = dst.style.width
+    if (dst.style.height !== undefined) style.height = dst.style.height
   }
+  // assign only what differs: an immer draft records a patch for every assignment, equal or not
+  if (dst.type !== src.type) dst.type = src.type
+  if (!sameRecord(dst.style, style)) dst.style = style
   if (!keepRootBox) {
-    dst.name = src.name
-    dst.x = src.x
-    dst.y = src.y
-    dst.visible = src.visible
-    dst.locked = src.locked
+    if (dst.name !== src.name) dst.name = src.name
+    if (dst.x !== src.x) dst.x = src.x
+    if (dst.y !== src.y) dst.y = src.y
+    if (dst.visible !== src.visible) dst.visible = src.visible
+    if (dst.locked !== src.locked) dst.locked = src.locked
   }
   for (const k of ['text', 'svg'] as const) {
-    if (src[k] === undefined) delete dst[k]
-    else dst[k] = src[k]
+    if (src[k] === undefined) {
+      if (dst[k] !== undefined) delete dst[k]
+    } else if (dst[k] !== src[k]) dst[k] = src[k]
   }
-  if (src.attrs) dst.attrs = { ...src.attrs }
-  else delete dst.attrs
+  if (src.attrs) {
+    if (!sameRecord(dst.attrs, src.attrs)) dst.attrs = { ...src.attrs }
+  } else if (dst.attrs) delete dst.attrs
 }
+
+function sameRecord(a: Record<string, unknown> | undefined, b: Record<string, unknown> | undefined): boolean {
+  if (a === b) return true
+  if (!a || !b) return false
+  const ka = Object.keys(a)
+  return ka.length === Object.keys(b).length && ka.every((k) => a[k] === b[k])
+}
+
+const sameList = (a: string[], b: string[]): boolean => a.length === b.length && a.every((v, i) => v === b[i])
 
 function applyOverride(dst: CNode, o: NodeOverride | undefined): void {
   if (!o) return
@@ -190,6 +202,9 @@ function applyOverride(dst: CNode, o: NodeOverride | undefined): void {
   if (o.attrs) dst.attrs = { ...dst.attrs, ...o.attrs }
   if (o.name !== undefined) dst.name = o.name
   if (o.visible !== undefined) dst.visible = o.visible
+  if (o.locked !== undefined) dst.locked = o.locked
+  if (o.x !== undefined) dst.x = o.x
+  if (o.y !== undefined) dst.y = o.y
 }
 
 /** Make `dst`'s children mirror `src`'s (by srcId), recursively. */
@@ -219,7 +234,7 @@ function reconcile(doc: Doc, src: CNode, dst: CNode, overrides: Record<string, N
     reconcile(doc, s, twin, overrides)
   }
   for (const cid of existing.values()) removeNode(doc, cid) // source is gone
-  dst.children = next
+  if (!sameList(dst.children, next)) dst.children = next
 }
 
 /** Rebuild one instance's subtree from its main + overrides. A missing main leaves the instance as is. */
@@ -263,4 +278,96 @@ export function syncInstances(doc: Doc, mainId?: string): void {
   }
   const mains = mainId !== undefined ? [mainId] : Object.values(doc.nodes).filter((n) => n.component).map((n) => n.id)
   for (const m of mains) syncMain(m, [])
+}
+
+// ---------------------------------------------------------------------------------------------
+// store hooks: run around every undoable edit (see store.mutate)
+
+const memo = new WeakMap<Doc, boolean>()
+/** True when the doc has any main or instance (cached per immutable doc). */
+export function usesComponents(doc: Doc): boolean {
+  let v = memo.get(doc)
+  if (v === undefined) {
+    v = Object.values(doc.nodes).some((n) => n.component || n.instance)
+    memo.set(doc, v)
+  }
+  return v
+}
+
+export const STRUCTURE_MSG = 'Detach the instance to change its structure'
+
+/** What an edit changed on a materialised node, as an override (null when nothing). The root keeps its own box and placement. */
+function diffNode(before: CNode, after: CNode, root: boolean): NodeOverride | null {
+  const o: NodeOverride = {}
+  const style: StylePatch = {}
+  for (const k of new Set([...Object.keys(before.style), ...Object.keys(after.style)])) {
+    if (root && (k === 'width' || k === 'height')) continue
+    if (before.style[k] !== after.style[k]) style[k] = after.style[k] ?? null
+  }
+  if (Object.keys(style).length) o.style = style
+  if (before.text !== after.text && after.text !== undefined) o.text = after.text
+  if (before.svg !== after.svg && after.svg !== undefined) o.svg = after.svg
+  const attrs: Record<string, string> = {}
+  for (const [k, v] of Object.entries(after.attrs ?? {})) if (before.attrs?.[k] !== v) attrs[k] = v
+  if (Object.keys(attrs).length) o.attrs = attrs
+  if (!root) {
+    if (before.name !== after.name) o.name = after.name
+    if (before.visible !== after.visible) o.visible = after.visible
+    if (before.locked !== after.locked) o.locked = after.locked
+    if (before.x !== after.x) o.x = after.x
+    if (before.y !== after.y) o.y = after.y
+  }
+  return Object.keys(o).length ? o : null
+}
+
+/**
+ * Run on the draft after an edit recipe, with `base` = the doc before it:
+ *  - structural edits inside an instance (children added, removed, moved, reordered) throw;
+ *  - other edits to an instance's nodes become overrides on that instance;
+ *  - instances whose main is gone are detached.
+ * Then bring everything up to date with staleAfter + syncStale on the result.
+ */
+export function settleEdits(doc: Doc, base: Doc): void {
+  const edits: [string, string, NodeOverride][] = []
+  for (const b of Object.values(base.nodes)) {
+    if (b.srcId === undefined && !b.instance) continue
+    const n = doc.nodes[b.id]
+    if (!n) continue
+    const root = instanceRootOf(base, b.id)
+    if (!root) continue
+    if (!sameList(b.children, n.children)) throw new Error(STRUCTURE_MSG)
+    const o = diffNode(b, n, root === b.id)
+    if (o) edits.push([root, root === b.id ? (base.nodes[root].instance as { of: string }).of : (b.srcId as string), o])
+  }
+  for (const [root, src, o] of edits) if (doc.nodes[root]?.instance) setOverride(doc, root, src, o)
+  for (const id of instancesOf(doc)) if (!doc.nodes[doc.nodes[id].instance?.of ?? '']?.component) detachInstance(doc, id)
+}
+
+/** Mains and instance roots whose derived nodes are stale after `changed` node ids were touched (`prev` = doc before). */
+export function staleAfter(prev: Doc, next: Doc, changed: Iterable<string>): { mains: Set<string>; roots: Set<string> } {
+  const mains = new Set<string>()
+  const roots = new Set<string>()
+  for (const id of changed) {
+    if (next.nodes[id]) {
+      const m = mainOf(next, id)
+      if (m) mains.add(m)
+      const r = instanceRootOf(next, id)
+      if (r) roots.add(r)
+    } else {
+      const m = mainOf(prev, id)
+      if (m && next.nodes[m]?.component) mains.add(m)
+    }
+  }
+  return { mains, roots }
+}
+
+/** Re-sync what staleAfter found, cascading into mains that host the synced instances. */
+export function syncStale(doc: Doc, stale: { mains: Set<string>; roots: Set<string> }): void {
+  for (const m of stale.mains) syncInstances(doc, m)
+  for (const r of stale.roots) {
+    if (!doc.nodes[r]?.instance) continue
+    syncInstance(doc, r)
+    const host = mainOf(doc, doc.nodes[r].parent ?? '')
+    if (host) syncInstances(doc, host)
+  }
 }
