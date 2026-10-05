@@ -56,6 +56,7 @@ export function createComponent(doc: Doc, id: string, name?: string): void {
   if (!n) throw new Error(`Node ${id} not found`)
   if (n.type !== 'frame' || !n.parent || isPageRoot(doc, id)) throw new Error('Only a frame can become a component')
   if (n.component) throw new Error('Already a component')
+  if (n.componentSet) throw new Error('A component set already groups components')
   if (instanceRootOf(doc, id)) throw new Error('Cannot make a component from an instance or inside one')
   n.component = { name: name?.trim() || n.name }
 }

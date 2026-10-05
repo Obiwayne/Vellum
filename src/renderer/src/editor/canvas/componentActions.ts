@@ -147,7 +147,7 @@ export function componentMenu(docId: string, ids: string[]): MenuEntry[] {
   }
   const out: MenuEntry[] = [{ type: 'separator' }]
   if (!inInstance) {
-    out.push({ label: 'Create component', shortcut: 'Ctrl+Alt+K', disabled: mains.length === ids.length, onSelect: run(() => createComponentFromSelection(docId)) })
+    out.push({ label: 'Create component', shortcut: 'Ctrl+Alt+K', disabled: mains.length === ids.length || ids.some((x) => doc.nodes[x]?.componentSet), onSelect: run(() => createComponentFromSelection(docId)) })
   }
   if (mains.length === 1 && ids.length === 1) {
     out.push({ label: 'Create instance', onSelect: () => void insertInstance(docId, mains[0]) })
