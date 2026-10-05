@@ -30,6 +30,22 @@ export interface CNode {
   attrs?: Record<string, string>
   visible: boolean
   locked: boolean
+  /** main component: this frame is a component definition (see model/components.ts) */
+  component?: { name: string }
+  /** instance root: this frame mirrors the main component `of`; its subtree is derived by syncInstances */
+  instance?: { of: string; overrides?: Record<string, NodeOverride> }
+  /** materialised instance node: id of the main-side node it mirrors */
+  srcId?: string
+}
+
+/** Per-instance changes over the main, keyed by the main's descendant id ('' = the main root). */
+export interface NodeOverride {
+  style?: StylePatch
+  text?: string
+  attrs?: Record<string, string>
+  svg?: string
+  visible?: boolean
+  name?: string
 }
 
 export interface Page {
@@ -66,6 +82,7 @@ export interface Doc {
   /**
    * Document format version (see ops.DOC_VERSION / ops.migrateDoc). Missing = 1.
    * v2: canvas content inherits `line-height: normal` (v1 inherited 20px).
+   * v3: components and instances (additive, optional node fields).
    */
   version?: number
   /** theme modes, e.g. ['Light', 'Dark']; [0] is the base mode (see model/modes.ts) */
