@@ -136,3 +136,31 @@ export function resetInstanceProps(doc: Doc, instId: string, propId?: string): v
   }
   syncInstance(doc, instId)
 }
+
+/** Rename a property and/or change its default (same checks as addProp); instances re-sync. Variant props are not edited here. */
+export function updateProp(doc: Doc, mainId: string, propId: string, patch: { name?: string; default?: string | boolean }): void {
+  requireMain(doc, mainId)
+  const owner = defsOwner(doc, mainId)
+  const def = owner.props?.find((d) => d.id === propId)
+  if (!def) throw new Error(`Property ${propId} not found`)
+  if (def.type === 'variant') throw new Error('Variant properties are edited through the component set')
+  if (patch.name !== undefined) {
+    const name = patch.name.trim()
+    if (!name) throw new Error('A property needs a name')
+    if (propDefsOf(doc, mainId).some((d) => d.id !== propId && d.name === name)) throw new Error(`A property named "${name}" already exists`)
+    def.name = name
+  }
+  if (patch.default !== undefined) {
+    const typeOk = def.type === 'boolean' ? typeof patch.default === 'boolean' : typeof patch.default === 'string'
+    if (!typeOk) throw new Error(`Default of a ${def.type} property must be a ${def.type === 'boolean' ? 'boolean' : 'string'}`)
+    if (def.type === 'swap') {
+      if (!doc.nodes[patch.default as string]?.component) throw new Error('A swap property defaults to a main component')
+      for (const m of sharing(doc, mainId)) {
+        const bound = [m, ...descendants(doc, m)].some((d) => doc.nodes[d]?.bind?.swap === propId)
+        if (bound && reaches(doc, patch.default as string, m)) throw new Error(CYCLE_MSG)
+      }
+    }
+    def.default = patch.default
+  }
+  resync(doc, mainId)
+}

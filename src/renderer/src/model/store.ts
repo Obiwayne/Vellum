@@ -111,6 +111,12 @@ export interface Store {
   bindProp(docId: string, nodeId: string, aspect: 'visible' | 'text' | 'swap', propId: string | null): void
   /** set an instance's value for a boolean / text / swap property */
   setInstanceProp(docId: string, instId: string, propId: string, value: string | boolean): void
+  /** delete a property: bindings go, instances drop their value */
+  removeProp(docId: string, mainId: string, propId: string): void
+  /** rename a property and/or change its default */
+  updateProp(docId: string, mainId: string, propId: string, patch: { name?: string; default?: string | boolean }): void
+  /** clear an instance's property values (one property, or all) */
+  resetInstanceProps(docId: string, instId: string, propId?: string): void
   /** select the main component of an instance (or of a node inside one) and switch to its page; false when there is none */
   goToMain(docId: string, id: string): boolean
   /** generic escape hatch: run an arbitrary recipe on the doc draft as one undoable step */
@@ -656,6 +662,18 @@ export const useStore = create<Store>()((set, get) => {
 
     bindProp(docId, nodeId, aspect, propId) {
       mutate(docId, 'Bind property', (d) => props.bindProp(d, nodeId, aspect, propId), { derived: true })
+    },
+
+    removeProp(docId, mainId, propId) {
+      mutate(docId, 'Delete property', (d) => props.removeProp(d, mainId, propId), { derived: true })
+    },
+
+    updateProp(docId, mainId, propId, patch) {
+      mutate(docId, 'Edit property', (d) => props.updateProp(d, mainId, propId, patch), { derived: true })
+    },
+
+    resetInstanceProps(docId, instId, propId) {
+      mutate(docId, 'Reset properties', (d) => props.resetInstanceProps(d, instId, propId), { derived: true })
     },
 
     setInstanceProp(docId, instId, propId, value) {
