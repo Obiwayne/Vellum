@@ -122,6 +122,8 @@ describe('defaults and hand-edited values', () => {
     const txt = p.addProp(doc, b.id, { name: 'Label', type: 'text', default: 'Dflt' })
     p.bindProp(doc, icon.id, 'visible', show)
     p.bindProp(doc, label.id, 'text', txt)
+    p.updateProp(doc, b.id, show, { default: false }) // binding adopted the layers' values; set the defaults this test wants
+    p.updateProp(doc, b.id, txt, { default: 'Dflt' })
     const inst = c.createInstance(doc, b.id, stage.id)
     doc.nodes[inst].instance!.props = {}
     c.syncInstance(doc, inst)

@@ -747,3 +747,6 @@
 .insp-tstyle__on {
   color: var(--accent);
 }
+.insp-variant {
+  padding: 2px 12px 4px;
+}

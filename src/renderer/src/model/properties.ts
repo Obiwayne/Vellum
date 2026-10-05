@@ -73,7 +73,8 @@ export function removeProp(doc: Doc, mainId: string, propId: string): void {
 
 /**
  * Bind a layer inside a main to a property (or clear the binding with null): boolean → visible,
- * text → a text layer's text, swap → a nested instance's component. Re-syncs the instances.
+ * text → a text layer's text, swap → a nested instance's component. The first layer bound to a property gives it
+ * its default (the layer's current visibility / text / component). Re-syncs the instances.
  */
 export function bindProp(doc: Doc, nodeId: string, aspect: Aspect, propId: string | null): void {
   const node = doc.nodes[nodeId]
@@ -94,10 +95,12 @@ export function bindProp(doc: Doc, nodeId: string, aspect: Aspect, propId: strin
   if (!def) throw new Error(`Property ${propId} not found`)
   if (def.type !== ASPECT_TYPE[aspect]) throw new Error(`A ${def.type} property cannot drive ${aspect}`)
   if (aspect === 'text' && node.type !== 'text') throw new Error('Only a text layer can follow a text property')
-  if (aspect === 'swap') {
-    if (!node.instance) throw new Error('Only a nested instance can follow a swap property')
-    if (reaches(doc, def.default as string, mainId)) throw new Error(CYCLE_MSG)
-  }
+  if (aspect === 'swap' && !node.instance) throw new Error('Only a nested instance can follow a swap property')
+  // the first layer bound to a property gives it its default: instances look unchanged until someone edits the value
+  const taken = sharing(doc, mainId).some((m) => [m, ...descendants(doc, m)].some((d) => d !== nodeId && doc.nodes[d]?.bind?.[aspect] === propId))
+  const adopted = taken ? def.default : aspect === 'visible' ? node.visible : aspect === 'text' ? node.text ?? '' : (node.instance as { of: string }).of
+  if (aspect === 'swap' && reaches(doc, adopted as string, mainId)) throw new Error(CYCLE_MSG)
+  def.default = adopted
   ;(node.bind ??= {})[aspect] = propId
   resync(doc, mainId)
 }

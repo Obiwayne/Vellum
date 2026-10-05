@@ -339,3 +339,8 @@ export function chooseVariant(docId: string, instId: string, propId: string, opt
   const dropped = guarded(() => S().setVariantValue(docId, instId, propId, option))
   if (dropped) toast(`${dropped} override${dropped === 1 ? '' : 's'} could not carry over`)
 }
+
+export const renameVariantProperty = (docId: string, setId: string, propId: string, name: string): void =>
+  void guarded(() => S().renameVariantProp(docId, setId, propId, name))
+export const renameVariantValue = (docId: string, setId: string, propId: string, from: string, to: string): void =>
+  void guarded(() => S().renameVariantOption(docId, setId, propId, from, to))

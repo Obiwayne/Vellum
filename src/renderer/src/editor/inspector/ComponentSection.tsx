@@ -15,6 +15,7 @@ import {
 } from '../canvas/componentActions'
 import { BindingsSection, PropertiesSection } from './PropertiesSection'
 import { InstanceProps } from './InstanceProps'
+import { VariantSection } from './VariantSection'
 
 /** Top of the inspector for a main component or anything inside an instance. */
 export function ComponentSection({ docId, ids }: { docId: string; ids: string[] }): JSX.Element | null {
@@ -45,6 +46,7 @@ export function ComponentSection({ docId, ids }: { docId: string; ids: string[] 
           <Button onClick={() => addVariantToSelection(docId)}>Add variant</Button>
         </div>
       </Section>
+      <VariantSection docId={docId} mainId={node.id} />
       <PropertiesSection docId={docId} ownerId={node.id} />
       <BindingsSection docId={docId} nodeId={node.id} />
       </>

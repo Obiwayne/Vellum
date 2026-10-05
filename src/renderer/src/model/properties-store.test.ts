@@ -121,3 +121,53 @@ describe('editing a bound field edits the property', () => {
     expect(node(inst).instance?.overrides?.[label]).toMatchObject({ visible: false })
   })
 })
+
+describe('binding adopts the layer as the property default', () => {
+  it('a text property takes the bound layer\'s text, so instances look unchanged', () => {
+    const btn = S().createNode(id, { type: 'frame', name: 'Button', style: { width: 100, height: 40 } }, root())
+    const label = S().createNode(id, { type: 'text', text: 'Click' }, btn)
+    S().createComponent(id, [btn])
+    const inst = S().createInstance(id, btn, root())
+    const text = S().addProp(id, btn, { name: 'Label', type: 'text', default: 'Text' })
+    expect(node(node(inst).children[0]).text).toBe('Click') // not bound yet
+    S().bindProp(id, label, 'text', text)
+    expect(node(btn).component!.props![0].default).toBe('Click')
+    expect(node(node(inst).children[0]).text).toBe('Click') // unchanged by the binding
+    expect(node(inst).instance?.props).toBeUndefined()
+    S().undo(id)
+    expect(node(btn).component!.props![0].default).toBe('Text')
+  })
+
+  it('a boolean takes the layer\'s visibility; a second layer bound later does not move the default', () => {
+    const btn = S().createNode(id, { type: 'frame', name: 'Button', style: { width: 100, height: 40 } }, root())
+    const a = S().createNode(id, { type: 'rect', name: 'A' }, btn)
+    const b = S().createNode(id, { type: 'rect', name: 'B' }, btn)
+    S().updateNode(id, a, { visible: false })
+    S().createComponent(id, [btn])
+    const inst = S().createInstance(id, btn, root())
+    const show = S().addProp(id, btn, { name: 'Show', type: 'boolean', default: true })
+    S().bindProp(id, a, 'visible', show)
+    expect(node(btn).component!.props![0].default).toBe(false)
+    expect(node(node(inst).children[0]).visible).toBe(false) // unchanged
+    S().bindProp(id, b, 'visible', show) // b is visible, but a already set the default
+    expect(node(btn).component!.props![0].default).toBe(false)
+    expect(node(node(inst).children[1]).visible).toBe(false) // b now follows the property
+    S().bindProp(id, a, 'visible', null)
+    S().bindProp(id, a, 'visible', show) // still bound through b: default unchanged
+    expect(node(btn).component!.props![0].default).toBe(false)
+  })
+
+  it('a swap property takes the nested instance\'s component', () => {
+    const star = S().createNode(id, { type: 'frame', name: 'Star', style: { width: 10, height: 10 } }, root())
+    const heart = S().createNode(id, { type: 'frame', name: 'Heart', style: { width: 10, height: 10 } }, root())
+    const card = S().createNode(id, { type: 'frame', name: 'Card', style: { width: 50, height: 50 } }, root())
+    for (const n of [star, heart, card]) S().createComponent(id, [n])
+    const slot = S().createInstance(id, heart, card)
+    const sw = S().addProp(id, card, { name: 'Icon', type: 'swap', default: star })
+    S().bindProp(id, slot, 'swap', sw)
+    expect(node(card).component!.props![0].default).toBe(heart)
+    const inst = S().createInstance(id, card, root())
+    expect(node(node(inst).children[0]).srcId).toBeDefined()
+    expect(node(node(inst).children[0]).name).toBe(node(slot).name) // still the Heart slot
+  })
+})

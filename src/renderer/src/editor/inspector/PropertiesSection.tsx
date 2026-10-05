@@ -16,7 +16,7 @@ import {
 } from '../canvas/componentActions'
 
 /** Name field that commits on Enter / blur (one undo step per edit, not per keystroke). */
-function CommitInput({ value, onCommit, label }: { value: string; onCommit: (v: string) => void; label: string }): JSX.Element {
+export function CommitInput({ value, onCommit, label }: { value: string; onCommit: (v: string) => void; label: string }): JSX.Element {
   const [v, setV] = useState(value)
   const [seen, setSeen] = useState(value)
   if (value !== seen) {

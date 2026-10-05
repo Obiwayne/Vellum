@@ -155,8 +155,8 @@ describe('properties on an instance', () => {
     await setValue(r.host.querySelector<HTMLInputElement>('input[aria-label="Label"]')!, 'Go')
     expect(doc().nodes[doc().nodes[inst].children[0]].text).toBe('Go')
     await r.done()
-    S().undo(id) // back to the property default, which the bound layer shows
-    expect(doc().nodes[doc().nodes[inst].children[0]].text).toBe('Text')
+    S().undo(id) // back to the property default: the text of the layer it was bound to
+    expect(doc().nodes[doc().nodes[inst].children[0]].text).toBe('Click')
   })
 
   it('a layer inside the instance shows which property drives it', async () => {
@@ -219,5 +219,40 @@ describe('a set frame edits the shared properties', () => {
     const r2 = await render([second])
     expect(r2.host.querySelector(`[data-prop-id="${id1}"]`)).not.toBeNull()
     await r2.done()
+  })
+})
+
+describe('renaming the variant property and values', () => {
+  it('the Variant section on a variant main renames the property and the value; the instance dropdown shows them', async () => {
+    const { btn, inst } = button()
+    const second = S().addVariant(id, btn)
+    const set = doc().nodes[btn].component!.set as string
+    const prop = doc().nodes[set].componentSet!.props[0].id
+    S().setVariantValue(id, inst, prop, 'Variant 2')
+    let r = await render([second])
+    expect(r.host.querySelector(`[data-variant-prop="${prop}"]`)).not.toBeNull()
+    await setValue(r.host.querySelector<HTMLInputElement>('input[aria-label="Variant property name Variant"]')!, 'State')
+    expect(doc().nodes[set].componentSet!.props[0].name).toBe('State')
+    await setValue(r.host.querySelector<HTMLInputElement>('input[aria-label="Value of State"]')!, 'Hover')
+    expect(doc().nodes[second].component!.variant![prop]).toBe('Hover')
+    expect(doc().nodes[inst].instance!.of).toBe(second)
+    await r.done()
+    r = await render([inst])
+    const row = r.host.querySelector(`[data-prop-id="${prop}"]`)!
+    expect(row.textContent).toContain('State')
+    expect(row.textContent).toContain('Hover')
+    expect(r.host.querySelector('[data-variant]')!.textContent).toBe('State=Hover')
+    await r.done()
+    // a duplicate value is refused with a toast and the field snaps back on the next render
+    A.renameVariantValue(id, set, prop, 'Hover', 'Default')
+    expect(toast).toHaveBeenCalled()
+    expect(doc().nodes[second].component!.variant![prop]).toBe('Hover')
+  })
+
+  it('a lone main has no Variant section', async () => {
+    const { btn } = button()
+    const r = await render([btn])
+    expect(r.host.querySelector('[data-variant-prop]')).toBeNull()
+    await r.done()
   })
 })
