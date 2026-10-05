@@ -244,7 +244,12 @@ function applyBindings(doc: Doc, s: CNode, twin: CNode, ctx: PropCtx | undefined
     if (twin.text !== String(text)) twin.text = String(text)
     if (isAutoName(s)) twin.name = textPreview(String(text)) || 'Text'
   }
-  const swap = s.instance ? boundValue(ctx, s.bind.swap, 'swap') : undefined
+  return swapTarget(doc, s, ctx)
+}
+
+/** The main a swap prop wants nested instance `s` to show (undefined = keep its own). */
+function swapTarget(doc: Doc, s: CNode, ctx: PropCtx | undefined): string | undefined {
+  const swap = s.instance && s.bind ? boundValue(ctx, s.bind.swap, 'swap') : undefined
   return typeof swap === 'string' && swap !== s.instance?.of && doc.nodes[swap]?.component ? swap : undefined
 }
 
@@ -288,13 +293,6 @@ export function syncInstance(doc: Doc, instId: string): void {
   const inst = doc.nodes[instId]
   const main = inst?.instance && doc.nodes[inst.instance.of]
   if (!inst?.instance || !main?.component) return
-  const ov = inst.instance.overrides
-  if (ov) {
-    // drop overrides whose main-side node is gone
-    const live = new Set(['', ...descendants(doc, main.id)])
-    for (const k of Object.keys(ov)) if (!live.has(k)) delete ov[k]
-    if (!Object.keys(ov).length) delete inst.instance.overrides
-  }
   const defs = propDefsOf(doc, main.id)
   const vals = inst.instance.props
   if (vals) {
@@ -302,9 +300,21 @@ export function syncInstance(doc: Doc, instId: string): void {
     for (const k of Object.keys(vals)) if (!defs.some((d) => d.id === k && d.type !== 'variant' && typeof vals[k] === (d.type === 'boolean' ? 'boolean' : 'string'))) delete vals[k]
     if (!Object.keys(vals).length) delete inst.instance.props
   }
+  const ctx: PropCtx = { defs, values: inst.instance.props }
+  const ov = inst.instance.overrides
+  if (ov) {
+    // drop overrides whose node is gone: main-side nodes, and the nodes of a main a swap prop currently shows
+    const live = new Set(['', ...descendants(doc, main.id)])
+    for (const d of descendants(doc, main.id)) {
+      const to = swapTarget(doc, doc.nodes[d], ctx)
+      if (to) for (const x of [to, ...descendants(doc, to)]) live.add(x)
+    }
+    for (const k of Object.keys(ov)) if (!live.has(k)) delete ov[k]
+    if (!Object.keys(ov).length) delete inst.instance.overrides
+  }
   copyFields(main, inst, true)
   applyOverride(inst, ov?.[''], main)
-  reconcile(doc, main, inst, inst.instance.overrides, { defs, values: inst.instance.props })
+  reconcile(doc, main, inst, inst.instance.overrides, ctx)
 }
 
 /**
