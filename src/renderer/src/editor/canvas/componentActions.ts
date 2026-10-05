@@ -147,10 +147,11 @@ export function componentMenu(docId: string, ids: string[]): MenuEntry[] {
   }
   const out: MenuEntry[] = [{ type: 'separator' }]
   if (!inInstance) {
-    out.push({ label: 'Create component', shortcut: 'Ctrl+Alt+K', disabled: mains.length === ids.length, onSelect: run(() => createComponentFromSelection(docId)) })
+    out.push({ label: 'Create component', shortcut: 'Ctrl+Alt+K', disabled: mains.length === ids.length || ids.some((x) => doc.nodes[x]?.componentSet), onSelect: run(() => createComponentFromSelection(docId)) })
   }
   if (mains.length === 1 && ids.length === 1) {
     out.push({ label: 'Create instance', onSelect: () => void insertInstance(docId, mains[0]) })
+    out.push({ label: 'Add variant', onSelect: run(() => addVariantToSelection(docId)) })
   }
   if (inInstance) {
     out.push({ label: 'Go to main component', onSelect: run(() => goToMainOfSelection(docId)) })
@@ -158,6 +159,32 @@ export function componentMenu(docId: string, ids: string[]): MenuEntry[] {
     out.push({ label: 'Detach instance', shortcut: 'Ctrl+Alt+B', onSelect: run(() => detachSelection(docId)) })
   }
   return out
+}
+
+/** "Size=Large, Tone=Loud" for a variant main (its values with the set's defaults), or null for a lone component. */
+export function variantLabel(doc: Doc, mainId: string): string | null {
+  const setId = setOf(doc, mainId)
+  if (!setId) return null
+  const have = variantValues(doc, mainId)
+  return (doc.nodes[setId].componentSet?.props ?? [])
+    .filter((p) => p.type === 'variant')
+    .map((p) => `${p.name}=${have[p.id]}`)
+    .join(', ')
+}
+
+/** The set frame a node belongs to as a variant main, or the node itself when it is a set. */
+export const setFrameOf = (doc: Doc, id: string): string | null => (doc.nodes[id]?.componentSet ? id : setOf(doc, id))
+
+/** Add variant: duplicate the selected main as a new variant beside it (a lone main is wrapped in a set first). */
+export function addVariantToSelection(docId: string): void {
+  const doc = docOf(docId)
+  const sel = selectionOf(docId)
+  if (!doc || sel.length !== 1 || !doc.nodes[sel[0]]?.component) return
+  const id = guarded(() => S().addVariant(docId, sel[0]))
+  if (id) {
+    S().select(docId, [id])
+    toast('Added variant')
+  }
 }
 
 // ------------------------------------------------------------------------------------------------

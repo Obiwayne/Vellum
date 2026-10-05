@@ -113,7 +113,7 @@ describe('component actions', () => {
     expect(labels([title])).toContain('Create component')
     S().select(id, [card])
     C.createComponentFromSelection(id)
-    expect(labels([card])).toEqual(['-', 'Create component', 'Create instance'])
+    expect(labels([card])).toEqual(['-', 'Create component', 'Create instance', 'Add variant'])
     expect(C.componentMenu(id, [card])[1]).toMatchObject({ disabled: true }) // already a component
     expect(C.componentMenu(id, [])).toEqual([])
   })

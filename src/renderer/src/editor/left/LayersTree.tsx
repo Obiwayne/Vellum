@@ -1,5 +1,5 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { ChevronDown, ChevronRight, Columns3, Diamond, Eye, EyeOff, Frame, Grid2x2, Image, Lock, LockOpen, PenTool, Rows3, Square } from 'lucide-react'
+import { ChevronDown, ChevronRight, Columns3, Component, Diamond, Eye, EyeOff, Frame, Grid2x2, Image, Lock, LockOpen, PenTool, Rows3, Square } from 'lucide-react'
 import { useContextMenu, type MenuEntry } from '../../ui'
 import { getStore, useStore } from '../../model/store'
 import * as ops from '../../model/ops'
@@ -32,7 +32,8 @@ export function collapseAllLayers(docId: string): void {
 }
 
 export function NodeIcon({ node }: { node: CNode }): JSX.Element {
-  // main component: filled diamond; instance: hollow diamond
+  // component set: four diamonds; main component: filled diamond; instance: hollow diamond
+  if (node.componentSet) return <Component size={14} />
   if (node.component) return <Diamond size={14} fill="currentColor" />
   if (node.instance) return <Diamond size={14} />
   switch (node.type) {
@@ -389,7 +390,7 @@ const LayerRow = memo(function LayerRow(p: LayerRowProps): JSX.Element {
     p.parentSelected && 'lp-layer--child-of-selected',
     p.hovered && 'lp-layer--hovered',
     !n.visible && 'lp-layer--hidden',
-    (n.component || n.instance) && 'lp-layer--component',
+    (n.component || n.instance || n.componentSet) && 'lp-layer--component',
     n.locked && 'lp-layer--locked',
     p.dropInside && 'lp-layer--drop-inside'
   ]
