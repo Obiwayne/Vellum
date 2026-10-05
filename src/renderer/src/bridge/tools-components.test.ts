@@ -231,3 +231,63 @@ describe('variants and properties', () => {
     expect(label).toBeTruthy()
   })
 })
+
+describe('test station: gaps and adversarial cases', () => {
+  async function withTextProp() {
+    const { frame, label } = button()
+    await call('create_component', { nodeIds: [frame] })
+    await call('add_component_prop', { componentId: frame, name: 'Heading', type: 'text', defaultValue: 'Hi' })
+    await call('bind_component_prop', { nodeId: label, aspect: 'text', property: 'Heading' })
+    const inst = (await call('create_instance', { componentId: frame })).instanceId as string
+    return { frame, label, inst }
+  }
+
+  // Acceptance: get_jsx exports an instance as component usage (<Button .../>) plus a definition per main.
+  // Known gap reported to the builder (tools-render.ts is unchanged): drop `.fails` once implemented.
+  it.fails('get_jsx exports an instance as component usage plus a definition for the main', async () => {
+    const { frame, inst } = await withTextProp()
+    S().updateNode(fileId, frame, { name: 'Button' })
+    const res = (await handlers.get_jsx({ fileId, nodeId: inst, format: 'inline-styles' })) as unknown
+    const text = typeof res === 'string' ? res : JSON.stringify(res)
+    expect(text).toMatch(/<Button\b[^>]*Heading=/)
+    expect(text).toMatch(/function Button|const Button/)
+  })
+
+  it('set_instance_props is one undo step', async () => {
+    const { inst } = await withTextProp()
+    const before = JSON.stringify(doc().nodes)
+    await call('set_instance_props', { nodeId: inst, props: { Heading: 'Bye' } })
+    expect(JSON.stringify(doc().nodes)).not.toBe(before)
+    S().undo(fileId)
+    expect(JSON.stringify(doc().nodes)).toBe(before)
+  })
+
+  // Defect reported to the builder: a bad name later in props leaves the earlier prop applied (the call throws
+  // but "Bye" stays set). Drop `.fails` once the call validates first or rolls back.
+  it.fails('a failing set_instance_props call changes nothing', async () => {
+    const { inst } = await withTextProp()
+    const before = JSON.stringify(doc().nodes)
+    const err = await fails('set_instance_props', { nodeId: inst, props: { Heading: 'Bye', Nope: 'x' } })
+    expect(err).toMatch(/Nope/)
+    expect(JSON.stringify(doc().nodes)).toBe(before)
+  })
+
+  it('write_html replacing a node inside an instance is refused; the doc is untouched', async () => {
+    const { inst } = await withTextProp()
+    const twin = doc().nodes[inst].children[0]
+    const before = JSON.stringify(doc().nodes)
+    for (const mode of ['replace', 'insert-children']) {
+      const msg = await fails('write_html', { targetNodeId: twin, mode, html: '<div style="width:5px;height:5px"></div>' })
+      expect(msg).toContain('Detach instance to change structure')
+    }
+    expect(JSON.stringify(doc().nodes)).toBe(before)
+  })
+
+  it('tools refuse bad ids with a useful message', async () => {
+    expect(await fails('create_instance', { componentId: 'nope' })).toMatch(/nope/)
+    expect(await fails('detach_instance', { nodeId: 'nope' })).toMatch(/nope/)
+    expect(await fails('create_component', {})).toMatch(/nodeIds/)
+    const { frame } = button()
+    expect(await fails('create_instance', { componentId: frame })).toMatch(/not a main component/)
+  })
+})
