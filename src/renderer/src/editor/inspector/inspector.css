@@ -732,4 +732,17 @@
 }
 .insp-prop__name {
   color: var(--text-2);
+
+/* Text style row: picker + detach + create */
+.insp-tstyle {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.insp-tstyle__select {
+  flex: 1;
+  min-width: 0;
+}
+.insp-tstyle__on {
+  color: var(--accent);
 }

@@ -27,6 +27,7 @@ import type { CNode } from '../../model/types'
 import { applyStylePatch } from '../../model/ops'
 import { common, co, fv, isMixed, px, type Ctx } from './common'
 import { ColorInput } from './ColorInput'
+import { TextStyleRow } from './TextStyleRow'
 import {
   STANDARD_AXES,
   axisLabel,
@@ -615,6 +616,7 @@ export function TextSection({ ctx }: { ctx: Ctx }): JSX.Element {
         </>
       }
     >
+      <TextStyleRow ctx={ctx} />
       <button ref={famRef} type="button" className="c-select" onClick={() => setFontsOpen((o) => !o)}>
         <span className="c-select__icon">
           <Type size={13} />
