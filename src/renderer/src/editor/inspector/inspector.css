@@ -675,3 +675,20 @@
   gap: 6px;
   padding: 0 12px 4px;
 }
+.insp-comp__layer {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 12px 8px;
+  color: var(--text-2);
+}
+.insp-comp__layer > span:nth-child(2) {
+  flex: 1;
+}
+.insp-comp__dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--component, #9747ff);
+  flex-shrink: 0;
+}

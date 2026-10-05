@@ -1,6 +1,6 @@
 // Drives the built app (npm run build first) through the component flow: create a component, place
 // an instance, change the main's fill (instance follows), override the instance's text (survives another
-// main edit), detach, undo. Usage: node scripts/e2e-components.mjs <out-dir>. Needs `npm i -D playwright`.
+// main edit), detach, undo, a refused structural edit (toast), the overridden-layer dot, Go to main, Reset all. Usage: node scripts/e2e-components.mjs <out-dir>. Needs `npm i -D playwright`.
 import { _electron as electron } from 'playwright'
 import { mkdirSync, mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
@@ -121,6 +121,44 @@ try {
   await shot('after-undo-detach')
   const und = await state()
   check(und.instIcons === preDetach.instIcons, `one undo re-links the instance (${und.instIcons} hollow diamonds)`)
+
+  // a structural edit inside the instance is refused with a toast and changes nothing
+  await page.locator('[data-node-id]', { hasText: /^Edited$/ }).last().click({ force: true, modifiers: ['Control'] })
+  await page.waitForTimeout(300)
+  await page.keyboard.press('Delete')
+  await page.waitForTimeout(400)
+  await shot('structure-refused-toast')
+  const toastText = await page.locator('.cv-toast--show').first().textContent({ timeout: 1500 }).catch(() => null)
+  check(toastText === 'Detach instance to change structure', `Delete on an instance child shows the toast (${toastText})`)
+  const kept = await state()
+  check(kept.edited === 1, 'the instance child was not deleted')
+
+  // the inspector marks the overridden layer and can reset just that layer
+  await page.locator('[data-node-id]', { hasText: /^Edited$/ }).last().click({ force: true, modifiers: ['Control'] })
+  await page.waitForTimeout(300)
+  const dot = await page.locator('.insp-comp__layer[data-overridden="true"]').count()
+  await shot('overridden-layer-dot')
+  check(dot === 1, `inspector shows the overridden-layer dot (${dot})`)
+
+  // right-click the instance, Go to main component: the main gets selected
+  const box = await page.locator('[data-node-id]', { hasText: /^Edited$/ }).last().boundingBox()
+  await page.keyboard.press('Escape')
+  await page.mouse.click(box.x + box.width / 2 + 150, box.y + 100, { button: 'right' })
+  await page.waitForTimeout(300)
+  await page.getByText('Go to main component').click()
+  await page.waitForTimeout(500)
+  await shot('after-go-to-main')
+  const onMain = await page.locator('.lp-layer--selected.lp-layer--component svg.lucide-diamond[fill="currentColor"]').count()
+  check(onMain === 1, `Go to main component selects the main (${onMain} selected main rows)`)
+
+  // Reset all on the instance: the text returns to the main's
+  await page.mouse.click(box.x + box.width / 2 + 150, box.y + 100)
+  await page.waitForTimeout(300)
+  await page.getByRole('button', { name: 'Reset all' }).click()
+  await page.waitForTimeout(500)
+  await shot('after-reset-all')
+  const reset = await state()
+  check(reset.edited === 0 && reset.hellos === 2, `Reset all: both texts read Hello again (${reset.hellos} Hello, ${reset.edited} Edited)`)
 } finally {
   console.log(results.join('\n'))
   await Promise.race([app.close(), new Promise((r) => setTimeout(r, 8000))])

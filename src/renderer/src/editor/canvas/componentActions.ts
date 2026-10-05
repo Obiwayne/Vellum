@@ -81,6 +81,29 @@ export function resetOverridesOfSelection(docId: string): void {
   )
 }
 
+/** Override key of a node inside an instance: its main-side id ('' is not used here: the root maps to the main). */
+export function overrideSource(doc: Doc, id: string): { root: string; src: string } | null {
+  const root = instanceRootOf(doc, id)
+  const inst = root ? doc.nodes[root].instance : undefined
+  const src = root === id ? inst?.of : doc.nodes[id]?.srcId
+  return root && src ? { root, src } : null
+}
+
+/** Is this layer overridden in its instance? */
+export function isOverridden(doc: Doc, id: string): boolean {
+  const o = overrideSource(doc, id)
+  if (!o) return false
+  const ov = doc.nodes[o.root].instance?.overrides
+  return Boolean(ov && (o.root === id ? ov[''] : ov[o.src]))
+}
+
+/** Drop the override of one layer of an instance. */
+export function resetLayerOverride(docId: string, id: string): void {
+  const doc = docOf(docId)
+  const o = doc && overrideSource(doc, id)
+  if (o) guarded(() => S().resetOverrides(docId, o.root, o.src))
+}
+
 /** Place an instance of `mainId`: into the selected frame (not inside the main itself), else onto the page in view. */
 export function insertInstance(docId: string, mainId: string): string | undefined {
   const doc = docOf(docId)

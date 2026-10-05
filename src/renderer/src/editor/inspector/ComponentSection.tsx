@@ -1,7 +1,14 @@
 import { Button, Section } from '../../ui'
 import { useStore } from '../../model/store'
 import { instanceRootOf } from '../../model/components'
-import { detachSelection, goToMainOfSelection, insertInstance, resetOverridesOfSelection } from '../canvas/componentActions'
+import {
+  detachSelection,
+  goToMainOfSelection,
+  insertInstance,
+  isOverridden,
+  resetLayerOverride,
+  resetOverridesOfSelection
+} from '../canvas/componentActions'
 
 /** Top of the inspector for a main component or anything inside an instance. */
 export function ComponentSection({ docId, ids }: { docId: string; ids: string[] }): JSX.Element | null {
@@ -24,13 +31,22 @@ export function ComponentSection({ docId, ids }: { docId: string; ids: string[] 
   const main = root?.instance ? doc.nodes[root.instance.of] : undefined
   if (!root?.instance) return null
   const overridden = Object.keys(root.instance.overrides ?? {})
-  const here = overridden.includes(node.id === root.id ? '' : node.srcId ?? '')
+  const here = isOverridden(doc, node.id)
   return (
     <Section title="Instance">
       <div className="insp-comp__name">{main?.component?.name ?? 'Missing component'}</div>
       <div className="insp-comp__meta">
-        {overridden.length ? `${overridden.length} overridden layer${overridden.length === 1 ? '' : 's'}${here ? ' (this one included)' : ''}` : 'No overrides'}
+        {overridden.length ? `${overridden.length} overridden layer${overridden.length === 1 ? '' : 's'}` : 'No overrides'}
       </div>
+      {here && (
+        <div className="insp-comp__layer" data-overridden="true">
+          <span className="insp-comp__dot" aria-hidden />
+          <span>This layer is overridden</span>
+          <Button size="sm" onClick={() => resetLayerOverride(docId, node.id)}>
+            Reset layer
+          </Button>
+        </div>
+      )}
       <div className="insp-comp__row">
         <Button disabled={!main} onClick={() => goToMainOfSelection(docId)}>
           Go to main

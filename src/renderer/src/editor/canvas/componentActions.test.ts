@@ -85,6 +85,26 @@ describe('component actions', () => {
     expect(S().editors[id].selection).toEqual([inst])
   })
 
+  it('per-layer override state and reset', () => {
+    const { card, title, stage } = setup()
+    S().select(id, [card])
+    C.createComponentFromSelection(id)
+    const inst = C.insertInstance(id, card) ?? S().createInstance(id, card, stage)
+    const twin = doc().nodes[inst].children[0]
+    expect(C.isOverridden(doc(), twin)).toBe(false)
+    S().updateStyles(id, [twin], { color: 'red' })
+    expect(C.isOverridden(doc(), twin)).toBe(true)
+    expect(C.isOverridden(doc(), title)).toBe(false) // the main's own layer is never "overridden"
+    S().updateStyles(id, [inst], { backgroundColor: 'red' })
+    expect(C.isOverridden(doc(), inst)).toBe(true) // the instance root counts too
+    C.resetLayerOverride(id, twin)
+    expect(C.isOverridden(doc(), twin)).toBe(false)
+    expect(C.isOverridden(doc(), inst)).toBe(true) // other layers keep theirs
+    C.resetLayerOverride(id, inst)
+    expect(C.isOverridden(doc(), inst)).toBe(false)
+    expect(doc().nodes[inst].instance?.overrides).toBeUndefined()
+  })
+
   it('menu entries follow the selection kind', () => {
     const { card, title } = setup()
     expect(labels([card])).toContain('Create component')
