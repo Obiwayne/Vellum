@@ -99,6 +99,8 @@ export interface Store {
   detachInstance(docId: string, id: string): void
   /** drop one node's override (srcId = the main-side node id) or all of the instance's */
   resetOverrides(docId: string, instanceId: string, srcId?: string): void
+  /** select the main component of an instance (or of a node inside one) and switch to its page; false when there is none */
+  goToMain(docId: string, id: string): boolean
   /** generic escape hatch: run an arbitrary recipe on the doc draft as one undoable step */
   mutate(docId: string, label: string, recipe: (draft: Doc) => void, opts?: MutateOptions): void
 
@@ -611,6 +613,17 @@ export const useStore = create<Store>()((set, get) => {
 
     detachInstance(docId, id) {
       mutate(docId, 'Detach instance', (d) => comp.detachInstance(d, id), { derived: true })
+    },
+
+    goToMain(docId, id) {
+      const doc = get().docs[docId]
+      const root = doc && comp.instanceRootOf(doc, id)
+      const main = root ? doc.nodes[doc.nodes[root].instance?.of ?? ''] : undefined
+      const page = main && ops.pageOf(doc, main.id)
+      if (!main || !page) return false
+      get().setActivePage(docId, page.id)
+      get().select(docId, [main.id])
+      return true
     },
 
     resetOverrides(docId, instanceId, srcId) {

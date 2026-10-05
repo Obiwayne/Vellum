@@ -2,7 +2,7 @@
 // A main component is a frame with `component`; an instance is a frame with `instance` whose subtree
 // is materialised from the main by syncInstances (each copy carries `srcId`). Policy (undo steps,
 // toasts, which edits become overrides) belongs to the store; this file only knows the mechanics.
-import { ancestors, applyStylePatch, descendants, insertNode, isPageRoot, newId, removeNode, wrapNodes } from './ops'
+import { ancestors, applyStylePatch, descendants, insertNode, isPageRoot, newId, removeNode, textPreview, wrapNodes } from './ops'
 import type { CNode, Doc, NodeOverride, StylePatch, WorldRect } from './types'
 
 export const isMain = (n: CNode | undefined): boolean => Boolean(n?.component)
@@ -26,6 +26,8 @@ export function instancesOf(doc: Doc, mainId?: string): string[] {
     .filter((n) => n.instance && (mainId === undefined || n.instance.of === mainId))
     .map((n) => n.id)
 }
+
+const CYCLE_MSG = 'A component cannot contain an instance of itself'
 
 /** True when `from`'s subtree (through nested instances) contains an instance of `target`. */
 function reaches(doc: Doc, from: string, target: string, seen = new Set<string>()): boolean {
@@ -85,7 +87,7 @@ export function createInstance(doc: Doc, mainId: string, parentId: string, index
   if (!doc.nodes[parentId]) throw new Error(`Parent ${parentId} not found`)
   if (instanceRootOf(doc, parentId)) throw new Error('Detach the instance to change its structure')
   const host = mainOf(doc, parentId)
-  if (host && reaches(doc, mainId, host)) throw new Error('A component cannot contain an instance of itself')
+  if (host && reaches(doc, mainId, host)) throw new Error(CYCLE_MSG)
 
   const inst: CNode = {
     id: newId(doc),
@@ -194,13 +196,16 @@ function sameRecord(a: Record<string, unknown> | undefined, b: Record<string, un
 
 const sameList = (a: string[], b: string[]): boolean => a.length === b.length && a.every((v, i) => v === b[i])
 
-function applyOverride(dst: CNode, o: NodeOverride | undefined): void {
+const isAutoName = (n: CNode): boolean => n.type === 'text' && (n.name === textPreview(n.text ?? '') || n.name === 'Text')
+
+function applyOverride(dst: CNode, o: NodeOverride | undefined, src?: CNode): void {
   if (!o) return
   if (o.style) applyStylePatch(dst.style, o.style)
   if (o.text !== undefined) dst.text = o.text
   if (o.svg !== undefined) dst.svg = o.svg
   if (o.attrs) dst.attrs = { ...dst.attrs, ...o.attrs }
   if (o.name !== undefined) dst.name = o.name
+  else if (o.text !== undefined && src && isAutoName(src)) dst.name = textPreview(o.text) || 'Text' // an auto-named layer keeps following its text
   if (o.visible !== undefined) dst.visible = o.visible
   if (o.locked !== undefined) dst.locked = o.locked
   if (o.x !== undefined) dst.x = o.x
@@ -229,7 +234,7 @@ function reconcile(doc: Doc, src: CNode, dst: CNode, overrides: Record<string, N
     }
     twin.parent = dst.id
     copyFields(s, twin, false)
-    applyOverride(twin, overrides?.[sid])
+    applyOverride(twin, overrides?.[sid], s)
     next.push(twin.id)
     reconcile(doc, s, twin, overrides)
   }
@@ -250,7 +255,7 @@ export function syncInstance(doc: Doc, instId: string): void {
     if (!Object.keys(ov).length) delete inst.instance.overrides
   }
   copyFields(main, inst, true)
-  applyOverride(inst, ov?.[''])
+  applyOverride(inst, ov?.[''], main)
   reconcile(doc, main, inst, inst.instance.overrides)
 }
 
@@ -311,7 +316,8 @@ function diffNode(before: CNode, after: CNode, root: boolean): NodeOverride | nu
   for (const [k, v] of Object.entries(after.attrs ?? {})) if (before.attrs?.[k] !== v) attrs[k] = v
   if (Object.keys(attrs).length) o.attrs = attrs
   if (!root) {
-    if (before.name !== after.name) o.name = after.name
+    const autoRename = before.text !== after.text && isAutoName(before) // setText renames an auto-named layer: not a user rename
+    if (before.name !== after.name && !autoRename) o.name = after.name
     if (before.visible !== after.visible) o.visible = after.visible
     if (before.locked !== after.locked) o.locked = after.locked
     if (before.x !== after.x) o.x = after.x
@@ -340,7 +346,14 @@ export function settleEdits(doc: Doc, base: Doc): void {
     if (o) edits.push([root, root === b.id ? (base.nodes[root].instance as { of: string }).of : (b.srcId as string), o])
   }
   for (const [root, src, o] of edits) if (doc.nodes[root]?.instance) setOverride(doc, root, src, o)
-  for (const id of instancesOf(doc)) if (!doc.nodes[doc.nodes[id].instance?.of ?? '']?.component) detachInstance(doc, id)
+  const insts = instancesOf(doc)
+  for (const id of insts) if (!doc.nodes[doc.nodes[id].instance?.of ?? '']?.component) detachInstance(doc, id)
+  // a move must not put an instance inside its own main (directly or through nested instances)
+  for (const id of insts) {
+    if (!doc.nodes[id]?.instance) continue
+    const host = mainOf(doc, doc.nodes[id].parent ?? '')
+    if (host && reaches(doc, doc.nodes[id].instance?.of ?? '', host)) throw new Error(CYCLE_MSG)
+  }
 }
 
 /** Mains and instance roots whose derived nodes are stale after `changed` node ids were touched (`prev` = doc before). */

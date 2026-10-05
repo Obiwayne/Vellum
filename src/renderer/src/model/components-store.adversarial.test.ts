@@ -33,7 +33,7 @@ beforeEach(() => {
 })
 
 describe('adversarial: store hooks', () => {
-  it.fails('moving an instance into its own main is refused (would be a cycle) or at least terminates sanely', () => {
+  it('moving an instance into its own main is refused (would be a cycle) or at least terminates sanely', () => {
     const { card, inst } = setup()
     let err: unknown = null
     try {
@@ -56,7 +56,7 @@ describe('adversarial: store hooks', () => {
     expect(() => S().moveNodes(id, [card], inst)).toThrow()
   })
 
-  it.fails('a text edit on an instance twin does not freeze the layer name against main renames', () => {
+  it('a text edit on an instance twin does not freeze the layer name against main renames', () => {
     const { title, inst } = setup()
     S().setText(id, twin(title, inst).id, 'Mine')
     S().renameNode(id, title, 'Heading')
@@ -143,8 +143,25 @@ describe('adversarial: store hooks', () => {
   })
 })
 
+describe('goToMain', () => {
+  it('selects the main and switches to its page, from the instance or a node inside it', () => {
+    const { card, title, inst } = setup()
+    const page2 = S().addPage(id, 'Two')
+    S().setActivePage(id, page2)
+    S().select(id, [])
+    expect(S().goToMain(id, inst)).toBe(true)
+    expect(S().editors[id].selection).toEqual([card])
+    expect(S().editors[id].pageId).toBe(doc().pages[0].id)
+    S().setActivePage(id, page2)
+    expect(S().goToMain(id, twin(title, inst).id)).toBe(true)
+    expect(S().editors[id].selection).toEqual([card])
+    expect(S().goToMain(id, card)).toBe(false) // a main is not an instance
+    expect(S().goToMain(id, 'nope')).toBe(false)
+  })
+})
+
 describe('adversarial: docDiff (task asks to skip derived nodes)', () => {
-  it.fails('lists an instance edit once, not every derived child', () => {
+  it('lists an instance edit once, not every derived child', () => {
     const { title } = setup()
     const before = doc()
     S().updateStyles(id, [title], { color: 'red' }) // main change -> twin changes too
@@ -154,5 +171,17 @@ describe('adversarial: docDiff (task asks to skip derived nodes)', () => {
     // the derived twin must not appear as its own change
     const twinId = Object.values(doc().nodes).find((n) => n.srcId === title && n.id !== title)!.id
     expect(flat.includes(twinId)).toBe(false)
+  })
+
+  it('an override edit on a twin lists the instance once, and a new instance lists its root only', () => {
+    const { title, inst } = setup()
+    const before = doc()
+    S().setText(id, twin(title, inst).id, 'Mine')
+    const d = diffDocs(before, doc())
+    expect(d.changed.map((c) => c.id)).toEqual([inst])
+    const b2 = doc()
+    const again = S().createInstance(id, node(inst).instance!.of, node(inst).parent!)
+    const d2 = diffDocs(b2, doc())
+    expect(d2.added.map((c) => c.id)).toEqual([again])
   })
 })
