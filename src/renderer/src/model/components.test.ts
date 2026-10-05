@@ -324,30 +324,30 @@ describe('migrateDoc v2 -> v3 on a real doc', () => {
     d.version = 2
     const before = JSON.stringify(d.nodes)
     const m = ops.migrateDoc(d)
-    expect(m.version).toBe(3)
+    expect(m.version).toBe(ops.DOC_VERSION)
     expect(JSON.stringify(m.nodes)).toBe(before)
     expect(m.nodes[t.id].style.lineHeight).toBeUndefined()
     expect(Object.values(m.nodes).some((n) => n.component || n.instance || n.srcId)).toBe(false)
     expect(d.version).toBe(2) // input not mutated
     expect(ops.migrateDoc(m)).toBe(m)
   })
-  it('a v1 doc goes all the way to v3 (line-height pin + version)', () => {
+  it('a v1 doc goes all the way to the current version (line-height pin + version)', () => {
     const d = ops.makeDoc('d', 'Real v1')
     const t = ops.makeNode(d, { type: 'text', text: 'x' }, false)
     ops.insertNode(d, t, d.pages[0].rootId)
     d.version = 1
     const m = ops.migrateDoc(d)
-    expect(m.version).toBe(3)
+    expect(m.version).toBe(ops.DOC_VERSION)
     expect(m.nodes[t.id].style.lineHeight).toBe('20px')
   })
 })
 
-describe('migrateDoc v2 -> v3', () => {
+describe('migrateDoc v2 -> current', () => {
   it('only bumps the version', () => {
     const d = ops.makeDoc('d', 'Old')
     d.version = 2
     const m = ops.migrateDoc(d)
-    expect(m.version).toBe(3)
+    expect(m.version).toBe(ops.DOC_VERSION)
     expect(m.nodes).toBe(d.nodes)
   })
 })
