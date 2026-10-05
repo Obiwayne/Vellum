@@ -72,6 +72,20 @@ try {
   let c = await canvas()
   check(c.icons === 2, `a Button set with two variants, each with an icon (${c.icons} icons)`)
 
+  // rename the variant property (Variant -> State) and this variant's value (Variant 2 -> Hover)
+  const propName = page.locator('input[aria-label="Variant property name Variant"]')
+  await propName.fill('State')
+  await propName.press('Enter')
+  await page.waitForTimeout(300)
+  const valueInput = page.locator('input[aria-label="Value of State"]')
+  await valueInput.fill('Hover')
+  await valueInput.press('Enter')
+  await page.waitForTimeout(400)
+  await shot('state-hover')
+  const named = await page.locator('.insp-comp__meta').first().textContent()
+  check(named === 'State=Hover', `the variant property and value are renamed (${named})`)
+  check((await page.locator('.lp-layer', { hasText: 'State=Hover' }).count()) >= 1, 'Layers shows the renamed variant main')
+
   // properties on the selected variant main (shared by the set)
   await page.getByRole('button', { name: '+ Boolean' }).click()
   await page.getByRole('button', { name: '+ Text' }).click()
@@ -104,6 +118,9 @@ try {
   await shot('instance-placed')
   check((await page.locator('.insp-prop__row').count()) === 3, `the instance shows a control per property (${await page.locator('.insp-prop__row').count()}: variant, boolean, text)`)
   c = await canvas()
+  check(c.texts.filter((t) => t === 'Click').length === 3, `binding a text property leaves every text unchanged (${c.texts.join(', ')})`)
+  const variantText = await page.locator('.insp-prop__row[data-prop-type="variant"]').textContent()
+  check(variantText.includes('State') && variantText.includes('Hover'), `the instance dropdown shows State / Hover (${variantText})`)
   const icons0 = c.icons
 
   // flip the boolean: the instance's icon disappears
@@ -144,7 +161,7 @@ try {
   await pick(variantRow, 'Default')
   await shot('switched-to-default')
   const after = await page.locator('[data-variant]').first().textContent()
-  check(before === 'Variant=Variant 2' && after === 'Variant=Default', `variant switch re-points the instance (${before} -> ${after})`)
+  check(before === 'State=Hover' && after === 'State=Default', `variant switch re-points the instance (${before} -> ${after})`)
   check((await reds()) === 1, `the override is carried over by the switch (${await reds()} red frame)`)
 
   // one undo reverts the switch
@@ -153,7 +170,7 @@ try {
   await page.waitForTimeout(500)
   await shot('after-undo-switch')
   const undone = await page.locator('[data-variant]').first().textContent()
-  check(undone === 'Variant=Variant 2', `one undo reverts the switch (${undone})`)
+  check(undone === 'State=Hover', `one undo reverts the switch (${undone})`)
 
   // delete a property: its controls and bindings go
   await page.locator('[data-component-set] > [data-node-id]').last().click({ position: { x: 5, y: box.height - 4 }, force: true })
