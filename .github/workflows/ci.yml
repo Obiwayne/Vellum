@@ -44,7 +44,7 @@ jobs:
           cache-dependency-path: |
             package-lock.json
             mcp/package-lock.json
-      # full install: the Electron binary is downloaded by its postinstall
+      # Electron has no postinstall: test:mcp downloads its binary itself (node_modules/electron/install.js)
       - run: npm ci
       - run: npm ci
         working-directory: mcp
