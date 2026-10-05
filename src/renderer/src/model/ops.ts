@@ -107,7 +107,7 @@ export function makeDoc(id: string, name: string): Doc {
 }
 
 /** Current document format version (Doc.version). */
-export const DOC_VERSION = 2
+export const DOC_VERSION = 3
 
 /**
  * Upgrade a loaded document to DOC_VERSION without changing how it looks. Returns the same object
@@ -116,7 +116,10 @@ export const DOC_VERSION = 2
  *    browser). Text nodes that relied on the old default get an explicit `lineHeight: '20px'`.
  */
 export function migrateDoc(doc: Doc): Doc {
-  if ((doc.version ?? 1) >= DOC_VERSION) return doc
+  const v = doc.version ?? 1
+  if (v >= DOC_VERSION) return doc
+  // v2 → v3 only adds optional component fields: nothing to rewrite
+  if (v === 2) return { ...doc, version: DOC_VERSION }
   const nodes: Record<string, CNode> = { ...doc.nodes }
   const hasLineHeight = (id: string): boolean => {
     let cur: string | null = id
@@ -548,6 +551,7 @@ export function cloneSubtree(doc: Doc, id: string): string {
   copy.id = newId(doc)
   copy.parent = null
   copy.children = []
+  delete copy.component // a copy of a main is a plain frame; a copy of an instance stays an instance
   doc.nodes[copy.id] = copy
   for (const c of src.children) {
     const cid = cloneSubtree(doc, c)
