@@ -4,7 +4,7 @@
 // tokens: use get_tokens / set_tokens / create_tokens. Each call is one undo step.
 import { getStore } from '../model/store'
 import { numericSize } from '../model/ops'
-import { getTextStyle, linkedNodes, pickTextStyleKeys } from '../model/textStyles'
+import { getTextStyle, linkedNodes, normalizeTextStyleName, pickTextStyleKeys } from '../model/textStyles'
 import { TEXT_STYLE_KEYS } from '../model/types'
 import type { Doc, TextStyle } from '../model/types'
 import { arr, getDoc, markWorking, normalizeStyles, registerHandler, requireNode, resolveDocId, scoped, str } from './registry'
@@ -14,7 +14,8 @@ export function findTextStyle(doc: Doc, key: unknown): TextStyle {
   const k = str(key)?.trim()
   if (!k) throw new Error('styleId is required (a text style id or name)')
   const list = doc.textStyles ?? []
-  const hit = list.find((s) => s.id === k) ?? list.find((s) => s.name.toLowerCase() === k.toLowerCase())
+  const want = normalizeTextStyleName(k).toLowerCase() // names are stored normalised ("Heading / H1" is "Heading/H1")
+  const hit = list.find((s) => s.id === k) ?? list.find((s) => s.name.toLowerCase() === want)
   if (!hit) throw new Error(`Text style "${k}" not found. Available: ${list.map((s) => `${s.name} (${s.id})`).join(', ') || 'none (create one with create_text_style)'}`)
   return hit
 }
