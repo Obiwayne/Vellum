@@ -2,6 +2,7 @@
 import { useCallback } from 'react'
 import { useStore, type MutateOptions } from '../../model/store'
 import type { CNode, Doc, Style, StylePatch } from '../../model/types'
+import { toast } from '../canvas/toast'
 import { anchoredAxes, isFlowChild, isFlowLayout, isPageRoot, numericSize, worldRect } from '../../model/ops'
 
 export const MIXED = Symbol('mixed')
@@ -35,7 +36,10 @@ export function useCtx(docId: string, doc: Doc, ids: string[]): Ctx {
   const mutate = useStore((s) => s.mutate)
   const nodes = ids.map((id) => doc.nodes[id]).filter((n): n is CNode => Boolean(n))
   const set = useCallback(
-    (patch: StylePatch, opts?: MutateOptions) => updateStyles(docId, ids, patch, opts),
+    (patch: StylePatch, opts?: MutateOptions) => {
+      const msg = updateStyles(docId, ids, patch, opts)
+      if (msg) toast(msg) // a manual typography edit unlinked a node from its text style
+    },
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [docId, ids.join(','), updateStyles]
   )
