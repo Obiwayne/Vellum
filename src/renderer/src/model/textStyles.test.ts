@@ -106,6 +106,52 @@ describe('text styles', () => {
   })
 })
 
+describe('edge cases', () => {
+  it('does not mutate sibling styles or touch applyStylePatch behaviour', () => {
+    const { d, a, b } = setup()
+    const id = ts.createTextStyle(d, 'S', { fontSize: 20 })
+    ts.applyTextStyle(d, a, id)
+    ts.applyTextStyle(d, b, id)
+    ts.updateTextStyle(d, id, { fontSize: 21 })
+    expect(d.nodes[a].style).not.toBe(d.nodes[b].style)
+    expect(d.nodes[b].style.fontSize).toBe(21)
+  })
+
+  it('linked nodes on another page are synced; a second style stays separate', () => {
+    const { d, a } = setup()
+    const p2 = ops.makePage(d, 'Page 2')
+    const n = ops.makeNode(d, { type: 'text' })
+    ops.insertNode(d, n, p2.rootId)
+    const s1 = ts.createTextStyle(d, 'One', { fontSize: 10 })
+    const s2 = ts.createTextStyle(d, 'Two', { fontSize: 99 })
+    ts.applyTextStyle(d, a, s2)
+    ts.applyTextStyle(d, n.id, s1)
+    ts.updateTextStyle(d, s1, { fontSize: 11 })
+    expect(d.nodes[n.id].style.fontSize).toBe(11)
+    expect(d.nodes[a].style.fontSize).toBe(99)
+    expect(ts.linkedNodes(d, s1).map((x) => x.id)).toEqual([n.id])
+  })
+
+  it('re-applying another style replaces the link and its keys', () => {
+    const { d, a } = setup()
+    const s1 = ts.createTextStyle(d, 'One', { fontSize: 10, fontWeight: 700 })
+    const s2 = ts.createTextStyle(d, 'Two', { fontSize: 30 })
+    ts.applyTextStyle(d, a, s1)
+    ts.applyTextStyle(d, a, s2)
+    expect(d.nodes[a].textStyle).toBe(s2)
+    expect(d.nodes[a].style.fontSize).toBe(30)
+    expect(d.nodes[a].style.fontWeight).toBeUndefined()
+  })
+
+  it('a doc without textStyles is safe for every read/delete path', () => {
+    const { d, a } = setup()
+    expect(ts.getTextStyle(d, 'x')).toBeUndefined()
+    expect(ts.syncTextStyle(d, 'x')).toBe(0)
+    expect(ts.deleteTextStyle(d, 'x')).toBe(false)
+    expect(ts.applyTextStyle(d, a, 'x')).toBe(false)
+  })
+})
+
 describe('migration to v5', () => {
   it('v4 doc gets version 5 and no textStyles field', () => {
     const d = ops.makeDoc('d', 'D')
