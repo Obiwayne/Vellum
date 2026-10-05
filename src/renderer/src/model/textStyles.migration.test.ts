@@ -12,9 +12,7 @@ function textDoc(version: number) {
 
 describe('migrateDoc to the current version leaves v2-v4 docs alone', () => {
   for (const v of [2, 3, 4]) {
-    // v4 is a known defect (reported to the builder): drop `.fails` once migrateDoc only pins line heights for v1 docs
-    const run = v === 4 ? it.fails : it
-    run(`v${v} -> v${ops.DOC_VERSION}: nodes untouched, only the version changes`, () => {
+    it(`v${v} -> v${ops.DOC_VERSION}: nodes untouched, only the version changes`, () => {
       const { d, t } = textDoc(v)
       const before = JSON.stringify(d.nodes)
       const m = ops.migrateDoc(d)
