@@ -42,6 +42,33 @@ describe('createComponent', () => {
   })
 })
 
+describe('createComponentFrom', () => {
+  const rect = (x: number, y: number, width: number, height: number) => ({ x, y, width, height })
+  it('uses a single frame as is', () => {
+    const { doc, stage } = setup()
+    const id = c.createComponentFrom(doc, [stage.id], new Map(), rect(0, 0, 1, 1), { x: 0, y: 0 })
+    expect(id).toBe(stage.id)
+    expect(doc.nodes[id].component).toBeDefined()
+  })
+  it('wraps a non-frame or a multi selection in a frame first', () => {
+    const { doc, title, box, card } = setup()
+    const rects = new Map([[title.id, rect(0, 0, 10, 10)], [box.id, rect(20, 0, 20, 20)]])
+    const id = c.createComponentFrom(doc, [title.id, box.id], rects, rect(0, 0, 40, 20), { x: 0, y: 0 })
+    expect(id).not.toBe(card.id)
+    expect(doc.nodes[id]).toMatchObject({ type: 'frame', parent: card.id, children: [title.id, box.id] })
+    expect(doc.nodes[id].component).toBeDefined()
+    const one = c.createComponentFrom(doc, [title.id], new Map(), rect(0, 0, 10, 10), { x: 0, y: 0 })
+    expect(doc.nodes[one].children).toEqual([title.id])
+  })
+  it('rejects mixed parents and instance content', () => {
+    const { doc, title, stage } = setup()
+    expect(() => c.createComponentFrom(doc, [title.id, stage.id], new Map(), rect(0, 0, 1, 1), { x: 0, y: 0 })).toThrow()
+    const i = c.createInstance(doc, doc.nodes[title.id].parent!, stage.id)
+    const inner = doc.nodes[i].children[0]
+    expect(() => c.createComponentFrom(doc, [inner], new Map(), rect(0, 0, 1, 1), { x: 0, y: 0 })).toThrow()
+  })
+})
+
 describe('createInstance', () => {
   it('mirrors the main subtree with fresh ids and srcId links', () => {
     const { doc, card, title, stage } = setup()

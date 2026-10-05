@@ -2,8 +2,8 @@
 // A main component is a frame with `component`; an instance is a frame with `instance` whose subtree
 // is materialised from the main by syncInstances (each copy carries `srcId`). Policy (undo steps,
 // toasts, which edits become overrides) belongs to the store; this file only knows the mechanics.
-import { ancestors, applyStylePatch, descendants, insertNode, isPageRoot, newId, removeNode } from './ops'
-import type { CNode, Doc, NodeOverride } from './types'
+import { ancestors, applyStylePatch, descendants, insertNode, isPageRoot, newId, removeNode, wrapNodes } from './ops'
+import type { CNode, Doc, NodeOverride, WorldRect } from './types'
 
 export const isMain = (n: CNode | undefined): boolean => Boolean(n?.component)
 export const isInstance = (n: CNode | undefined): boolean => Boolean(n?.instance)
@@ -49,6 +49,33 @@ export function createComponent(doc: Doc, id: string, name?: string): void {
   if (n.component) throw new Error('Already a component')
   if (instanceRootOf(doc, id)) throw new Error('Cannot make a component from an instance or inside one')
   n.component = { name: name?.trim() || n.name }
+}
+
+/**
+ * Make a component from a selection: a single frame becomes the main itself; anything else (other
+ * node types, several nodes) is wrapped in a Frame first (see wrapNodes for rects/bounds/origin).
+ * Returns the main's id.
+ */
+export function createComponentFrom(
+  doc: Doc,
+  ids: string[],
+  rects: Map<string, WorldRect | null>,
+  bounds: WorldRect,
+  origin: { x: number; y: number },
+  name?: string
+): string {
+  const single = ids.length === 1 ? doc.nodes[ids[0]] : undefined
+  if (single?.type === 'frame' && single.parent && !isPageRoot(doc, single.id)) {
+    createComponent(doc, single.id, name)
+    return single.id
+  }
+  if (!ids.length || ids.some((id) => !doc.nodes[id]?.parent || instanceRootOf(doc, id))) throw new Error('Nothing to make a component from')
+  const parent = doc.nodes[ids[0]].parent
+  if (ids.some((id) => doc.nodes[id].parent !== parent)) throw new Error('Select nodes with the same parent')
+  const wrapper = wrapNodes(doc, ids, 'Frame', rects, bounds, origin)
+  if (!wrapper) throw new Error('Nothing to make a component from')
+  createComponent(doc, wrapper, name)
+  return wrapper
 }
 
 /** Place a new instance of `mainId` under `parentId`. Returns its id. Throws on cycles and bad targets. */
