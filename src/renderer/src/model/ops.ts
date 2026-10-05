@@ -17,7 +17,7 @@ export const PAGE_BACKGROUND = '#282828'
 export const TEXT_DEFAULTS: Style = {
   fontFamily: 'system-ui, sans-serif',
   fontSize: 16,
-  lineHeight: '20px',
+  lineHeight: '1.25', // unitless: scales with the font size, so Fit containers grow with the text
   color: '#000000',
   width: 'fit-content'
 }
