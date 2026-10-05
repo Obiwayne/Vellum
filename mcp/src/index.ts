@@ -521,6 +521,112 @@ server.registerTool(
   (args) => forward('delete_nodes', args)
 )
 
+// ------------------------------------------------------------------------------------------------
+// components, variants and properties
+
+server.registerTool(
+  'create_component',
+  {
+    description:
+      "Make a reusable main component. A single frame becomes the component itself; any other nodes (or several nodes with the same parent) are wrapped in a frame first. Returns componentId. Edit the main with the usual tools and every instance follows. Use create_instance to place copies.",
+    inputSchema: {
+      fileId,
+      nodeIds: z.array(z.string()).describe('Node(s) to turn into a component.'),
+      name: z.string().optional().describe('Component name (defaults to the frame name).')
+    }
+  },
+  (args) => forward('create_component', args)
+)
+
+server.registerTool(
+  'create_instance',
+  {
+    description:
+      "Place an instance of a main component. Instances mirror the main: edits to the main flow into every instance, while update_styles / set_text_content on a node INSIDE an instance become per-instance overrides. write_html and structural edits inside an instance are refused (call detach_instance first). An instance cannot be placed inside its own component.",
+    inputSchema: {
+      fileId,
+      pageId,
+      componentId: z.string().describe('The main component (or variant) to instantiate. For a component set pass the variant main you want.'),
+      parentId: z.string().optional().describe('Parent node ID, or "root" (default) for the page root.'),
+      index: z.number().optional().describe("Position among the parent's children."),
+      x: z.number().optional().describe('World x for a page-level instance (needs y).'),
+      y: z.number().optional()
+    }
+  },
+  (args) => forward('create_instance', args)
+)
+
+server.registerTool(
+  'detach_instance',
+  {
+    description: "Turn an instance (or any node inside one) into plain frames and nodes, keeping everything it currently shows. Use this before changing the instance's structure.",
+    inputSchema: { fileId, nodeId: z.string().describe('The instance, or a node inside it.') }
+  },
+  (args) => forward('detach_instance', args)
+)
+
+server.registerTool(
+  'create_variant',
+  {
+    description:
+      "Add a variant: duplicates a main component next to itself inside a component set (a lone component is wrapped in a new set first and becomes its Default variant). Without values a new option 'Variant N' is added to the first variant property; with values ({\"Size\": \"Large\"}, keys are property names or ids of the set) the copy gets those options (new options are added). Edit the new variant afterwards with the normal tools. Returns the set, all variants with their values and the set's properties.",
+    inputSchema: {
+      fileId,
+      componentId: z.string().describe('The main component to duplicate.'),
+      values: z.record(z.string(), z.string()).optional().describe('Variant property name or id -> option. Only for components that are already in a set.'),
+      name: z.string().optional().describe('Layer name for the new variant.')
+    }
+  },
+  (args) => forward('create_variant', args)
+)
+
+server.registerTool(
+  'add_component_prop',
+  {
+    description:
+      "Add a component property to a main component (shared by every variant of its set): boolean (shows/hides layers), text (a text layer's text) or swap (the component a nested instance shows; defaultValue = that component's id). Then bind layers inside the main with bind_component_prop. Instances set values with set_instance_props.",
+    inputSchema: {
+      fileId,
+      componentId: z.string(),
+      name: z.string().describe('Property name, e.g. "Show icon".'),
+      type: z.enum(['boolean', 'text', 'swap']),
+      defaultValue: z.union([z.string(), z.boolean()]).optional().describe('boolean: true/false (default true), text: string (default ""), swap: a main component id (required).')
+    }
+  },
+  (args) => forward('add_component_prop', args)
+)
+
+server.registerTool(
+  'bind_component_prop',
+  {
+    description:
+      "Bind a layer INSIDE a main component to a property: aspect visible (boolean prop), text (text prop, text layers) or swap (swap prop, a nested instance). property is the property name or id; null removes the binding. Instances then show the property value (explicit overrides still win).",
+    inputSchema: {
+      fileId,
+      nodeId: z.string().describe('A layer inside the main component (not inside an instance).'),
+      aspect: z.enum(['visible', 'text', 'swap']),
+      property: z.string().nullable().describe('Property name or id, or null to unbind.')
+    }
+  },
+  (args) => forward('bind_component_prop', args)
+)
+
+server.registerTool(
+  'set_instance_props',
+  {
+    description:
+      "Set an instance's property values and variant choices in one undo step. props: {\"Show icon\": false, \"Label\": \"Buy\"} (names or ids; boolean/text/swap values). variants: {\"Size\": \"Large\"} switches the instance to the matching variant (override carry-over is best effort; the dropped count is returned). reset: true clears all property values, or an array of property names. Returns the instance's resulting properties and variant.",
+    inputSchema: {
+      fileId,
+      nodeId: z.string().describe('The instance (or a node inside it).'),
+      props: z.record(z.string(), z.union([z.string(), z.boolean()])).optional(),
+      variants: z.record(z.string(), z.string()).optional(),
+      reset: z.union([z.boolean(), z.array(z.string())]).optional()
+    }
+  },
+  (args) => forward('set_instance_props', args)
+)
+
 server.registerTool(
   'get_selection',
   {

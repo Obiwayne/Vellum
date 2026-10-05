@@ -59,7 +59,14 @@ The server's `instructions` tell the model to load `get_guide({topic:"vellum-mcp
 | `duplicate_nodes` | `nodes[{id, parentId?}]` | `duplicates[{sourceId,newId,parentId,descendantIdMap}], newNodeIds` |
 | `move_nodes` | `moves[{nodeId, before \| after \| parentId+index?}]`, or `nodeIds, targetParentId, index?` | `results, affectedParents` |
 | `delete_nodes` | `nodeIds` | `{deletedNodeIds, deletedCount}` |
-| `get_selection` | – | `selectedNodes[{id,name,component,width,height,worldX,worldY,x,y,artboardId,artboardName,parentId,childCount}]` |
+| `create_component` | `nodeIds, name?` | `{componentId, name, nodeIds}`. A single frame becomes the main; other nodes are wrapped in a frame first. |
+| `create_instance` | `componentId, parentId ('root' default)?, index?, x?, y?` | `{instanceId, componentId, parentId, nodeIds}`. Instances mirror the main; `update_styles` / `set_text_content` inside one become overrides; `write_html` and structural edits inside one are refused with "Detach instance to change structure". |
+| `detach_instance` | `nodeId` (the instance or a node in it) | `{detachedNodeId}` |
+| `create_variant` | `componentId, values?{propName\|id: option}, name?` | `{variantId, componentSetId, variants[{id,name,values}], properties[]}`. Duplicates a main into a component set (a lone main is wrapped in a set first). `values` only for components already in a set. |
+| `add_component_prop` | `componentId, name, type: boolean \| text \| swap, defaultValue?` | `{propertyId, name, type, default, properties[]}` (shared by every variant of the set) |
+| `bind_component_prop` | `nodeId (layer in a main), aspect: visible \| text \| swap, property (name\|id) \| null` | `{nodeId, aspect, propertyId}` |
+| `set_instance_props` | `nodeId, props?{name\|id: string\|boolean}, variants?{name\|id: option}, reset?: true \| [names]` | one undo step; `{instanceId, instanceOf, instanceProperties, variant, droppedOverrides, ...}` |
+| `get_selection` | – | `selectedNodes[{id,name,component,width,height,worldX,worldY,x,y,artboardId,artboardName,parentId,childCount}]`. `get_selection`, `get_children`, `get_node_info` and `find_nodes` also report `isComponent, componentName, componentSetId, variant, isComponentSet, instanceOf, insideInstance`; `get_node_info` adds `properties` (a main), `componentSet{properties,variants}`, `instanceProperties, overriddenNodeIds` (an instance) and `boundProperties`. |
 | `get_children` | `nodeId` | `children[{id,name,component,childCount,width,height,worldX,worldY,x,y}]` |
 | `get_node_info` | `nodeId` | `id,name,component,width,height,worldX,worldY,x,y,isVisible,isLocked,parentId,childIds,childCount,artboardId,textContent` |
 | `get_tree_summary` | `nodeId, depth=3 (max 10)` | `{summary: 'Frame "Hero" (id) 1440×900\n  Text "Title" (id) 320×40 "…"', nodeId, depth}` |
