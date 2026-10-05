@@ -31,11 +31,35 @@ export interface CNode {
   visible: boolean
   locked: boolean
   /** main component: this frame is a component definition (see model/components.ts) */
-  component?: { name: string }
+  component?: ComponentInfo
+  /** component set: a frame whose direct children are the variant mains of one component (see model/variants.ts) */
+  componentSet?: { name: string; props: PropDef[] }
   /** instance root: this frame mirrors the main component `of`; its subtree is derived by syncInstances */
   instance?: { of: string; overrides?: Record<string, NodeOverride> }
   /** materialised instance node: id of the main-side node it mirrors */
   srcId?: string
+}
+
+/** Component property kinds. Only 'variant' is used so far (component properties come with T19). */
+export type PropType = 'variant' | 'boolean' | 'text' | 'swap'
+
+export interface PropDef {
+  /** stable key (never the display name) */
+  id: string
+  name: string
+  type: PropType
+  /** variant: one of `options`; boolean: on/off; text: the string; swap: a main id */
+  default: string | boolean
+  /** variant props only */
+  options?: string[]
+}
+
+export interface ComponentInfo {
+  name: string
+  /** id of the set frame this main belongs to (variants only) */
+  set?: string
+  /** variant prop id -> chosen option, for a main inside a set */
+  variant?: Record<string, string>
 }
 
 /** Per-instance changes over the main, keyed by the main's descendant id ('' = the main root). */
@@ -87,6 +111,7 @@ export interface Doc {
    * Document format version (see ops.DOC_VERSION / ops.migrateDoc). Missing = 1.
    * v2: canvas content inherits `line-height: normal` (v1 inherited 20px).
    * v3: components and instances (additive, optional node fields).
+   * v4: component sets and variants (additive, optional node fields).
    */
   version?: number
   /** theme modes, e.g. ['Light', 'Dark']; [0] is the base mode (see model/modes.ts) */
