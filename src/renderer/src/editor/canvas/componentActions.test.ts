@@ -202,3 +202,40 @@ describe('Assets panel', () => {
     expect(C.COMPONENT_DRAG_TYPE).toBe('application/x-vellum-component')
   })
 })
+
+describe('Assets panel: go to and rename', () => {
+  it('goToComponent switches to the main\'s page and selects it', () => {
+    const a = S().createNode(id, { type: 'frame', name: 'Card' }, root())
+    S().createComponent(id, [a])
+    const page2 = S().addPage(id, 'Second')
+    S().setActivePage(id, page2)
+    expect(S().editors[id].pageId).toBe(page2)
+    expect(C.goToComponent(id, a)).toBe(true)
+    expect(S().editors[id].pageId).toBe(doc().pages[0].id)
+    expect(S().editors[id].selection).toEqual([a])
+    expect(C.goToComponent(id, 'nope')).toBe(false)
+    expect(C.goToComponent(id, doc().pages[0].rootId)).toBe(false) // not a component
+  })
+
+  it('renameComponent renames the component and its layer in one undo step, keeps a custom layer name', () => {
+    const a = S().createNode(id, { type: 'frame', name: 'Card' }, root())
+    S().createComponent(id, [a])
+    const inst = S().createInstance(id, a, root())
+    C.renameComponent(id, a, '  Panel ')
+    expect(doc().nodes[a].component?.name).toBe('Panel')
+    expect(doc().nodes[a].name).toBe('Panel')
+    expect(C.assetGroups(doc())[0].items[0].name).toBe('Panel')
+    expect(doc().nodes[inst].instance?.of).toBe(a)
+    S().undo(id)
+    expect(doc().nodes[a].component?.name).toBe('Card')
+    expect(doc().nodes[a].name).toBe('Card')
+    S().redo(id)
+    S().renameNode(id, a, 'Custom layer')
+    C.renameComponent(id, a, 'Tile')
+    expect(doc().nodes[a].component?.name).toBe('Tile')
+    expect(doc().nodes[a].name).toBe('Custom layer')
+    C.renameComponent(id, a, '   ') // blank: ignored
+    expect(doc().nodes[a].component?.name).toBe('Tile')
+    C.renameComponent(id, 'nope', 'x')
+  })
+})

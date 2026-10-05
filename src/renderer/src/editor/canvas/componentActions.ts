@@ -195,6 +195,28 @@ export function assetGroups(doc: Doc, query = ''): AssetGroup[] {
   return out
 }
 
+/** Show a main component: switch to its page and select it. */
+export function goToComponent(docId: string, mainId: string): boolean {
+  const doc = docOf(docId)
+  const page = doc?.nodes[mainId]?.component && ops.pageOf(doc, mainId)
+  if (!page) return false
+  S().setActivePage(docId, page.id)
+  S().select(docId, [mainId])
+  return true
+}
+
+/** Rename a component: its name in the Assets panel and (when it was the same) the main's layer name. */
+export function renameComponent(docId: string, mainId: string, name: string): void {
+  const next = name.trim()
+  if (!next || !docOf(docId)?.nodes[mainId]?.component) return
+  S().mutate(docId, 'Rename component', (d) => {
+    const n = d.nodes[mainId]
+    if (!n.component) return
+    if (n.name === n.component.name) n.name = next
+    n.component.name = next
+  })
+}
+
 /** Drop of a component from the Assets panel: an instance in the frame under the pointer (never inside an instance), centred on it. */
 export function dropComponent(docId: string, mainId: string, clientX: number, clientY: number): string | undefined {
   const doc = docOf(docId)
