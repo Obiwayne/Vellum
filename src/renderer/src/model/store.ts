@@ -4,10 +4,12 @@ import { create } from 'zustand'
 import { original, produce, produceWithPatches } from 'immer'
 import type { Patch } from 'immer'
 import { nanoid } from 'nanoid'
-import type { Camera, CNode, CommentThread, Doc, EditorState, NodeType, Page, StylePatch, TabId, Token, Tool, WorldRect } from './types'
+import type { Camera, CNode, CommentThread, Doc, EditorState, NodeType, Page, PropDef, StylePatch, TabId, Token, Tool, WorldRect } from './types'
 import { history } from './history'
 import * as ops from './ops'
 import * as comp from './components'
+import * as variants from './variants'
+import * as props from './properties'
 import { htmlToNodes } from './html'
 import { MODE_ATTR, MODE_NAME_RE } from './modes'
 
@@ -99,6 +101,16 @@ export interface Store {
   detachInstance(docId: string, id: string): void
   /** drop one node's override (srcId = the main-side node id) or all of the instance's */
   resetOverrides(docId: string, instanceId: string, srcId?: string): void
+  /** add a variant: duplicate a main as a new variant in its set (a lone main is wrapped in a new set first). Returns the new main's id. */
+  addVariant(docId: string, mainId: string, values?: Record<string, string>, name?: string): string
+  /** choose a variant option on an instance (re-points it to the matching main). Returns how many overrides could not carry over. */
+  setVariantValue(docId: string, instId: string, propId: string, option: string): number
+  /** add a boolean / text / swap property to a main (or to its set). Returns the property id. */
+  addProp(docId: string, mainId: string, def: Omit<PropDef, 'id'> & { id?: string }): string
+  /** bind a layer inside a main to a property (null clears the binding) */
+  bindProp(docId: string, nodeId: string, aspect: 'visible' | 'text' | 'swap', propId: string | null): void
+  /** set an instance's value for a boolean / text / swap property */
+  setInstanceProp(docId: string, instId: string, propId: string, value: string | boolean): void
   /** select the main component of an instance (or of a node inside one) and switch to its page; false when there is none */
   goToMain(docId: string, id: string): boolean
   /** generic escape hatch: run an arbitrary recipe on the doc draft as one undoable step */
@@ -177,7 +189,10 @@ export const useStore = create<Store>()((set, get) => {
     let [next, patches, inverse] = produceWithPatches(doc, (d) => {
       recipe(d)
       // instance edits become overrides; structural ones throw; orphaned instances detach
-      if (!opts.derived && comp.usesComponents(doc)) comp.settleEdits(d, original(d) as Doc)
+      if (!opts.derived && comp.usesComponents(doc)) {
+        const base = original(d) as Doc
+        comp.settleEdits(d, base, (inst) => variants.repointToDefault(d, base, inst))
+      }
     })
     if (comp.usesComponents(doc) || comp.usesComponents(next)) {
       // derived instance nodes follow their mains (same undo step: the patches are concatenated)
@@ -613,6 +628,38 @@ export const useStore = create<Store>()((set, get) => {
 
     detachInstance(docId, id) {
       mutate(docId, 'Detach instance', (d) => comp.detachInstance(d, id), { derived: true })
+    },
+
+    addVariant(docId, mainId, values, name) {
+      let id = ''
+      mutate(docId, 'Add variant', (d) => {
+        id = variants.createVariant(d, mainId, values, name)
+      }, { derived: true })
+      return id
+    },
+
+    setVariantValue(docId, instId, propId, option) {
+      let dropped = 0
+      mutate(docId, 'Change variant', (d) => {
+        dropped = variants.setVariantValue(d, instId, propId, option)
+      }, { derived: true })
+      return dropped
+    },
+
+    addProp(docId, mainId, def) {
+      let id = ''
+      mutate(docId, 'Add property', (d) => {
+        id = props.addProp(d, mainId, def)
+      }, { derived: true })
+      return id
+    },
+
+    bindProp(docId, nodeId, aspect, propId) {
+      mutate(docId, 'Bind property', (d) => props.bindProp(d, nodeId, aspect, propId), { derived: true })
+    },
+
+    setInstanceProp(docId, instId, propId, value) {
+      mutate(docId, 'Set property', (d) => props.setInstanceProp(d, instId, propId, value), { derived: true })
     },
 
     goToMain(docId, id) {

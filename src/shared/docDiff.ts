@@ -27,6 +27,10 @@ interface DiffNode {
   /** components: instance link + overrides; srcId marks a node derived from a main (not listed in the diff) */
   instance?: unknown
   srcId?: string
+  /** components: main info (name, set, variant values, props), set info (name, props) and property bindings */
+  component?: unknown
+  componentSet?: unknown
+  bind?: unknown
 }
 
 /** What about a layer changed. */
@@ -96,7 +100,8 @@ function aspects(a: DiffNode, b: DiffNode): ChangeAspect[] {
   if (Boolean(a.visible) !== Boolean(b.visible) || Boolean(a.locked) !== Boolean(b.locked)) out.push('visibility')
   // an instance's children are derived from its main: only the main's own change is a layers change
   if (a.parent !== b.parent || (!b.instance && !same(a.children, b.children))) out.push('layers')
-  if (!same(a.instance, b.instance) && !out.includes('content')) out.push('content')
+  // instance link / property values / overrides, a main's variant values and props, a set's props, bindings
+  if (!out.includes('content') && !(same(a.instance, b.instance) && same(a.component, b.component) && same(a.componentSet, b.componentSet) && same(a.bind, b.bind))) out.push('content')
   if ((a.svg ?? '') !== (b.svg ?? '') || !same(a.attrs, b.attrs) || a.type !== b.type) out.push('content')
   return out
 }
