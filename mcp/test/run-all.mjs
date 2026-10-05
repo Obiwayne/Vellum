@@ -7,7 +7,7 @@
 //   APP_BOOT_MS  how long to wait for the app to come up (default 120000)
 // Needs the repo's `npm install` and `cd mcp && npm install` done once.
 import { spawn, spawnSync } from 'node:child_process'
-import { existsSync, mkdtempSync, rmSync } from 'node:fs'
+import { closeSync, existsSync, mkdtempSync, openSync, readFileSync, rmSync } from 'node:fs'
 import { createServer, connect } from 'node:net'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
@@ -48,6 +48,7 @@ const run = (cmd, args, opts = {}) =>
 
 const dataDir = mkdtempSync(join(tmpdir(), 'vellum-test-mcp-'))
 const exportDir = join(dataDir, 'export')
+const appLog = join(tmpdir(), `vellum-test-mcp-app-${process.pid}.log`)
 let app = null
 const results = []
 
@@ -56,9 +57,18 @@ function stopApp() {
   if (isWin) spawnSync('taskkill', ['/PID', String(app.pid), '/T', '/F'], { stdio: 'ignore' })
   else process.kill(-app.pid, 'SIGKILL')
 }
+function showAppLog() {
+  try {
+    const lines = readFileSync(appLog, 'utf8').trimEnd().split('\n')
+    console.log(['----- app output (last 60 lines) -----', ...lines.slice(-60), '-----'].join('\n'))
+  } catch {
+    log('no app output captured')
+  }
+}
 function cleanup() {
   stopApp()
   if (!process.env.KEEP) {
+    rmSync(appLog, { force: true })
     try {
       rmSync(dataDir, { recursive: true, force: true, maxRetries: 5, retryDelay: 300 })
     } catch {
@@ -95,8 +105,16 @@ async function main() {
     const { Vault } = await import(pathToFileURL(join(root, 'src', 'main', 'vault.ts')).href)
     await new Vault(dataDir).create({ name: 'Test' })
 
+    // Electron 4x ships no install script: without this its binary is never downloaded and the app dies at once
+    if (!existsSync(join(root, 'node_modules', 'electron', 'path.txt'))) {
+      log('downloading the Electron binary')
+      if ((await run(process.execPath, [join(root, 'node_modules', 'electron', 'install.js')], { cwd: root })) !== 0) return 2
+    }
+
     log(`starting the app (port ${port}, data ${dataDir})`)
-    app = spawn(isWin ? 'npx.cmd' : 'npx', ['electron-vite', 'dev'], { cwd: root, env, stdio: 'ignore', shell: isWin, detached: !isWin })
+    const out = openSync(appLog, 'w')
+    app = spawn(isWin ? 'npx.cmd' : 'npx', ['electron-vite', 'dev'], { cwd: root, env, stdio: ['ignore', out, out], shell: isWin, detached: !isWin })
+    closeSync(out)
     app.on('error', (e) => log(`app failed to start: ${e.message}`))
     const t0 = Date.now()
     while (Date.now() - t0 < bootMs && !(await portOpen(Number(port)))) {
@@ -104,13 +122,15 @@ async function main() {
       await sleep(500)
     }
     if (!(await portOpen(Number(port)))) {
-      log(`the app did not open its bridge on port ${port} within ${bootMs / 1000}s`)
+      log(`the app did not open its bridge on port ${port} within ${bootMs / 1000}s (exit code ${app.exitCode})`)
+      showAppLog()
       return 2
     }
     // the bridge answers before the profile is open; wait until a tool works
     const ready = await waitForProfile(env)
     if (!ready) {
       log('the app is up but no profile opened (tools still report "locked")')
+      showAppLog()
       return 2
     }
     for (const name of appSuites) {
