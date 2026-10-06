@@ -95,6 +95,20 @@ try {
   } finally {
     await sc.close().catch(() => undefined)
   }
+  // Node is not needed on the machine: run the bundle with a PATH that has no node.exe (the app's own Electron is the runtime)
+  const sys32 = join(process.env.SystemRoot ?? 'C:\\Windows', 'System32')
+  const noNodePath = [sys32, join(process.env.SystemRoot ?? 'C:\\Windows')].join(';')
+  check(!noNodePath.split(';').some((d) => existsSync(join(d, 'node.exe'))), `the PATH used for the next check has no node.exe (${noNodePath})`)
+  const nn = new Client({ name: 'no-node', version: '0.0.1' })
+  try {
+    await nn.connect(new StdioClientTransport({ command: exe, args: [bundle], env: { ...env, PATH: noNodePath, Path: noNodePath, ELECTRON_RUN_AS_NODE: '1' }, stderr: 'pipe' }))
+    const noNodeTools = (await nn.listTools()).tools.map((t) => t.name).sort()
+    check(JSON.stringify(noNodeTools) === JSON.stringify(tools), `with no node.exe on PATH the bundle still lists the same ${tools.length} tools`)
+    const r = await nn.callTool({ name: 'get_basic_info', arguments: {} })
+    check(!r.isError && /Scratchpad/.test(text(r)), 'and get_basic_info still reaches the packaged app')
+  } finally {
+    await nn.close().catch(() => undefined)
+  }
   // the bundle keeps the security behaviour: no bridge token = no access
   const bad = await new Promise((res) => {
     const c = new Client({ name: 'no-token', version: '0.0.1' })
