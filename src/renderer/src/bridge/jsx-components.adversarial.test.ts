@@ -204,6 +204,20 @@ describe('overrides that are not properties', () => {
   })
 })
 
+describe('detached instances', () => {
+  it('a style override travels with the instance once it is detached: plain markup, no component definition', async () => {
+    const b = await buttonSet()
+    const inst = await instance(b.frame, { Label: 'Buy' })
+    const twin = doc().nodes[inst].children.map((c) => doc().nodes[c]).find((n) => n.type === 'text')!
+    await call('update_styles', { updates: [{ nodeIds: [twin.id], styles: { fontSize: '30px' } }] })
+    await call('detach_instance', { nodeId: inst })
+    const plain = await jsx(inst, 'inline-styles')
+    parses(plain)
+    expect(plain).toContain('30')
+    expect(plain).not.toContain('function Button')
+  })
+})
+
 describe('odd names and values', () => {
   it('quotes, newlines and braces in values; names with spaces, digits and clashes', async () => {
     const b = await buttonSet('3d button!')
