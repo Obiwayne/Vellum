@@ -70,13 +70,14 @@ describe('packaged build where electron-updater cannot be loaded (T50)', () => {
 })
 
 describe('packaged build without electron-updater', () => {
-  it('starts as unsupported, and a check says so without running git or npm', async () => {
+  it('starts as an error, and a check says so without running git or npm', async () => {
     state.packaged = true
     const u = await load(noUpdater)
-    expect((await u.status()).state).toBe('unsupported')
+    expect((await u.status()).state).toBe('error')
     const s = await u.check()
-    expect(s.state).toBe('unsupported')
-    expect(s.message).toMatch(/installer/i)
+    expect(s.state).toBe('error')
+    expect(s.message).toMatch(/electron-updater.*could not be loaded/i)
+    expect(s.message).toMatch(/not installed/) // the reason from the loader
     expect(s.commits).toEqual([])
     expect(s.behind).toBe(0)
     expect(execFile).not.toHaveBeenCalled()
@@ -87,7 +88,7 @@ describe('packaged build without electron-updater', () => {
     state.packaged = true
     state.hasGit = true
     const u = await load(noUpdater)
-    expect((await u.check()).state).toBe('unsupported')
+    expect((await u.check()).state).toBe('error')
     expect(execFile).not.toHaveBeenCalled()
   })
 
@@ -96,7 +97,7 @@ describe('packaged build without electron-updater', () => {
     state.hasGit = true
     const u = await load(noUpdater)
     const s = await u.install()
-    expect(s.state).toBe('unsupported')
+    expect(s.state).toBe('error')
     expect(execFile).not.toHaveBeenCalled()
     expect(spawn).not.toHaveBeenCalled()
   })

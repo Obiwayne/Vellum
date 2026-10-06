@@ -15,7 +15,7 @@ const MAX_COMMITS = 30
 const root = (): string => app.getAppPath()
 const dev = Boolean(process.env.ELECTRON_RENDERER_URL)
 
-let status: UpdateStatus = { state: app.isPackaged ? 'unsupported' : 'idle', commits: [], behind: 0, dirty: [], dev }
+let status: UpdateStatus = { state: 'idle', commits: [], behind: 0, dirty: [], dev }
 let getWindow: () => BrowserWindow | null = () => null
 let busy: Promise<UpdateStatus> | null = null
 
@@ -62,11 +62,16 @@ async function upstream(): Promise<string> {
   }
 }
 
-/** A packaged (installer) build never runs git or npm: its updates come from a new installer or release (appUpdater.ts runs electron-updater there). */
-const PACKAGED_MESSAGE = 'This is the installed version of Vellum. Download the latest installer from the Vellum releases page on GitHub to update.'
+/**
+ * A packaged (installer) build never runs git or npm: its updates come from electron-updater (appUpdater.ts). If that package cannot
+ * be loaded (it is missing from app.asar) the build is broken, and the update API says so as an error: "unsupported" would pass a
+ * packaging defect off as intended behaviour.
+ */
+let packagedError = 'Updates are unavailable in this build: electron-updater could not be loaded. Install the latest Vellum installer from GitHub.'
+const packagedFailure = (): Partial<UpdateStatus> => ({ state: 'error', message: packagedError, commits: [], behind: 0, dirty: [], checkedAt: Date.now() })
 
 async function check(): Promise<UpdateStatus> {
-  if (app.isPackaged) return set({ state: 'unsupported', message: PACKAGED_MESSAGE, commits: [], behind: 0, dirty: [] })
+  if (app.isPackaged) return set(packagedFailure())
   if (!existsSync(join(root(), '.git'))) {
     return set({
       state: 'unsupported',
@@ -113,7 +118,7 @@ async function check(): Promise<UpdateStatus> {
 }
 
 async function install(): Promise<UpdateStatus> {
-  if (app.isPackaged) return set({ state: 'unsupported', message: PACKAGED_MESSAGE }) // never git or npm in an installed build
+  if (app.isPackaged) return set(packagedFailure()) // never git or npm in an installed build
   const before = await check()
   if (before.state !== 'available') return before
   if (before.dirty.length) {
@@ -201,6 +206,8 @@ export function startUpdater(
     } catch (err) {
       // the updater could not start: the app still works, and says why it will not update
       console.error('[updater] electron-updater unavailable:', err)
+      packagedError = `Updates are unavailable in this build: electron-updater could not be loaded (${err instanceof Error ? err.message : String(err)}). Install the latest Vellum installer from GitHub.`
+      set(packagedFailure())
     }
   }
   ipcMain.handle(IPC.updStatus, (e) => (trusted(e) ? status : null))
