@@ -183,6 +183,7 @@ describe('install', () => {
     fire('update-downloaded', { version: '2.0.0' })
     engine.install()
     expect(u.quitAndInstall).toHaveBeenCalledTimes(1)
+    expect(u.quitAndInstall).toHaveBeenCalledWith(true, true) // silent, then run the new version
   })
 })
 

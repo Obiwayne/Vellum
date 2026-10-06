@@ -160,7 +160,7 @@ export function createAppUpdater(opts: AppUpdaterOptions): AppUpdater {
     status: () => status,
     check,
     install() {
-      if (isPackaged && status.state === 'ready') autoUpdater.quitAndInstall(false, true)
+      if (isPackaged && status.state === 'ready') autoUpdater.quitAndInstall(true, true) // silent (no installer wizard) and start the new version afterwards
       return status
     },
     start() {
