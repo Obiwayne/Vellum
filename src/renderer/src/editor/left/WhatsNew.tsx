@@ -1,7 +1,8 @@
 import { useState } from 'react'
+import { version } from '../../../../../package.json'
 import { Button, Modal } from '../../ui'
 
-export const APP_VERSION = '0.1.0'
+export const APP_VERSION: string = version
 
 const NOTES: { version: string; items: string[] }[] = [
   {

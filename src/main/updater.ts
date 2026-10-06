@@ -14,7 +14,7 @@ const MAX_COMMITS = 30
 const root = (): string => app.getAppPath()
 const dev = Boolean(process.env.ELECTRON_RENDERER_URL)
 
-let status: UpdateStatus = { state: 'idle', commits: [], behind: 0, dirty: [], dev }
+let status: UpdateStatus = { state: app.isPackaged ? 'unsupported' : 'idle', commits: [], behind: 0, dirty: [], dev }
 let getWindow: () => BrowserWindow | null = () => null
 let busy: Promise<UpdateStatus> | null = null
 
@@ -61,7 +61,11 @@ async function upstream(): Promise<string> {
   }
 }
 
+/** A packaged (installer) build never runs git or npm: its updates come from a new installer or release (T-E adds the in-app updater). */
+const PACKAGED_MESSAGE = 'This is the installed version of Vellum. Download the latest installer from the Vellum releases page on GitHub to update.'
+
 async function check(): Promise<UpdateStatus> {
+  if (app.isPackaged) return set({ state: 'unsupported', message: PACKAGED_MESSAGE, commits: [], behind: 0, dirty: [] })
   if (!existsSync(join(root(), '.git'))) {
     return set({
       state: 'unsupported',
@@ -108,6 +112,7 @@ async function check(): Promise<UpdateStatus> {
 }
 
 async function install(): Promise<UpdateStatus> {
+  if (app.isPackaged) return set({ state: 'unsupported', message: PACKAGED_MESSAGE }) // never git or npm in an installed build
   const before = await check()
   if (before.state !== 'available') return before
   if (before.dirty.length) {
@@ -165,7 +170,7 @@ export function startUpdater(
   ipcMain.handle(IPC.updStatus, (e) => (trusted(e) ? status : null))
   ipcMain.handle(IPC.updCheck, (e) => (trusted(e) ? once(check) : null))
   ipcMain.handle(IPC.updInstall, (e) => (trusted(e) ? once(install) : null))
-  if (process.env.VELLUM_NO_UPDATE_CHECK) return
+  if (process.env.VELLUM_NO_UPDATE_CHECK || app.isPackaged) return // a packaged build has nothing to poll
   setTimeout(() => void once(check), FIRST_CHECK_MS)
   setInterval(() => void once(check), CHECK_EVERY_MS).unref()
 }
