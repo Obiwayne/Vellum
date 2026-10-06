@@ -3,7 +3,7 @@
 // list its tools (same names as the dev server mcp/dist/index.js), and call real tools against the running app.
 // Usage: node scripts/smoke-packaged-mcp.mjs [out-dir] [exe]
 import { _electron as electron } from 'playwright'
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync } from 'node:fs'
+import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync } from 'node:fs'
 import { createServer } from 'node:net'
 import { tmpdir } from 'node:os'
 import { dirname, join, resolve } from 'node:path'
@@ -75,6 +75,25 @@ try {
   if (id) {
     const shot = await client.callTool({ name: 'get_screenshot', arguments: { nodeId: id } })
     check(!shot.isError && shot.content.some((c) => c.type === 'image'), `get_screenshot returns an image (offscreen render works in the packaged app) ${shot.isError ? text(shot).slice(0, 200) : ''}`)
+  }
+  // the bundle sits next to the app, outside app.asar (any process can read it; Node cannot import from inside an asar)
+  try {
+    const asar = await import('@electron/asar')
+    const inside = asar.listPackage(join(dirname(exe), 'resources', 'app.asar')).filter((f) => /mcp[\\/]index\.mjs$/.test(f))
+    check(inside.length === 0, 'the bundle is not packed into app.asar')
+  } catch (e) {
+    results.push(`skipped: could not read app.asar (${String(e.message).slice(0, 80)})`)
+  }
+  // an install folder with spaces in its path (C:\Users\First Last\...): the bundle still starts and lists the same tools
+  const spaced = join(ud, 'Program Files', 'Vellum App')
+  cpSync(dirname(exe), spaced, { recursive: true })
+  const sc = new Client({ name: 'spaced-path', version: '0.0.1' })
+  try {
+    await sc.connect(new StdioClientTransport({ command: join(spaced, 'Vellum.exe'), args: [join(spaced, 'resources', 'mcp', 'index.mjs')], env: { ...env, ELECTRON_RUN_AS_NODE: '1' }, stderr: 'pipe' }))
+    const spacedTools = (await sc.listTools()).tools.map((t) => t.name).sort()
+    check(JSON.stringify(spacedTools) === JSON.stringify(tools), `from a folder with spaces in its path the bundle lists the same ${tools.length} tools`)
+  } finally {
+    await sc.close().catch(() => undefined)
   }
   // the bundle keeps the security behaviour: no bridge token = no access
   const bad = await new Promise((res) => {
