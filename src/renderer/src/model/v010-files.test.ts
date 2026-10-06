@@ -1,38 +1,78 @@
-// Files saved by Vellum v0.1.0 (fixtures in src/renderer/src/test-fixtures/v0.1.0) open in the current build with no data loss:
-// every node, page, token, thumbnail and flag survives the migration, the doc renders the same, and it stays editable.
+// Files saved by Vellum v0.1.0 (fixtures/v1: real files from that build), a v4 variants doc (fixtures/v4) and a
+// Canvas-era doc (fixtures/canvas-era) open in the current build with no data loss: every node, page, token, variant
+// and property survives the migration, the doc renders the same, and it stays editable.
 import { beforeEach, describe, expect, it } from 'vitest'
 import { DASHBOARD, getStore, useStore } from './store'
 import { DOC_VERSION, migrateDoc } from './ops'
+import { variantsOf } from './variants'
 import { nodeToHtml, nodeToRenderHtml } from './html'
 import type { Doc } from './types'
-import designA from '../test-fixtures/v0.1.0/files/v010designA1.json'
-import legacyV1 from '../test-fixtures/v0.1.0/files/v010legacyV1.json'
-import scratch from '../test-fixtures/v0.1.0/files/v010scratch01.json'
-import indexJson from '../test-fixtures/v0.1.0/index.json'
+import landing from './fixtures/v1/files/i1wL51Z8AV_4.json'
+import sketch from './fixtures/v1/files/d2_WyuDutjln.json'
+import scratch from './fixtures/v1/files/Ds7_k1U7cioJ.json'
+import indexJson from './fixtures/v1/index.json'
+import buttonsV4 from './fixtures/v4/buttons-v4.json'
+import canvasEra from './fixtures/canvas-era/old-sketch-no-version.json'
 
-const files: Record<string, unknown> = { v010designA1: designA, v010legacyV1: legacyV1, v010scratch01: scratch }
-const load = (name: string): Doc => JSON.parse(JSON.stringify(files[name])) as Doc
-const fixtures = Object.keys(files)
 const plain = <T>(v: T): T => JSON.parse(JSON.stringify(v))
+const doc = (o: unknown): Doc => plain(o) as Doc
+const v1Files = { landing, sketch, scratch }
 
-describe('v0.1.0 fixtures', () => {
-  it('are all there', () => {
-    expect(fixtures.sort()).toEqual(['v010designA1', 'v010legacyV1', 'v010scratch01'])
-  })
-})
-
-describe.each(['v010designA1', 'v010scratch01'])('%s (v2, as saved by v0.1.0)', (name) => {
-  it('migrates by stamping the version only: nothing else changes', () => {
-    const original = load(name)
+describe.each(Object.entries(v1Files))('v0.1.0 file "%s" (saved by that build)', (_name, file) => {
+  it('is a v2 doc, and migrating only stamps the version', () => {
+    const original = doc(file)
+    expect(original.version).toBe(2)
     const m = migrateDoc(plain(original))
     expect(m.version).toBe(DOC_VERSION)
-    expect({ ...m, version: original.version }).toEqual(original)
+    expect({ ...m, version: 2 }).toEqual(original)
+  })
+
+  it('renders and exports the same HTML as the file as saved', () => {
+    const original = doc(file)
+    const m = migrateDoc(plain(original))
+    for (const p of original.pages) {
+      expect(nodeToRenderHtml(m, p.rootId)).toBe(nodeToRenderHtml(original, p.rootId))
+      expect(nodeToHtml(m, p.rootId)).toBe(nodeToHtml(original, p.rootId))
+    }
   })
 })
 
-describe('v010legacyV1 (no version field)', () => {
+describe('v4 variants doc (DOC_VERSION 4)', () => {
+  const sets = (d: Doc) => Object.values(d.nodes).filter((n) => n.componentSet)
+  const mains = (d: Doc) => Object.values(d.nodes).filter((n) => n.component)
+
+  it('has what a v4 doc should: a component set with 3 variants', () => {
+    const d = doc(buttonsV4)
+    expect(d.version).toBe(4)
+    expect(sets(d)).toHaveLength(1)
+    expect(sets(d)[0].componentSet!.props[0]).toMatchObject({ type: 'variant', options: expect.arrayContaining(['Default', 'Variant 2', 'Large']) })
+    expect(mains(d).filter((n) => n.component?.set)).toHaveLength(3)
+  })
+
+  it('migrates by stamping 5 and loses no node, variant or property', () => {
+    const original = doc(buttonsV4)
+    const m = migrateDoc(plain(original))
+    expect(m.version).toBe(5)
+    expect(m.version).toBe(DOC_VERSION)
+    expect({ ...m, version: 4 }).toEqual(original)
+    expect(Object.keys(m.nodes).sort()).toEqual(Object.keys(original.nodes).sort())
+    expect(sets(m).map((n) => n.componentSet)).toEqual(sets(original).map((n) => n.componentSet))
+    expect(mains(m).map((n) => n.component)).toEqual(mains(original).map((n) => n.component))
+    expect(migrateDoc(m)).toBe(m)
+  })
+
+  it('opens in the store and the variant helpers still see the set', () => {
+    useStore.setState(useStore.getInitialState(), true)
+    const m = migrateDoc(doc(buttonsV4))
+    getStore().hydrate({ docs: { [m.id]: m }, recents: [m.id], tabs: [DASHBOARD, m.id], activeTab: m.id, prefs: {}, scratchpadId: m.id })
+    const d = getStore().docs[m.id]
+    expect(variantsOf(d, sets(d)[0].id)).toHaveLength(3)
+  })
+})
+
+describe('Canvas-era doc (no version field)', () => {
   it('only gives text without a line height the old 20px, and keeps everything else', () => {
-    const original = load('v010legacyV1')
+    const original = doc(canvasEra)
     expect(original.version).toBeUndefined()
     const m = migrateDoc(plain(original))
     expect(m.version).toBe(DOC_VERSION)
@@ -44,79 +84,63 @@ describe('v010legacyV1 (no version field)', () => {
   })
 
   it('does not mutate its input', () => {
-    const original = load('v010legacyV1')
+    const original = doc(canvasEra)
     const before = plain(original)
     migrateDoc(original)
     expect(original).toEqual(before)
   })
 })
 
-describe('opened in the app', () => {
+describe('v0.1.0 files opened in the app', () => {
   let id: string
-  const doc = (): Doc => getStore().docs[id]
+  const cur = (): Doc => getStore().docs[id]
   beforeEach(() => {
     useStore.setState(useStore.getInitialState(), true)
     const docs: Record<string, Doc> = {}
-    for (const f of fixtures) {
-      const m = migrateDoc(load(f))
+    for (const f of Object.values(v1Files)) {
+      const m = migrateDoc(doc(f))
       docs[m.id] = m
     }
-    const index = indexJson
-    getStore().hydrate({ docs, recents: index.recents, tabs: index.tabs, activeTab: index.activeTab, prefs: index.prefs, scratchpadId: index.scratchpadId })
-    id = 'v010designA1'
+    getStore().hydrate({ docs, recents: indexJson.recents, tabs: indexJson.tabs, activeTab: indexJson.activeTab, prefs: indexJson.prefs, scratchpadId: indexJson.scratchpadId })
+    id = landing.id
   })
 
   it('restores the index: tabs, recents, scratchpad and prefs', () => {
     const s = getStore()
-    expect(s.tabs).toEqual([DASHBOARD, 'v010designA1', 'v010scratch01'])
-    expect(s.activeTab).toBe('v010designA1')
-    expect(s.recents).toEqual(['v010designA1', 'v010scratch01', 'v010legacyV1'])
-    expect(s.scratchpadId).toBe('v010scratch01')
-    expect(s.prefs).toEqual({ userName: 'Obi', dashboardView: 'grid' })
+    expect(s.tabs).toEqual(indexJson.tabs)
+    expect(s.activeTab).toBe(indexJson.activeTab)
+    expect(s.recents).toEqual(indexJson.recents)
+    expect(s.scratchpadId).toBe(indexJson.scratchpadId)
   })
 
-  it('keeps every node, page and token with the same content', () => {
-    const original = load(id)
-    expect(Object.keys(doc().nodes).sort()).toEqual(Object.keys(original.nodes).sort())
-    expect(doc().pages).toEqual(original.pages)
-    expect(doc().tokens).toEqual(original.tokens)
-    expect(doc().thumbnail).toBe(original.thumbnail)
-    expect(doc().nodes['8-0']).toMatchObject({ visible: false, locked: true })
-    expect(doc().nodes['4-0'].text).toBe('Line one\nLine two')
-    expect(doc().nodes['13-0'].text).toBe('Ünïcode ✓ 日本語')
-    expect(doc().nodes['6-0'].svg).toBe(original.nodes['6-0'].svg)
-    expect(doc().nodes['7-0'].attrs).toEqual(original.nodes['7-0'].attrs)
-  })
-
-  it('renders the same HTML as the unmigrated file (v2 changes nothing)', () => {
-    const original = load(id)
-    for (const root of ['2-0', '10-0']) {
-      expect(nodeToRenderHtml(doc(), root)).toBe(nodeToRenderHtml(original, root))
-      expect(nodeToHtml(doc(), root)).toBe(nodeToHtml(original, root))
-    }
+  it('keeps every node, page, token and the text, svg and image content', () => {
+    const original = doc(landing)
+    expect(Object.keys(cur().nodes).sort()).toEqual(Object.keys(original.nodes).sort())
+    expect(cur().pages).toEqual(original.pages)
+    expect(cur().tokens).toEqual(original.tokens)
+    expect(cur().tokens).toHaveLength(4)
+    const types = (d: Doc) => Object.values(d.nodes).map((n) => n.type).sort()
+    expect(types(cur())).toEqual(types(original))
+    expect(Object.values(cur().nodes).some((n) => n.type === 'svg' && n.svg)).toBe(true)
+    expect(Object.values(cur().nodes).some((n) => n.type === 'image' && n.attrs?.src?.startsWith('data:image/png'))).toBe(true)
+    expect(Object.values(cur().nodes).some((n) => n.text === 'Ünïcode ✓ 日本語')).toBe(true)
   })
 
   it('stays editable: an edit and its undo leave the old data intact (updatedAt aside)', () => {
-    const before = plain(doc())
-    getStore().updateStyles(id, ['3-0'], { color: '#FF0000' })
-    expect(doc().nodes['3-0'].style.color).toBe('#FF0000')
+    const before = plain(cur())
+    const textId = Object.values(cur().nodes).find((n) => n.type === 'text')!.id
+    getStore().updateStyles(id, [textId], { color: '#FF0000' })
+    expect(cur().nodes[textId].style.color).toBe('#FF0000')
     getStore().undo(id)
-    expect({ ...plain(doc()), updatedAt: 0 }).toEqual({ ...before, updatedAt: 0 })
+    expect({ ...plain(cur()), updatedAt: 0 }).toEqual({ ...before, updatedAt: 0 })
   })
 
-  it('can use the newer features on an old doc: tokens as a colour style, a new page', () => {
-    const before = Object.keys(doc().nodes).length
+  it('can use newer features on an old doc: a new page and a colour token', () => {
+    const before = Object.keys(cur().nodes).length
     getStore().addPage(id, 'Page 3')
-    expect(doc().pages).toHaveLength(3)
-    expect(Object.keys(doc().nodes).length).toBe(before + 1) // the new page root
+    expect(cur().pages).toHaveLength(3)
+    expect(Object.keys(cur().nodes).length).toBe(before + 1)
     getStore().upsertTokens(id, [{ name: '--color-brand', value: '#112233' }])
-    expect(doc().tokens.find((t) => t.name === '--color-brand')?.value).toBe('#112233')
-  })
-
-  it('a save after opening writes nothing the old file had away', () => {
-    const original = load(id)
-    const saved = plain(doc())
-    for (const [nid, n] of Object.entries(original.nodes)) expect(saved.nodes[nid]).toEqual(n)
-    for (const k of Object.keys(original)) if (k !== 'version') expect(saved[k as keyof Doc]).toEqual(original[k as keyof Doc])
+    expect(cur().tokens.find((t) => t.name === '--color-brand')?.value).toBe('#112233')
   })
 })

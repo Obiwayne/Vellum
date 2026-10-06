@@ -1,12 +1,12 @@
 // Files saved by Vellum v0.1.0 (pre-profile layout: userData/files/*.json + index.json) move into the first profile,
-// with and without a password, and read back identical. Fixtures: src/renderer/src/test-fixtures/v0.1.0.
+// with and without a password, and read back identical. Fixtures: src/renderer/src/model/fixtures/v1 (real files saved by that build).
 import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
 import { afterAll, describe, expect, it } from 'vitest'
 import { Vault, isEncrypted } from './vault'
 
-const fixtures = join(__dirname, '../renderer/src/test-fixtures/v0.1.0')
+const fixtures = join(__dirname, '../renderer/src/model/fixtures/v1')
 const names = readdirSync(join(fixtures, 'files')).filter((n) => n.endsWith('.json'))
 const fixture = (rel: string): unknown => JSON.parse(readFileSync(join(fixtures, rel), 'utf8'))
 const roots: string[] = []
