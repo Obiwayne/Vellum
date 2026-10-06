@@ -26,6 +26,7 @@ export function SelectionColorsSection({ ctx }: { ctx: Ctx }): JSX.Element | nul
         <ColorInput
           key={i}
           docId={docId}
+          nodeId={ids[0]}
           value={u.key}
           showEyedropper={false}
           onChange={(c, { live }) => replace(u.key, c, live)}

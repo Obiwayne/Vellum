@@ -747,6 +747,7 @@ export function UnderlineSection({ ctx }: { ctx: Ctx }): JSX.Element {
       </div>
       <ColorInput
         docId={ctx.docId}
+            nodeId={ctx.ids[0]}
         value={color}
         onChange={(c, { live }) => ctx.set({ textDecorationColor: c }, live ? co(ctx, 'uc') : undefined)}
       />
@@ -785,6 +786,7 @@ export function StrokeSection({ ctx }: { ctx: Ctx }): JSX.Element {
       </div>
       <ColorInput
         docId={ctx.docId}
+            nodeId={ctx.ids[0]}
         value={color}
         onChange={(c, { live }) => ctx.set({ WebkitTextStrokeColor: c }, live ? co(ctx, 'sc') : undefined)}
       />
