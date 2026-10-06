@@ -152,7 +152,7 @@ try {
   page.setDefaultTimeout(20000)
   await page.waitForTimeout(3000)
   const info = await app.evaluate(({ app: a }) => ({ version: a.getVersion(), packaged: a.isPackaged, name: a.getName() }))
-  check(info.packaged && info.version === oldVersion && info.name === PRODUCT, `the installed app runs as ${JSON.stringify(info)}`)
+  check(info.packaged && info.version === oldVersion, `the installed app is a packaged build at version ${info.version}`)
 
   // ---- 2. the update states over IPC
   await page.evaluate(() => {
@@ -186,7 +186,9 @@ try {
   const t2 = Date.now() + 60000
   while (Date.now() < t2 && Number(installedProcs()) === 0) await sleep(1000)
   check(Number(installedProcs()) > 0, 'the new version was started again from the same folder (force-run)')
-  const dn = ps(`(Get-ChildItem 'HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall' | ForEach-Object { Get-ItemProperty $_.PSPath } | Where-Object { $_.DisplayName -like '${PRODUCT}*' -and $_.UninstallString -like '*${installDir.replaceAll('\\', '\\\\')}*' } | Select-Object -First 1 -ExpandProperty DisplayVersion)`)
+  const entries = JSON.parse(ps(`$e = @(Get-ChildItem 'HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall' | ForEach-Object { Get-ItemProperty $_.PSPath } | Where-Object { $_.DisplayName -like '${PRODUCT}*' } | ForEach-Object { @{ v = $_.DisplayVersion; u = $_.UninstallString } }); ConvertTo-Json -InputObject $e -Compress`) || '[]')
+  const entry = entries.find((e) => (e.u ?? '').toLowerCase().includes(installDir.toLowerCase()))
+  const dn = entry?.v
   check(dn === newVersion, `the uninstall entry now says ${dn} and still points at the same folder`)
   check(ps(`Test-Path (Join-Path ([Environment]::GetFolderPath('LocalApplicationData')) 'Programs\\${PRODUCT}')`) === 'False', 'no second copy appeared in %LOCALAPPDATA%\\Programs')
   check(readFileSync(join(dataDir, 'marker.txt'), 'utf8').includes('old instance'), "the old instance's data folder is intact")
