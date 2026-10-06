@@ -11,11 +11,11 @@ files:
   - package.json
   - '!**/*.map'
 asar: true
-# The MCP server bundle (T-B fills this in): one file, copied next to the app OUTSIDE the asar so any process can run it.
-# Once T-B produces resources-out/mcp/index.mjs, enable:
-# extraResources:
-#   - from: resources-out/mcp
-#     to: mcp
+# The MCP server bundle (npm run build:mcp -> resources-out/mcp/index.mjs, one file with the SDK, zod and ws inlined) is copied
+# next to the app OUTSIDE the asar, so any process can run it: ELECTRON_RUN_AS_NODE=1 Vellum.exe resources/mcp/index.mjs
+extraResources:
+  - from: resources-out/mcp
+    to: mcp
 # use the Electron binary npm already installed instead of downloading a second copy
 electronDist: node_modules/electron/dist
 win:

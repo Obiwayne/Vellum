@@ -70,8 +70,9 @@ describe('electron-builder.yml', () => {
 
 describe('package.json for packaging', () => {
   it('has pack and dist scripts that build first', () => {
-    expect(pkg.scripts.pack).toMatch(/^npm run build && electron-builder --dir$/)
-    expect(pkg.scripts.dist).toMatch(/^npm run build && electron-builder$/)
+    expect(pkg.scripts.pack).toBe("npm run build && npm run build:mcp && electron-builder --dir")
+    expect(pkg.scripts.dist).toBe("npm run build && npm run build:mcp && electron-builder")
+    expect(pkg.scripts["build:mcp"]).toBe("node scripts/build-mcp-bundle.mjs")
   })
 
   it('ships only what the main process requires at run time (everything else is bundled by Vite into out/)', () => {
@@ -114,9 +115,10 @@ describe('app version', () => {
   })
 })
 
-describe('MCP bundle placeholder', () => {
-  it('electron-builder.yml documents where the MCP bundle goes (outside the asar), for the bundle task to enable', () => {
-    expect(yml).toMatch(/#\s*extraResources:/)
+describe('MCP bundle in the package', () => {
+  it('electron-builder.yml copies the MCP bundle next to the app, outside the asar', () => {
+    expect(yml).toMatch(/^extraResources:/m)
+    expect(yml).toContain('- from: resources-out/mcp\n    to: mcp')
     expect(yml).toMatch(/outside the asar/i)
   })
 })
