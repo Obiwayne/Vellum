@@ -180,3 +180,29 @@ describe('Add as colour style is one undo step', () => {
     expect(JSON.stringify(doc().tokens)).toBe(before)
   })
 })
+
+describe('Detach keeps the colour formats tokens use', () => {
+  // hsl(), named colours and rgba() are parsed through a canvas in the app (not in jsdom), so only hex and rgba are checked here.
+  it.each([
+    ['hex8', '#11223344'],
+    ['rgba', 'rgba(10, 20, 30, 0.5)']
+  ])('%s value is written as is', (_n, value) => {
+    S().upsertTokens(id, [{ name: '--color-fmt', value }])
+    render('var(--color-fmt)')
+    openPopover()
+    click('Detach style')
+    expect(onChange).toHaveBeenLastCalledWith(value, { live: false })
+  })
+
+  // Regression reported to the builder (gus), found after his fix for circular aliases: Detach now writes black when
+  // parseColor(literal) is null, and parseColor cannot read oklch() (Chromium's canvas returns "oklch(0.623 0.214 258)",
+  // see .muster-evidence/T30/oklch-probe output). Every colour of the starter theme is oklch, so Detach on those styles
+  // would turn the layer black. The fix: test for "still a var() reference" instead of parseColor, e.g. /^var(/.test(literal).
+  it.fails('an oklch() style is detached to its oklch literal, not to black', () => {
+    S().upsertTokens(id, [{ name: '--color-blue', value: 'oklch(62.3% 0.214 258)' }])
+    render('var(--color-blue)')
+    openPopover()
+    click('Detach style')
+    expect(onChange).toHaveBeenLastCalledWith('oklch(62.3% 0.214 258)', { live: false })
+  })
+})
