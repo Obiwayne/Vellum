@@ -1,5 +1,6 @@
 import { contextBridge, ipcRenderer, type IpcRendererEvent } from 'electron'
 import { IPC, type BridgeRequest, type CanvasApi, type UpdateStatus } from '@shared/api'
+import type { McpEntry } from '@shared/mcpSnippets'
 
 const api: CanvasApi = {
   platform: process.platform,
@@ -56,7 +57,7 @@ const api: CanvasApi = {
     rename: (docId, versionId, name) => ipcRenderer.invoke(IPC.histRename, docId, versionId, name),
     remove: (docId, versionId) => ipcRenderer.invoke(IPC.histRemove, docId, versionId)
   },
-  mcpEntry: ipcRenderer.sendSync(IPC.mcpEntry) as string,
+  mcpEntry: ipcRenderer.sendSync(IPC.mcpEntry) as McpEntry,
   agentDriven: (ipcRenderer.sendSync(IPC.agentDriven) as string | null) ?? null,
 
   capturePage: (rect) => ipcRenderer.invoke(IPC.capturePage, rect),

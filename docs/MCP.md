@@ -4,6 +4,19 @@ The MCP server lets Claude Code (or any MCP client) design inside the running Ve
 
 ## Setup
 
+**Installed Vellum (the installer).** The app ships the server as one file, `resources/mcp/index.mjs`, and runs it with its
+own Electron as Node, so nothing else has to be installed. **Connect your agent** in the app prints the exact command for your
+install; it looks like this (the environment variable is what turns Vellum.exe into a plain Node runtime):
+
+```
+claude mcp add vellum -e ELECTRON_RUN_AS_NODE=1 -- "C:/Users/<you>/AppData/Local/Programs/Vellum/Vellum.exe" "C:/Users/<you>/AppData/Local/Programs/Vellum/resources/mcp/index.mjs"
+```
+
+The Codex command and the JSON/TOML snippets for Claude Desktop, Cursor, VS Code and Codex carry the same command, arguments and
+environment. Paths with spaces are quoted. The commands are built in `src/shared/mcpSnippets.ts`.
+
+**Clone (developers).**
+
 ```
 cd <path-to-Vellum>\mcp
 npm install

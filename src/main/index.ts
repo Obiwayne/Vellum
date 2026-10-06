@@ -7,6 +7,7 @@ import { IPC, type Rect } from '@shared/api'
 import { clearCachesIfProtected, migrateLegacyUserData, registerStorageIpc } from './storage'
 import { startBridge } from './bridge'
 import { startUpdater } from './updater'
+import { mcpEntryFor } from '@shared/mcpSnippets'
 import { cleanStaleRenderTemp, disposeRenderer, registerRenderScheme, renderHtml, renderPdf } from './offscreen'
 import appIcon from '../../resources/icon.ico?asset'
 
@@ -181,7 +182,7 @@ function registerWindowIpc(): void {
     if (trustedSender(e)) openExternalSafe(url)
   })
   ipcMain.on(IPC.mcpEntry, (e) => {
-    e.returnValue = join(app.getAppPath(), 'mcp', 'dist', 'index.js').split('\\').join('/')
+    e.returnValue = mcpEntryFor({ isPackaged: app.isPackaged, execPath: process.execPath, appPath: app.getAppPath(), resourcesPath: process.resourcesPath })
   })
   ipcMain.on(IPC.agentDriven, (e) => {
     e.returnValue = agentDriven()

@@ -2,6 +2,7 @@ import { useEffect, useState, type ReactNode } from 'react'
 import { Box, Check, Code2, Copy, Ellipsis, Hexagon, Plus, Minus, Sparkle } from 'lucide-react'
 import { Button, IconButton, Modal } from '../../ui'
 import { MCP_ENTRY } from '../../dashboard/ConnectAgentModal'
+import { claudeCommand, codexCommand, codexToml, mcpServersJson, vscodeJson } from '@shared/mcpSnippets'
 
 // ---- bridge activity (any MCP request reaching the renderer counts as "connected")
 let lastBridgeRequest = 0
@@ -22,46 +23,43 @@ interface Agent {
   config: string
 }
 
-const json = (o: unknown): string => JSON.stringify(o, null, 2)
-const stdio = { command: 'node', args: [MCP_ENTRY] }
-
 const AGENTS: Agent[] = [
   {
     id: 'claude',
     label: 'Claude',
     icon: <Sparkle size={15} />,
-    command: `claude mcp add vellum -- node ${MCP_ENTRY}`,
+    command: claudeCommand(MCP_ENTRY),
     configLabel: 'Or add it to Claude Desktop (claude_desktop_config.json):',
-    config: json({ mcpServers: { vellum: stdio } })
+    config: mcpServersJson(MCP_ENTRY)
   },
   {
     id: 'codex',
     label: 'Codex',
     icon: <Hexagon size={15} />,
-    command: `codex mcp add vellum -- node ${MCP_ENTRY}`,
+    command: codexCommand(MCP_ENTRY),
     configLabel: 'Or add it to ~/.codex/config.toml:',
-    config: `[mcp_servers.vellum]\ncommand = "node"\nargs = ["${MCP_ENTRY}"]`
+    config: codexToml(MCP_ENTRY)
   },
   {
     id: 'cursor',
     label: 'Cursor',
     icon: <Box size={15} />,
     configLabel: 'Add this to ~/.cursor/mcp.json (or .cursor/mcp.json in your project):',
-    config: json({ mcpServers: { vellum: stdio } })
+    config: mcpServersJson(MCP_ENTRY)
   },
   {
     id: 'vscode',
     label: 'VS Code',
     icon: <Code2 size={15} />,
     configLabel: 'Add this to .vscode/mcp.json in your workspace:',
-    config: json({ servers: { vellum: { type: 'stdio', ...stdio } } })
+    config: vscodeJson(MCP_ENTRY)
   },
   {
     id: 'other',
     label: 'Other agents',
     icon: <Ellipsis size={15} />,
     configLabel: 'Most MCP clients accept a stdio server config like this:',
-    config: json({ mcpServers: { vellum: stdio } })
+    config: mcpServersJson(MCP_ENTRY)
   }
 ]
 
