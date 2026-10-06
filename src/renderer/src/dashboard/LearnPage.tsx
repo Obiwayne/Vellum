@@ -73,6 +73,17 @@ const GROUPS: { title: string; items: [string, string][] }[] = [
     ]
   },
   {
+    title: 'Styles',
+    items: [
+      ['Create a text style', 'Select a text, then + in Theme → Styles (or + in the Text section)'],
+      ['Apply a text style', 'Text section → style dropdown'],
+      ['Edit a style everywhere', 'Theme → Styles → click the style'],
+      ['Detach from a style', 'Change its typography, or the unlink button'],
+      ['Create a colour style', 'Select a layer, then + under Colour styles'],
+      ['Apply or detach a colour style', 'Colour field → token button']
+    ]
+  },
+  {
     title: 'Text',
     items: [
       ['Bold', 'Ctrl+B'],

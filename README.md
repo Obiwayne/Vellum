@@ -88,6 +88,7 @@ its design system, component sheets and every screen and dialog (85 artboards), 
   and add boolean, text and swap properties that drive layers inside the component. The Assets panel lists
   components of every page with live thumbnails and expandable sets; drag one onto the canvas to place it. See
   `docs/COMPONENTS.md`.
+- **Text & colour styles** — save typography as a **text style** (family, size, weight, line height, letter spacing, decoration, case) and apply it from the Text section or the Styles view of the Theme tab; editing the style updates every layer that follows it (bigger text grows Fit containers), a manual typography change detaches a layer. **Colour styles** are your `--color-*` tokens: pick one in any colour field, Detach writes the literal of the active Light/Dark mode. See `docs/INSPECTOR.md` and `docs/LEFT_DASHBOARD.md`.
 - **MCP server** — 47 tools (`write_html`, `update_styles`, `get_screenshot`, `get_jsx` (instances export as
   component usage plus definitions), components, variants and properties, text styles, tokens and theme
   modes, comments, pages, export to PNG/JPG/WebP/SVG/PDF/HTML/JSX…). Works with Claude Code, Codex and other MCP clients. Layers an agent is
