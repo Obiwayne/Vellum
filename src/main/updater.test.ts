@@ -69,6 +69,44 @@ describe('packaged build where electron-updater cannot be loaded (T50)', () => {
   })
 })
 
+describe('packaged build where electron-updater cannot be loaded: reporting (T50 test station)', () => {
+  const start = async (win: unknown) => {
+    vi.resetModules()
+    handlers.clear()
+    state.packaged = true
+    const mod = await import('./updater')
+    const { IPC } = await import('@shared/api')
+    mod.startUpdater(() => win as never, () => true, noUpdater)
+    return { IPC, call: (ch: string) => handlers.get(ch)!({}) as Promise<{ state: string; message?: string }> }
+  }
+
+  it('tells the window right away, and the message carries the reason from the loader', async () => {
+    const send = vi.fn()
+    const { IPC } = await start({ isDestroyed: () => false, webContents: { send } })
+    expect(send).toHaveBeenCalledWith(IPC.updChanged, expect.objectContaining({ state: 'error', message: expect.stringContaining('electron-updater is not installed') }))
+  })
+
+  it('install and check keep saying error, and never run git or npm', async () => {
+    state.hasGit = true
+    const { IPC, call } = await start(null)
+    expect((await call(IPC.updInstall)).state).toBe('error')
+    expect((await call(IPC.updCheck)).state).toBe('error')
+    expect((await call(IPC.updStatus)).state).toBe('error')
+    expect(execFile).not.toHaveBeenCalled()
+    expect(spawn).not.toHaveBeenCalled()
+  })
+
+  it('a clone without .git is still "unsupported" (unchanged)', async () => {
+    state.packaged = false
+    vi.resetModules()
+    handlers.clear()
+    const mod = await import('./updater')
+    const { IPC } = await import('@shared/api')
+    mod.startUpdater(() => null, () => true)
+    expect((await (handlers.get(IPC.updCheck)!({}) as Promise<{ state: string }>)).state).toBe('unsupported')
+  })
+})
+
 describe('packaged build without electron-updater', () => {
   it('starts as an error, and a check says so without running git or npm', async () => {
     state.packaged = true
