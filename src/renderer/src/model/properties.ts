@@ -74,9 +74,10 @@ export function removeProp(doc: Doc, mainId: string, propId: string): void {
 /**
  * Bind a layer inside a main to a property (or clear the binding with null): boolean → visible,
  * text → a text layer's text, swap → a nested instance's component. The first layer bound to a property gives it
- * its default (the layer's current visibility / text / component). Re-syncs the instances.
+ * its default (the layer's current visibility / text / component) unless `keepDefault` (an explicit default,
+ * e.g. from the MCP tool, stays). Re-syncs the instances.
  */
-export function bindProp(doc: Doc, nodeId: string, aspect: Aspect, propId: string | null): void {
+export function bindProp(doc: Doc, nodeId: string, aspect: Aspect, propId: string | null, opts: { keepDefault?: boolean } = {}): void {
   const node = doc.nodes[nodeId]
   if (!node) throw new Error(`Node ${nodeId} not found`)
   const mainId = mainOf(doc, nodeId)
@@ -98,7 +99,7 @@ export function bindProp(doc: Doc, nodeId: string, aspect: Aspect, propId: strin
   if (aspect === 'swap' && !node.instance) throw new Error('Only a nested instance can follow a swap property')
   // the first layer bound to a property gives it its default: instances look unchanged until someone edits the value
   const taken = sharing(doc, mainId).some((m) => [m, ...descendants(doc, m)].some((d) => d !== nodeId && doc.nodes[d]?.bind?.[aspect] === propId))
-  const adopted = taken ? def.default : aspect === 'visible' ? node.visible : aspect === 'text' ? node.text ?? '' : (node.instance as { of: string }).of
+  const adopted = taken || opts.keepDefault ? def.default : aspect === 'visible' ? node.visible : aspect === 'text' ? node.text ?? '' : (node.instance as { of: string }).of
   if (aspect === 'swap' && reaches(doc, adopted as string, mainId)) throw new Error(CYCLE_MSG)
   def.default = adopted
   ;(node.bind ??= {})[aspect] = propId

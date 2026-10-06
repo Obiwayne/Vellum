@@ -171,3 +171,15 @@ describe('binding adopts the layer as the property default', () => {
     expect(node(node(inst).children[0]).name).toBe(node(slot).name) // still the Heart slot
   })
 })
+
+describe('keepDefault', () => {
+  it('bindProp with keepDefault leaves an explicit default alone (the MCP tool uses it)', () => {
+    const btn = S().createNode(id, { type: 'frame', name: 'Button', style: { width: 100, height: 40 } }, root())
+    const label = S().createNode(id, { type: 'text', text: 'Click' }, btn)
+    S().createComponent(id, [btn])
+    const text = S().addProp(id, btn, { name: 'Label', type: 'text', default: 'Hi' })
+    S().bindProp(id, label, 'text', text, { keepDefault: true })
+    expect(node(btn).component!.props![0].default).toBe('Hi')
+    expect(node(label).bind).toEqual({ text })
+  })
+})

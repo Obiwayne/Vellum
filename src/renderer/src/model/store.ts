@@ -110,7 +110,7 @@ export interface Store {
   /** add a boolean / text / swap property to a main (or to its set). Returns the property id. */
   addProp(docId: string, mainId: string, def: Omit<PropDef, 'id'> & { id?: string }): string
   /** bind a layer inside a main to a property (null clears the binding) */
-  bindProp(docId: string, nodeId: string, aspect: 'visible' | 'text' | 'swap', propId: string | null): void
+  bindProp(docId: string, nodeId: string, aspect: 'visible' | 'text' | 'swap', propId: string | null, opts?: { keepDefault?: boolean }): void
   /** set an instance's value for a boolean / text / swap property */
   setInstanceProp(docId: string, instId: string, propId: string, value: string | boolean): void
   /** rename a set's variant property (Variant -> State) */
@@ -683,8 +683,8 @@ export const useStore = create<Store>()((set, get) => {
       return id
     },
 
-    bindProp(docId, nodeId, aspect, propId) {
-      mutate(docId, 'Bind property', (d) => props.bindProp(d, nodeId, aspect, propId), { derived: true })
+    bindProp(docId, nodeId, aspect, propId, opts) {
+      mutate(docId, 'Bind property', (d) => props.bindProp(d, nodeId, aspect, propId, opts), { derived: true })
     },
 
     renameVariantProp(docId, setId, propId, name) {
