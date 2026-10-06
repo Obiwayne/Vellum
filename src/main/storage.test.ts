@@ -191,3 +191,18 @@ describe('recovery copies and backups over IPC', () => {
     for (const n of ['del.json', 'del.json.bak', 'del.recovery']) expect(existsSync(join(dir(), n))).toBe(false)
   })
 })
+
+describe('closing while saves are on their way', () => {
+  it('a save that has arrived but not yet reached the write queue still lands before the profile locks', async () => {
+    const { lockProfile } = await import('./storage')
+    const id = getVault().currentProfile!.id
+    const d = doc('late', 'Sent while closing', { updatedAt: 9 })
+    const pending = call(IPC.saveDoc, d) // not awaited: the window is closing and its last save is still in the handler
+    const lock = lockProfile()
+    await Promise.all([pending, lock])
+    expect(getVault().isOpen()).toBe(false)
+    const r = await call<{ ok: boolean }>(IPC.profOpen, id, 'pw-storage')
+    expect(r.ok).toBe(true)
+    expect(await call(IPC.loadDoc, 'late')).toEqual(d)
+  }, 60_000)
+})
