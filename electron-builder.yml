@@ -17,6 +17,8 @@ extraResources:
   - from: resources-out/mcp
     to: mcp
 # use the Electron binary npm already installed instead of downloading a second copy
+# (this copies Electron's resources/default_app.asar, 110 KB, next to our app.asar. Decision: keep it. Electron only runs
+# default_app.asar when there is no app.asar, and packaging.test.ts asserts app.asar is there)
 electronDist: node_modules/electron/dist
 win:
   target:

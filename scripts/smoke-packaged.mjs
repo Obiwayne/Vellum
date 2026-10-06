@@ -57,7 +57,7 @@ try {
     const inside = asar.listPackage(join(dirname(exe), 'resources', 'app.asar')).filter((f) => /node_modules[\\/]electron-updater[\\/]package\.json$/.test(f))
     check(inside.length === 1, 'electron-updater is packed into app.asar')
   } catch (e) {
-    results.push(`skipped: could not read app.asar (${String(e.message).slice(0, 80)})`)
+    check(false, `electron-updater is packed into app.asar (could not read the asar: ${String(e.message).slice(0, 80)})`)
   }
   // work is saved inside the temp data folder
   await page.waitForTimeout(2500) // autosave debounce
