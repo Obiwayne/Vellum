@@ -77,3 +77,21 @@ jobs:
         env:
           VELLUM_REQUIRE_PACK: '1'
       - run: node scripts/smoke-packaged.mjs
+
+  # Builds a test installer (own appId and product name) and runs it silently in temp folders: per-user install, shortcuts, uninstall entry, closing a
+  # running Vellum, uninstall keeping the data folder (scripts/test-installer.ps1).
+  installer:
+    runs-on: windows-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - run: npm ci
+      # the installer carries the MCP bundle (npm run build:mcp), which needs mcp's packages
+      - run: npm ci
+        working-directory: mcp
+      - run: npm run test:installer

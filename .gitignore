@@ -10,4 +10,5 @@ reference/
 *.tsbuildinfo
 
 release/
+release-test/
 resources-out/
