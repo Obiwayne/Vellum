@@ -18,11 +18,11 @@ describe('oklch edge inputs', () => {
     expect(parseColor('oklch(0.6 0.15 200 / .5)')?.a).toBe(0.5)
   })
 
-  it('negative chroma behaves as zero chroma (a grey of the same lightness); lightness above 100% is white, below 0 black', () => {
+  it('negative chroma behaves as zero chroma (a grey of the same lightness); lightness is clamped to 0..100% before the colour is clipped, as Chromium paints it', () => {
     const grey = parseColor('oklch(0.6 0 0)')
     expect(parseColor('oklch(0.6 -0.2 200)')).toEqual(grey)
-    expect(parseColor('oklch(150% 0.2 100)')).toMatchObject({ r: 255, g: 255, b: 255 })
-    expect(parseColor('oklch(-0.2 0.2 100)')).toMatchObject({ r: 0, g: 0, b: 0 })
+    expect(parseColor('oklch(150% 0.2 100)')).toMatchObject({ r: 255, g: 255, b: 46 })
+    expect(parseColor('oklch(-0.2 0.3 100)')).toMatchObject({ r: 0, g: 37, b: 0 })
     expect(grey!.r).toBe(grey!.g)
     expect(grey!.g).toBe(grey!.b)
   })

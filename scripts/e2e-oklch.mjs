@@ -23,11 +23,24 @@ const shot = async (name) => {
 }
 const check = (ok, label) => results.push(`${ok ? 'passed' : 'FAILED'}: ${label}`)
 /** the frame's inline background as written in the document, and as computed by the browser */
-const frame = () =>
-  page.evaluate(() => {
-    const el = [...document.querySelectorAll('[data-node-id]')].find((e) => e.children.length === 0 ? false : e.textContent.includes('Hello'))
+const findFrame = () => [...document.querySelectorAll('[data-node-id]')].find((e) => e.children.length > 0 && e.textContent.includes('Hello'))
+const frame = async () => {
+  await page.waitForFunction(() => [...document.querySelectorAll('[data-node-id]')].some((e) => e.children.length > 0 && e.textContent.includes('Hello')), null, { timeout: 8000 })
+  return page.evaluate((src) => {
+    const el = new Function(`return (${src})()`)()
     return { inline: el.style.backgroundColor, computed: getComputedStyle(el).backgroundColor }
-  })
+  }, findFrame.toString())
+}
+/** the sRGB pixel the browser paints for a CSS colour (computed styles keep oklch() as written, the canvas does not) */
+const painted = (css) =>
+  page.evaluate((v) => {
+    const c = document.createElement('canvas')
+    c.width = c.height = 1
+    const ctx = c.getContext('2d', { willReadFrequently: true })
+    ctx.fillStyle = v
+    ctx.fillRect(0, 0, 1, 1)
+    return Array.from(ctx.getImageData(0, 0, 1, 1).data.slice(0, 3)).join(',')
+  }, css)
 const tokensBtn = () => page.getByRole('button', { name: 'Tokens', exact: true }).first()
 const fieldToken = () => page.locator('.c-colorrow__token').first().textContent().catch(() => null)
 const selectFrame = async () => {
@@ -78,7 +91,7 @@ try {
     const s = [...el.querySelectorAll('*')].find((e) => getComputedStyle(e).backgroundColor !== 'rgba(0, 0, 0, 0)' && e.getBoundingClientRect().width > 4 && e.getBoundingClientRect().width < 30)
     return s ? getComputedStyle(s).backgroundColor : null
   })
-  check(Boolean(swatch) && swatch !== 'rgb(255, 255, 255)', `its swatch shows a colour (${swatch})`)
+  check(Boolean(swatch) && (await painted(swatch)) === '29,129,255', `its swatch is the colour the browser paints for blue-500, rgb 29,129,255 (${swatch} -> ${swatch ? await painted(swatch) : 'none'})`)
 
   // choose it: var(--color-blue-500)
   await blueRow.click()
@@ -86,7 +99,7 @@ try {
   const applied = await frame()
   check((await fieldToken()) === 'blue-500', `the field shows the style name (${await fieldToken()})`)
   check(applied.inline.includes('var(--color-blue-500)') || applied.inline === '', `the frame is written as var(--color-blue-500) (${applied.inline || 'inline cleared by the browser'})`)
-  check(applied.computed !== 'rgb(255, 255, 255)' && applied.computed !== 'rgba(0, 0, 0, 0)', `and renders blue (${applied.computed})`)
+  check((await painted(applied.computed)) === '29,129,255', `and the frame is painted rgb 29,129,255 (${applied.computed} -> ${await painted(applied.computed)})`)
   await shot('applied-blue-500')
 
   // Detach: the oklch literal unchanged
@@ -98,6 +111,8 @@ try {
   await shot('detached-literal')
   check(/oklch\(/i.test(detached.inline), `Detach writes the oklch literal (${detached.inline})`)
   check(detached.computed === applied.computed, `and the colour does not change (${detached.computed})`)
+  const hexShown = (await page.locator('.c-colorrow__hex').first().inputValue()).toLowerCase()
+  check(hexShown === '1d81ff', `the hex field shows the painted colour 1D81FF (${hexShown})`)
 
   // typed values are accepted as typed
   await selectFrame()

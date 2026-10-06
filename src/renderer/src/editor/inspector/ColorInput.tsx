@@ -1,6 +1,6 @@
 import { useState, type ReactNode } from 'react'
 import { Plus } from 'lucide-react'
-import { ColorRow, Popover, formatColor, parseColor, tokenRef } from '../../ui'
+import { ColorRow, Popover, formatColor, isOklabLiteral, parseColor, tokenRef } from '../../ui'
 import { getStore, useStore } from '../../model/store'
 import type { Doc, Token } from '../../model/types'
 import { effectiveMode, tokenValueIn } from '../../model/modes'
@@ -54,7 +54,7 @@ export function addColorToken(docId: string, rawName: string, color: string, app
   s.transact(docId, 'Add colour token', () => {
     // an oklch()/oklab() literal is kept as written: converting it to hex would silently change the colour
     const literal = color.trim()
-    s.upsertTokens(docId, [{ name, value: /^okl(?:ch|ab)\(/i.test(literal) ? literal : formatColor(c) }])
+    s.upsertTokens(docId, [{ name, value: isOklabLiteral(literal) ? literal : formatColor(c) }])
     apply(`var(${name})`)
   })
   return null

@@ -51,7 +51,7 @@ describe('oklch() / oklab() values', () => {
     expect(hex('oklch(70% 25% 180)')).toBe(hex('oklch(0.7 0.1 180)')) // 25% chroma = 0.1
   })
 
-  it('an out-of-gamut colour is gamut-mapped by losing chroma, keeping its hue, not clipped per channel', () => {
+  it('an out-of-gamut colour is clipped per channel, like the browser paints it (see oklch.chromium.test.ts for the reference data)', () => {
     const c = parseColor('oklch(0.7 0.4 150)')!
     expect(c.g).toBeGreaterThan(c.r)
     expect(c.g).toBeGreaterThan(c.b)
@@ -59,15 +59,17 @@ describe('oklch() / oklab() values', () => {
       expect(v).toBeGreaterThanOrEqual(0)
       expect(v).toBeLessThanOrEqual(255)
     }
-    // it sits on the sRGB edge (a channel at 0 or 255), and a colour that already fits is untouched by the mapping
+    // it sits on the sRGB edge (a channel at 0 or 255), and a colour that already fits is untouched
     expect([c.r, c.g, c.b].some((v) => v === 0 || v === 255)).toBe(true)
     expect(hex('oklch(0.7 0.1 150)')).toBe(formatColor(parseColor('oklch(0.7 0.1 150)')!))
     const mild = parseColor('oklch(0.7 0.1 150)')!
     expect(mild.r).toBeGreaterThan(0)
     expect(mild.g).toBeLessThan(255)
+    // the starter theme's blue-500 is slightly outside sRGB: its blue channel clips at 255
+    expect(parseColor('oklch(62.3% 0.214 258)')).toMatchObject({ r: 29, g: 129, b: 255 })
     // extreme lightness is clamped, never NaN
-    expect(hex('oklch(1.5 0.3 100)')).toBe('#FFFFFF')
-    expect(hex('oklch(-0.2 0.3 100)')).toBe('#000000')
+    expect(hex('oklch(1.5 0.3 100)')).toBe('#FFFD00') // Chromium: lightness is clamped to 100%, then the colour is clipped
+    expect(hex('oklch(-0.2 0.3 100)')).toBe('#002500')
   })
 
   it('rejects malformed values (null, no exception)', () => {

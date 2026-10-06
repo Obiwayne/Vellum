@@ -51,31 +51,21 @@ function oklabToLinear(L: number, a: number, b: number): [number, number, number
   return [4.0767416621 * l - 3.3077115913 * m + 0.2309699292 * s, -1.2684380046 * l + 2.6097574011 * m - 0.3413193965 * s, -0.0041960863 * l - 0.7034186147 * m + 1.707614701 * s]
 }
 
-const inGamut = (rgb: [number, number, number]): boolean => rgb.every((v) => v >= -0.0005 && v <= 1.0005)
-
 /**
- * An OKLab / OKLCH colour as sRGB. A colour outside the sRGB gamut keeps its lightness and hue and loses chroma
- * until it fits (the CSS Color 4 approach), not a per-channel clip that would shift its hue.
+ * An OKLab / OKLCH colour as sRGB, the way the browser paints it: each linear-light channel clamped to 0..1, then encoded.
+ * A colour outside the sRGB gamut therefore gets the same rgb() as on the canvas (blue-500 of the starter theme is
+ * 29,129,255), so the swatch and hex shown in a picker are the colour the layer is drawn with.
  */
 function oklchToRgba(L: number, C: number, h: number, a: number): RGBA {
-  if (L >= 1) return { r: 255, g: 255, b: 255, a: clamp(a, 0, 1) } // CSS: lightness 100% and above is white, whatever the chroma
-  if (L <= 0) return { r: 0, g: 0, b: 0, a: clamp(a, 0, 1) }
-  const light = L
   const rad = (h * Math.PI) / 180
-  let lin = oklabToLinear(light, C * Math.cos(rad), C * Math.sin(rad))
-  if (!inGamut(lin)) {
-    let lo = 0
-    let hi = Math.max(C, 0)
-    for (let i = 0; i < 24; i++) {
-      const mid = (lo + hi) / 2
-      if (inGamut(oklabToLinear(light, mid * Math.cos(rad), mid * Math.sin(rad)))) lo = mid
-      else hi = mid
-    }
-    lin = oklabToLinear(light, lo * Math.cos(rad), lo * Math.sin(rad))
-  }
+  const light = clamp(L, 0, 1) // CSS clamps lightness to 0..100% before converting
+  const lin = oklabToLinear(light, C * Math.cos(rad), C * Math.sin(rad))
   const to8 = (v: number): number => Math.round(clamp(srgbEncode(clamp(v, 0, 1)), 0, 1) * 255)
   return { r: to8(lin[0]), g: to8(lin[1]), b: to8(lin[2]), a: clamp(a, 0, 1) }
 }
+
+/** True for an oklch()/oklab() literal (what the pickers keep as written instead of converting to hex). */
+export const isOklabLiteral = (s: string): boolean => /^okl(?:ch|ab)\(/i.test(s.trim())
 
 /** oklch(L C h / alpha) and oklab(L a b / alpha); null when it is not one of those or malformed. */
 function parseOklab(s: string): RGBA | null {

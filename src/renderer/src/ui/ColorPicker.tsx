@@ -7,6 +7,7 @@ import {
   formatColor,
   hslToRgb,
   hsvToRgb,
+  isOklabLiteral,
   parseColor,
   rgbToHsl,
   rgbToHsv,
@@ -346,7 +347,7 @@ export function ColorRow({ value, onChange, onTokenClick, showToken = true, show
     // a token reference or an oklch()/oklab() literal is written as typed (converting it to hex would change the value)
     const ref = tokenRef(typed)
     if (ref && resolveToken && parseColor(resolveToken(ref) ?? '')) return onChange(typed, { live: false })
-    if (/^okl(?:ch|ab)\(/i.test(typed) && parseColor(typed)) return onChange(typed, { live: false })
+    if (isOklabLiteral(typed) && parseColor(typed)) return onChange(typed, { live: false })
     const p = parseColor(text.startsWith('#') ? text : `#${text}`) ?? parseColor(text)
     if (p) onChange(formatColor({ ...p, a: p.a < 1 ? p.a : c?.a ?? 1 }), { live: false })
   }
