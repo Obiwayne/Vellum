@@ -86,7 +86,7 @@ create → instance mirrors; edit main style/text/add child/remove child/reorder
 
 # Variants and properties (built: T18–T24, goal G6)
 
-What was actually built on top of the plan above. Model: `model/variants.ts`, `model/properties.ts`; UI: Inspector (Variant, Properties, Bind to property, instance controls), Assets panel; MCP: `docs/MCP.md`. Document format: `DOC_VERSION` 4 (additive optional fields, `migrateDoc` only bumps the version).
+What was actually built on top of the plan above. Model: `model/variants.ts`, `model/properties.ts`; UI: Inspector (Variant, Properties, Bind to property, instance controls), Assets panel; MCP: `docs/MCP.md`. Document format: `DOC_VERSION` 5 (v4 added sets and variants, v5 text styles; both only add optional fields, `migrateDoc` just bumps the version).
 
 ## Component sets and variants
 - **Add variant** (context menu, or the button in the inspector of a main) duplicates a main next to itself. A lone component is first wrapped in a **set**: a flex frame (`componentSet`) whose direct children are the variant mains, each carrying `component.set` and `component.variant` (property id → option). The original becomes the `Default` variant of a property called `Variant`.
@@ -104,11 +104,11 @@ A property is defined once on the **set** (shared by every variant) or on a lone
 | `variant` | which main of the set an instance shows | created by Add variant; chosen on the instance |
 | `boolean` | a layer's visibility | "Bind to property → Visible" |
 | `text` | a text layer's text (its auto layer name follows) | "Bind to property → Text" |
-| `swap` | which main a nested instance shows | "Bind to property → Component" on a nested instance |
+| `swap` | which main a nested instance shows | "Bind to property → Swap" on a nested instance |
 
 - Properties are added, renamed, given defaults and deleted in the **Properties** section of a main's inspector. Deleting a property removes its bindings and drops the values instances held.
 - On an instance the inspector shows one control per property (dropdown, switch, text field, component picker). A value equal to the default is not stored.
-- **Precedence:** main < property value < explicit override. Editing a bound field of an instance edits the property; a direct style/text override on that layer still wins until you reset it.
+- **Precedence:** main < property value < explicit override. Editing a bound field of an instance edits the property: changing a bound text sets the text property, toggling a bound layer's visibility sets the boolean property. Only style changes and other unbound overrides (colour, size, ...) are stored as overrides and win over the property value until you reset them.
 - A **swap** that would put a component inside itself (through any depth of nested instances) is refused with "A component cannot contain an instance of itself". Overrides on the nodes of a swapped-in main are kept while it is shown and dropped when the instance swaps away.
 - Properties are not exposed through nested instances (a nested instance's own properties are set where the nested instance lives).
 
