@@ -253,7 +253,8 @@ describe('test station: gaps and adversarial cases', () => {
     for (const format of ['inline-styles', 'tailwind']) {
       const text = await jsx(inst, format)
       expect(text).toContain('<Button heading="Bye" />')
-      expect(text).toContain('function Button({ heading = "Hi" })')
+      // binding the text layer gave the property that layer's text as its default ("Click"), not the "Hi" passed to add_component_prop
+      expect(text).toContain('function Button({ heading = "Click" })')
       expect(text).toContain('{heading}') // the bound text reads the prop
     }
   })

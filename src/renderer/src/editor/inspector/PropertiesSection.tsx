@@ -24,7 +24,9 @@ export function CommitInput({ value, onCommit, label }: { value: string; onCommi
     setV(value)
   }
   const done = (): void => {
-    if (v !== value) onCommit(v)
+    if (v === value) return
+    onCommit(v)
+    setV(value) // a refused edit snaps back; an accepted one re-syncs from the new value on the next render
   }
   return (
     <input
