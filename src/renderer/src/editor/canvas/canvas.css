@@ -105,19 +105,19 @@
 }
 .cv-agent-dots > span {
   border-radius: 50%;
-  background: var(--agent-blue);
-  box-shadow: 0 0 3px var(--agent-blue);
-  opacity: 0.12;
+  background: var(--agent-blue-bright);
+  box-shadow: 0 0 4px 1px var(--agent-blue);
+  opacity: 0.3;
   animation: cv-twinkle 1.2s ease-in-out infinite;
 }
 @keyframes cv-twinkle {
-  0%, 100% { opacity: 0.15; }
-  25% { opacity: 0.15; }
+  0%, 100% { opacity: 0.3; }
+  25% { opacity: 0.3; }
   45% { opacity: 1; }
-  70% { opacity: 0.6; }
+  70% { opacity: 0.75; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .cv-agent-dots > span { animation: none; opacity: 0.6; }
+  .cv-agent-dots > span { animation: none; opacity: 0.8; }
 }
 
 .cv-guide {

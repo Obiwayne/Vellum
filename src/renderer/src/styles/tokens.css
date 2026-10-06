@@ -39,6 +39,7 @@
   --agent-orange: rgb(217, 119, 87);
   --agent-blue: rgb(59, 130, 246);
   --agent-blue-soft: rgb(59 130 246 / 0.08);
+  --agent-blue-bright: rgb(120, 180, 255);
   --danger: #E5484D;
 
   /* primary (white) button */
