@@ -101,9 +101,7 @@ describe('Detach resolves per mode', () => {
     expect(onChange).toHaveBeenLastCalledWith('#000000', { live: false })
   })
 
-  // Defect reported to the builder (gus): with circular aliases Detach writes the leftover var(--...) string as the
-  // colour. Drop `.fails` once Detach falls back to a real colour (e.g. #000000) when the value is still a reference.
-  it.fails('circular aliases terminate, and Detach never writes a var() string as the colour', () => {
+  it('circular aliases terminate, and Detach never writes a var() string as the colour', () => {
     S().upsertTokens(id, [
       { name: '--color-x', value: 'var(--color-y)' },
       { name: '--color-y', value: 'var(--color-x)' }

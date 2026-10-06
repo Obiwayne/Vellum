@@ -294,7 +294,7 @@ export function FillSection({ ctx, text }: { ctx: Ctx; text?: boolean }): JSX.El
                 {fill.kind === 'solid' && (
                   <ColorInput
                     docId={ctx.docId}
-            nodeId={ctx.ids[0]}
+                    nodeId={ctx.ids[0]}
                     value={fill.color}
                     onChange={(c, { live }) => replace(realIndex, { kind: 'solid', color: c }, live)}
                   />

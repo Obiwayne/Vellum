@@ -166,7 +166,9 @@ export function ColorInput({
                 type="button"
                 className="insp-listitem insp-muted"
                 onClick={() => {
-                  onChange(valueOf(current) ?? '#000000', { live: false })
+                  // an unresolvable alias (circular, or ending in a non-colour) detaches to black, never a var() string
+                  const literal = valueOf(current)
+                  onChange(literal && parseColor(literal) ? literal : '#000000', { live: false })
                   close()
                 }}
               >
