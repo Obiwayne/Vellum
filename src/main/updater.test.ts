@@ -54,6 +54,21 @@ beforeEach(() => {
 
 const noUpdater = { loadAutoUpdater: (): never => { throw new Error('electron-updater is not installed') } }
 
+// T50: a packed app whose electron-updater cannot be loaded (missing from app.asar) used to say "unsupported" and "download the
+// installer", as if updates were never meant to run there. That hides a packaging defect: it has to show up as an error.
+describe('packaged build where electron-updater cannot be loaded (T50)', () => {
+  it('reports an error that names the problem, never "unsupported"', async () => {
+    state.packaged = true
+    const u = await load(noUpdater)
+    const s = await u.check()
+    expect(s.state).toBe('error')
+    expect(s.message).toMatch(/electron-updater/i)
+    expect((await u.status()).state).not.toBe('unsupported')
+    expect(execFile).not.toHaveBeenCalled()
+    expect(spawn).not.toHaveBeenCalled()
+  })
+})
+
 describe('packaged build without electron-updater', () => {
   it('starts as unsupported, and a check says so without running git or npm', async () => {
     state.packaged = true
