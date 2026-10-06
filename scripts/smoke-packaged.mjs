@@ -3,7 +3,7 @@
 // file opens, and the window shows the dashboard and the editor. Usage: node scripts/smoke-packaged.mjs [out-dir] [exe]
 // Not named e2e-*.mjs on purpose: `npm run e2e` runs the dev build and must not need a packed app.
 import { _electron as electron } from 'playwright'
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync } from 'node:fs'
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
@@ -45,6 +45,27 @@ try {
   check((await page.locator('[data-node-id]').count()) >= 1, 'the editor draws a frame (renderer, fonts and canvas work in the packaged app)')
   const fonts = await page.evaluate(() => document.fonts.check('12px Inter'))
   check(fonts === true, 'the bundled Inter font is available')
+  // the git updater has nothing to do in a packaged build: no commands run, state is "unsupported", and the dashboard shows no update card
+  const upd = await page.evaluate(async () => {
+    const s = await window.canvasApi.updates.check()
+    return { state: s.state, commits: s.commits.length, behind: s.behind }
+  })
+  check(upd.state === 'unsupported' && upd.commits === 0 && upd.behind === 0, `an update check in the packaged app is disabled (${JSON.stringify(upd)})`)
+  // work is saved inside the temp data folder
+  await page.waitForTimeout(2500) // autosave debounce
+  const files = []
+  const walk = (dir) => {
+    for (const e of readdirSync(dir, { withFileTypes: true })) {
+      const p = join(dir, e.name)
+      if (e.isDirectory()) walk(p)
+      else files.push(p)
+    }
+  }
+  walk(ud)
+  const saved = files.filter((f) => /files[\\/].+\.json$/.test(f) || /profiles[\\/].+\.json$/.test(f))
+  check(saved.length >= 1, `the file was saved under the temp data dir (${files.length} files, e.g. ${saved[0] ? saved[0].slice(ud.length + 1) : 'none'})`)
+  const withFrame = saved.some((f) => readFileSync(f, 'utf8').includes('"type":"frame"') || readFileSync(f, 'utf8').includes('"type": "frame"'))
+  check(withFrame, 'the saved file contains the frame that was drawn')
   const bridge = await page.evaluate(async () => (await window.canvasApi?.bridgePort?.()) ?? null)
   check(typeof bridge === 'number' && bridge > 0, `the MCP bridge port is open (${bridge})`)
 } catch (e) {
