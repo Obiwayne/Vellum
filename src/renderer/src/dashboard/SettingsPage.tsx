@@ -15,7 +15,8 @@ export const PREF = {
   snapToPixel: 'snapToPixel',
   showPixelGrid: 'showPixelGrid',
   dashboardView: 'dashboardView',
-  agentsCardDismissed: 'agentsCardDismissed'
+  agentsCardDismissed: 'agentsCardDismissed',
+  autoUpdate: 'updates.auto' // = AUTO_UPDATE_PREF in shell/updates.tsx (the main process reads it before every timed check)
 } as const
 
 export function SettingsPage(): JSX.Element {
@@ -121,6 +122,13 @@ export function SettingsPage(): JSX.Element {
           <div className="db-settings__hint">Show a pixel grid when zoomed in far.</div>
         </div>
         <Checkbox checked={bool(PREF.showPixelGrid, true)} onChange={(v) => setPref(PREF.showPixelGrid, v)} />
+      </div>
+      <div className="db-settings__row">
+        <div>
+          <div className="db-settings__label">Check for updates automatically</div>
+          <div className="db-settings__hint">Look for a new version of Vellum a few seconds after it starts and every few hours. Help, Check for Updates always works.</div>
+        </div>
+        <Checkbox checked={bool(PREF.autoUpdate, true)} onChange={(v) => setPref(PREF.autoUpdate, v)} />
       </div>
     </div>
   )

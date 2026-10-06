@@ -44,6 +44,7 @@ const api: CanvasApi = {
     status: () => ipcRenderer.invoke(IPC.updStatus),
     check: () => ipcRenderer.invoke(IPC.updCheck),
     install: () => ipcRenderer.invoke(IPC.updInstall),
+    setAutoCheck: (on) => ipcRenderer.invoke(IPC.updAuto, on),
     onStatus: (cb) => {
       const h = (_e: IpcRendererEvent, s: UpdateStatus): void => cb(s)
       ipcRenderer.on(IPC.updChanged, h)

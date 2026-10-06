@@ -2,7 +2,7 @@
 // keep working as before for a git clone.
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-type Handler = (e: unknown) => unknown
+type Handler = (e: unknown, ...a: unknown[]) => unknown
 const handlers = new Map<string, Handler>()
 const state = { packaged: false, hasGit: false }
 const execFile = vi.fn()
@@ -299,5 +299,67 @@ describe('packaged build: IPC wiring', () => {
     const { m } = await start(null, true, engineMock(), { VELLUM_UPDATE_URL: '' })
     expect(m.u.setFeedURL).not.toHaveBeenCalled()
     delete process.env.VELLUM_UPDATE_URL
+  })
+})
+
+describe('"Check for updates automatically" setting (updates:auto)', () => {
+  const setAuto = async (on: unknown, trustedCaller = true): Promise<void> => {
+    const { IPC } = await import('@shared/api')
+    const h = handlers.get(IPC.updAuto)!
+    await h({ trustedCaller }, on)
+  }
+  const mockU = () => ({ autoDownload: false, autoInstallOnAppQuit: false, allowPrerelease: false, setFeedURL: vi.fn(), checkForUpdates: vi.fn(async () => undefined), quitAndInstall: vi.fn(), on: vi.fn() })
+
+  it('installed build: the timed check is skipped while off, runs when on, and Check for Updates still works', async () => {
+    vi.useFakeTimers()
+    delete process.env.VELLUM_NO_UPDATE_CHECK
+    state.packaged = true
+    const m = mockU()
+    const u = await load({ loadAutoUpdater: () => m as never })
+    await setAuto(false)
+    await vi.advanceTimersByTimeAsync(15_000)
+    expect(m.checkForUpdates).not.toHaveBeenCalled()
+    await vi.advanceTimersByTimeAsync(4 * 60 * 60 * 1000)
+    expect(m.checkForUpdates).not.toHaveBeenCalled()
+    await u.check() // the manual check ignores the setting
+    expect(m.checkForUpdates).toHaveBeenCalledTimes(1)
+    await setAuto(true)
+    await vi.advanceTimersByTimeAsync(4 * 60 * 60 * 1000)
+    expect(m.checkForUpdates.mock.calls.length).toBeGreaterThan(1)
+  })
+
+  it('clone: the timed git check follows the setting too', async () => {
+    vi.useFakeTimers()
+    delete process.env.VELLUM_NO_UPDATE_CHECK
+    state.hasGit = true
+    execFile.mockImplementation((_c: string, _a: string[], _o: unknown, cb: (e: Error | null, out: string, err: string) => void) => cb(new Error('x'), '', 'not recognized'))
+    await load()
+    await setAuto(false)
+    await vi.advanceTimersByTimeAsync(15_000)
+    expect(execFile).not.toHaveBeenCalled()
+    await setAuto(true)
+    await vi.advanceTimersByTimeAsync(4 * 60 * 60 * 1000)
+    expect(execFile).toHaveBeenCalled()
+  })
+
+  it('on by default, and a non-boolean or untrusted sender cannot change it', async () => {
+    vi.useFakeTimers()
+    delete process.env.VELLUM_NO_UPDATE_CHECK
+    state.packaged = true
+    const m = mockU()
+    vi.resetModules()
+    handlers.clear()
+    const mod = await import('./updater')
+    const { IPC } = await import('@shared/api')
+    let ok = true
+    mod.startUpdater(() => null, () => ok, { loadAutoUpdater: () => m as never })
+    const h = handlers.get(IPC.updAuto)!
+    await h({}, 'no')
+    await h({}, 0)
+    ok = false
+    await h({}, false)
+    ok = true
+    await vi.advanceTimersByTimeAsync(15_000)
+    expect(m.checkForUpdates).toHaveBeenCalledTimes(1)
   })
 })
