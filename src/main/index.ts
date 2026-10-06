@@ -221,7 +221,9 @@ const testUserData = process.env.VELLUM_USER_DATA
 if (testUserData) {
   app.setPath('userData', testUserData)
 } else if (!app.commandLine.hasSwitch('user-data-dir')) {
-  app.setPath('userData', join(app.getPath('appData'), 'Vellum'))
+  // An installed build keeps its data in a folder named after its product ("Vellum" for the real one). The installer test product
+  // (VellumInstallTest) therefore never shares it, even when the installer relaunches it without our environment.
+  app.setPath('userData', join(app.getPath('appData'), app.isPackaged ? app.getName() : 'Vellum'))
   migrateLegacyUserData()
 }
 registerRenderScheme()
