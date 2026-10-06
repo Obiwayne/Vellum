@@ -51,3 +51,19 @@ jobs:
       - run: npm ci
         working-directory: mcp
       - run: npm run test:mcp
+
+  # Builds the installer and runs it silently in temp folders: per-user install, shortcuts, uninstall entry, closing a
+  # running Vellum, uninstall keeping the data folder (scripts/test-installer.ps1).
+  installer:
+    runs-on: windows-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - run: npm ci
+      - run: npm run dist
+      - run: npm run test:installer

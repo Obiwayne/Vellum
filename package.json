@@ -17,7 +17,8 @@
     "test:mcp": "node --experimental-strip-types --no-warnings mcp/test/run-all.mjs",
     "e2e": "node scripts/e2e-all.mjs",
     "pack": "npm run build && electron-builder --dir",
-    "dist": "npm run build && electron-builder"
+    "dist": "npm run build && electron-builder",
+    "test:installer": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/test-installer.ps1"
   },
   "dependencies": {
     "electron-updater": "^6.8.9",
