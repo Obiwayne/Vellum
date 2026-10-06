@@ -181,7 +181,7 @@ function scheduleDocs(s: Store, saved: Map<string, Doc>, withRecovery = true): v
         setTimeout(() => {
           recoveryTimers.delete(id)
           const latest = pendingDocs.get(id)
-          if (latest && enabled) track(api()?.saveRecovery(latest as unknown as StoredDoc))
+          if (latest && enabled) track(api()?.saveRecovery?.(latest as unknown as StoredDoc))
         }, RECOVERY_DELAY)
       )
     }
@@ -220,7 +220,7 @@ function subscribe(saved: Map<string, Doc>): void {
   window.addEventListener('beforeunload', flushNow)
   // leaving the window (alt-tab, minimise, a dialog) is a good moment to put pending edits on disk
   window.addEventListener('blur', flushNow)
-  document.addEventListener('visibilitychange', () => document.visibilityState === 'hidden' && flushNow())
+  if (typeof document !== 'undefined') document.addEventListener('visibilitychange', () => document.visibilityState === 'hidden' && flushNow())
 }
 
 /** Write all pending changes immediately. */
