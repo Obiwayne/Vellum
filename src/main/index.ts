@@ -1,7 +1,7 @@
 import { app, BrowserWindow, ipcMain, session, shell } from 'electron'
 import { readClipboardMedia } from './clipboard'
 import { existsSync } from 'fs'
-import { join } from 'path'
+import { join, parse } from 'path'
 import { pathToFileURL } from 'url'
 import { IPC, type Rect } from '@shared/api'
 import { clearCachesIfProtected, migrateLegacyUserData, registerStorageIpc } from './storage'
@@ -221,9 +221,10 @@ const testUserData = process.env.VELLUM_USER_DATA
 if (testUserData) {
   app.setPath('userData', testUserData)
 } else if (!app.commandLine.hasSwitch('user-data-dir')) {
-  // An installed build keeps its data in a folder named after its product ("Vellum" for the real one). The installer test product
-  // (VellumInstallTest) therefore never shares it, even when the installer relaunches it without our environment.
-  app.setPath('userData', join(app.getPath('appData'), app.isPackaged ? app.getName() : 'Vellum'))
+  // An installed build keeps its data in a folder named after its executable (Vellum.exe -> "Vellum" for the real product). The
+  // installer test product (VellumInstallTest.exe) therefore never shares it, even when the installer relaunches it without our
+  // environment (app.getName() is always "Vellum": see setName below).
+  app.setPath('userData', join(app.getPath('appData'), app.isPackaged ? parse(process.execPath).name : 'Vellum'))
   migrateLegacyUserData()
 }
 registerRenderScheme()

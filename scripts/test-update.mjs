@@ -121,6 +121,10 @@ const server = http.createServer((req, res) => {
 await new Promise((r) => server.listen(0, '127.0.0.1', r))
 const feed = `http://127.0.0.1:${server.address().port}`
 
+// the real data folder must not be touched: its user data (profiles.json, profiles/, the bridge token) is compared before and after
+const realDataStamp = () =>
+  ps(`$d = Join-Path ([Environment]::GetFolderPath('ApplicationData')) 'Vellum'; (@('profiles.json', 'profiles', 'bridge-token', 'index.json') | ForEach-Object { $p = Join-Path $d $_; if (Test-Path $p) { "$_=$((Get-Item $p).LastWriteTimeUtc.Ticks)" } else { "$_=none" } }) -join ';'`)
+const realBefore = realDataStamp()
 const productVersion = () => ps(`if (Test-Path '${exe}') { (Get-Item '${exe}').VersionInfo.ProductVersion }`)
 const installedProcs = () => ps(`(Get-Process -Name ${PRODUCT} -ErrorAction SilentlyContinue | Where-Object { $_.Path -and $_.Path.StartsWith('${installDir}', [StringComparison]::OrdinalIgnoreCase) } | Measure-Object).Count`)
 const installerProcs = () => ps(`(Get-Process -ErrorAction SilentlyContinue | Where-Object { $_.ProcessName -like 'Vellum-Setup-*' } | Measure-Object).Count`)
@@ -186,6 +190,8 @@ try {
   check(dn === newVersion, `the uninstall entry now says ${dn} and still points at the same folder`)
   check(ps(`Test-Path (Join-Path ([Environment]::GetFolderPath('LocalApplicationData')) 'Programs\\${PRODUCT}')`) === 'False', 'no second copy appeared in %LOCALAPPDATA%\\Programs')
   check(readFileSync(join(dataDir, 'marker.txt'), 'utf8').includes('old instance'), "the old instance's data folder is intact")
+  check(realDataStamp() === realBefore, 'the real %APPDATA%/Vellum user data (profiles.json, profiles, bridge token) was not touched, not even by the relaunched app')
+  check(ps(`Test-Path (Join-Path ([Environment]::GetFolderPath('ApplicationData')) '${PRODUCT}')`) === 'True', 'the relaunched app keeps its data in its own folder (named after its exe)')
 } catch (e) {
   check(false, `script error: ${String(e.message).slice(0, 300)}`)
 } finally {
