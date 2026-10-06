@@ -195,18 +195,18 @@ describe('restoring after a crash', () => {
     err.mockRestore()
   })
 
-  it('the prompt asks "Restore unsaved changes to X?" and its buttons restore or discard', async () => {
+  it('the prompt names the design once and asks "Restore them?"; its buttons restore or discard', async () => {
     const s = await boot({ recoveries: [stored('a', 'Alpha edited', 200), stored('new', 'Never saved', 300)] })
     const { RecoveryPrompt } = await import('../shell/RecoveryPrompt')
     const host = document.createElement('div')
     document.body.appendChild(host)
     const root = createRoot(host)
     await act(async () => root.render(createElement(RecoveryPrompt)))
-    expect(document.body.textContent).toContain('Restore unsaved changes to Alpha edited?')
+    expect(document.body.textContent).toContain('last changes to Alpha edited were saved. Restore them?')
     expect(document.body.textContent).toContain('1 more after this one')
     await act(async () => document.querySelector<HTMLButtonElement>('[data-recovery="restore"]')!.click())
     expect(s.useStore.getState().docs.a.name).toBe('Alpha edited')
-    expect(document.body.textContent).toContain('Restore unsaved changes to Never saved?')
+    expect(document.body.textContent).toContain('last changes to Never saved were saved. Restore them?')
     await act(async () => document.querySelector<HTMLButtonElement>('[data-recovery="discard"]')!.click())
     expect(api.discardRecovery).toHaveBeenCalledWith('new')
     expect(s.useStore.getState().docs.new).toBeUndefined()

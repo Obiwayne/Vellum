@@ -23,4 +23,26 @@ describe('Learn page', () => {
     act(() => root.unmount())
     host.remove()
   })
+
+  it('has a Crash recovery section that uses the words of the restore prompt', () => {
+    const host = document.createElement('div')
+    document.body.appendChild(host)
+    const root = createRoot(host)
+    act(() => root.render(createElement(LearnPage)))
+    expect([...host.querySelectorAll('h2')].map((h) => h.textContent)).toContain('Crash recovery')
+    const text = host.querySelector('[data-learn="recovery"]')?.textContent ?? ''
+    for (const x of ['Restore unsaved changes?', 'Restore', 'Discard', '.bak', '%APPDATA%\\Vellum']) expect(text, x).toContain(x)
+    act(() => root.unmount())
+    host.remove()
+  })
+  it('puts a space between Restart to update and the parenthesis after it', () => {
+    const host = document.createElement('div')
+    document.body.appendChild(host)
+    const root = createRoot(host)
+    act(() => root.render(createElement(LearnPage)))
+    const text = host.querySelector('[data-learn="updates"]')?.textContent ?? ''
+    expect(text).toContain('Restart to update (your files are saved first)')
+    act(() => root.unmount())
+    host.remove()
+  })
 })

@@ -61,3 +61,34 @@ describe('commands and settings the docs rely on', () => {
     expect(security).toContain('npm run test:update')
   })
 })
+
+describe('docs text is clean', () => {
+  it.each(['README.md', 'docs/ARCHITECTURE.md', 'docs/BUGS.md', 'docs/CANVAS.md', 'docs/COMPONENTS.md', 'docs/FOUNDATION.md', 'docs/INSPECTOR.md', 'docs/LEFT_DASHBOARD.md', 'docs/MCP.md', 'docs/SECURITY.md'])(
+    '%s is valid UTF-8 with no U+FFFD replacement characters',
+    (file) => {
+      let text: string
+      try {
+        text = new TextDecoder('utf-8', { fatal: true }).decode(readFileSync(file))
+      } catch {
+        throw new Error(`${file} is not valid UTF-8`)
+      }
+      expect(text.includes('\uFFFD')).toBe(false)
+    }
+  )
+
+  it('the README describes crash recovery with the real prompt wording', () => {
+    expect(readme).toContain('Crash recovery')
+    expect(readme).toContain('Restore unsaved changes?')
+    expect(read('src/renderer/src/shell/RecoveryPrompt.tsx')).toContain('Restore unsaved changes?')
+    expect(read('src/renderer/src/shell/RecoveryPrompt.tsx')).toContain('Restore them?')
+  })
+
+  it('the restore prompt names the design once and does not repeat "Restore unsaved changes"', () => {
+    const code = read('src/renderer/src/shell/RecoveryPrompt.tsx') // read() turns line ends into \n
+      .split('\n')
+      .filter((l) => !l.trim().startsWith('//'))
+    const src = code.join(' ')
+    expect(src.match(/Restore unsaved changes/g)).toHaveLength(1) // the title only, never the body
+    expect(src).not.toMatch(/Restore unsaved changes to/)
+  })
+})

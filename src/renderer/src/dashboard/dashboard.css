@@ -472,7 +472,8 @@ button.db-account__btn:hover {
 .db-card-panel[data-learn] p {
   margin: 10px 0;
 }
-.db-learn__updates-title {
+.db-learn__updates-title,
+.db-learn__section-title {
   margin-top: 28px;
 }
 .db-card-panel[data-learn] b {

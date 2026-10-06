@@ -118,7 +118,7 @@ try {
   await page.waitForTimeout(3500)
   const prompt = await page.locator('[data-recovery-prompt]').textContent().catch(() => null)
   await shot(page, 'restore-prompt')
-  check(Boolean(prompt) && prompt.includes('Restore unsaved changes to Scratchpad?'), `the restore prompt appears (${prompt})`)
+  check(Boolean(prompt) && prompt.includes('last changes to Scratchpad were saved. Restore them?'), `the restore prompt appears (${prompt})`)
   await page.locator('[data-recovery="restore"]').click()
   await page.waitForTimeout(500)
   await openScratchpad(page)
