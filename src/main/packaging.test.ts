@@ -1,6 +1,7 @@
 // Packaging config sanity (electron-builder.yml, package.json): one version source, the installer is per user and keeps data,
 // only what the packaged main process needs is a production dependency.
 import { existsSync, readFileSync, readdirSync } from 'node:fs'
+import { createRequire } from 'node:module'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 
@@ -162,41 +163,82 @@ describe('MCP bundle in the package', () => {
   })
 })
 
+type Step = { name?: string; uses?: string; run?: string; env?: Record<string, string>; 'working-directory'?: string }
+interface Workflow {
+  on: { push: { tags?: string[]; branches?: string[] }; pull_request?: unknown }
+  permissions?: Record<string, string>
+  concurrency?: { group: string; 'cancel-in-progress': boolean }
+  jobs: Record<string, { 'runs-on': string; steps: Step[] }>
+}
+// js-yaml is a devDependency with no bundled types; it is required here, not imported, so the node typecheck needs nothing extra
+const yamlLoad = createRequire(import.meta.url)('js-yaml').load as (s: string) => unknown
+const workflow = (file: string): Workflow => yamlLoad(read(file)) as Workflow
+const text = (s: Step): string => s.run ?? s.uses ?? ''
+
+describe('workflows parse as YAML (a bad indent would otherwise only show on a real run)', () => {
+  it.each(['.github/workflows/release.yml', '.github/workflows/ci.yml'])('%s', (file) => {
+    const wf = workflow(file)
+    expect(Object.keys(wf.jobs).length).toBeGreaterThan(0)
+    for (const job of Object.values(wf.jobs)) {
+      expect(job['runs-on']).toBeTruthy()
+      for (const s of job.steps) expect(s.run || s.uses).toBeTruthy()
+    }
+  })
+
+  it('electron-builder.yml parses and names the same GitHub repository the app updates from', () => {
+    const b = yamlLoad(yml) as { publish: { provider: string; owner: string; repo: string }; appId: string }
+    expect(b.publish).toEqual({ provider: 'github', owner: 'Obiwayne', repo: 'Vellum' })
+    expect(b.appId).toBe('com.vellum.app')
+  })
+})
+
 describe('release workflow (.github/workflows/release.yml)', () => {
-  const wf = read('.github/workflows/release.yml')
+  const wf = workflow('.github/workflows/release.yml')
+  const job = wf.jobs.release
+  const steps = job.steps.map(text)
+  const at = (needle: string): number => steps.findIndex((s) => s.includes(needle))
 
   it('runs only for v* tags, never for branches or pull requests', () => {
-    expect(wf).toMatch(/^on:\n {2}push:\n {4}tags: \['v\*'\]\n/m)
-    expect(wf).not.toMatch(/pull_request|branches:/)
+    expect(wf.on.push.tags).toEqual(['v*'])
+    expect(wf.on.push.branches).toBeUndefined()
+    expect(wf.on.pull_request).toBeUndefined()
+    expect(Object.keys(wf.on)).toEqual(['push'])
   })
 
-  it('refuses a tag that differs from the package.json version before building anything', () => {
-    const guard = wf.indexOf('Tag matches package.json version')
-    expect(guard).toBeGreaterThan(0)
-    expect(guard).toBeLessThan(wf.indexOf('npm ci'))
-    expect(wf).toMatch(/GITHUB_REF_NAME#v/)
-    expect(wf).toMatch(/exit 1/)
+  it('has one job on Windows with write access to contents only, and never cancels a running release build', () => {
+    expect(Object.keys(wf.jobs)).toEqual(['release'])
+    expect(job['runs-on']).toBe('windows-latest')
+    expect(wf.permissions).toEqual({ contents: 'write' })
+    expect(wf.concurrency?.['cancel-in-progress']).toBe(false)
   })
 
-  it('typechecks and tests before it builds, then publishes a DRAFT with the repo token', () => {
-    const at = (s: string): number => wf.indexOf(s)
-    expect(at('npm run typecheck')).toBeGreaterThan(0)
-    expect(at('npm run typecheck')).toBeLessThan(at('npm test'))
-    expect(at('npm test')).toBeLessThan(at('--publish always'))
-    expect(wf).toMatch(/--publish always/)
-    expect(wf).toMatch(/--config\.publish\.releaseType=draft/)
-    expect(wf).toMatch(/GH_TOKEN: \$\{\{ secrets\.GITHUB_TOKEN \}\}/)
-    expect(wf).toMatch(/permissions:\n {2}contents: write/)
-    expect(wf).toMatch(/npm run build:mcp/)
+  it('steps run in this order: guard, npm ci (root, mcp), electron binary, typecheck, test, then build and publish', () => {
+    const order = [at('GITHUB_REF_NAME#v'), at('npm ci'), steps.lastIndexOf('npm ci'), at('electron:download'), at('npm run typecheck'), at('npm test'), at('--publish always')]
+    expect(order.every((i) => i >= 0)).toBe(true)
+    expect(order).toEqual([...order].sort((a, b) => a - b))
+    expect(job.steps[steps.lastIndexOf('npm ci')]['working-directory']).toBe('mcp')
+    expect(job.steps[at('GITHUB_REF_NAME#v')].name).toBe('Tag matches package.json version')
+    expect(order[0]).toBeLessThan(order[1]) // nothing is installed before the tag is checked
   })
 
-  it('runs on Windows and does not cancel a running release build', () => {
-    expect(wf).toMatch(/runs-on: windows-latest/)
-    expect(wf).toMatch(/cancel-in-progress: false/)
+  it('the guard compares the tag with the package.json version and exits 1 when they differ', () => {
+    const run = job.steps[at('GITHUB_REF_NAME#v')].run as string
+    expect(run).toMatch(/require\('\.\/package\.json'\)\.version/)
+    expect(run).toMatch(/\[ "\$tag" != "\$pkg" \]/)
+    expect(run).toMatch(/exit 1/)
   })
 
-  it('publishes to the same repository the installed app reads its updates from', () => {
-    expect(yml).toMatch(/provider: github\n\s+owner: Obiwayne\n\s+repo: Vellum/)
+  it('publishes a DRAFT with electron-builder, and only the build step gets the token', () => {
+    const build = job.steps[at('--publish always')]
+    expect(build.run).toMatch(/npm run build && npm run build:mcp && npx electron-builder --win nsis --publish always --config\.publish\.releaseType=draft/)
+    expect(build.env).toEqual({ GH_TOKEN: '${{ secrets.GITHUB_TOKEN }}' })
+    expect(job.steps.filter((s) => s.env?.GH_TOKEN)).toHaveLength(1)
+  })
+
+  it('every pack, dist and CI step that needs Electron fetches the binary with npm run electron:download', () => {
+    expect(text(job.steps[at('electron:download')])).toBe('npm run electron:download')
+    const ci = workflow('.github/workflows/ci.yml')
+    expect(ci.jobs.package.steps.map(text)).toContain('npm run electron:download')
   })
 
   it('docs/RELEASING.md exists and covers tagging, publishing the draft and rolling back', () => {
