@@ -194,11 +194,7 @@ describe('Detach keeps the colour formats tokens use', () => {
     expect(onChange).toHaveBeenLastCalledWith(value, { live: false })
   })
 
-  // Regression reported to the builder (gus), found after his fix for circular aliases: Detach now writes black when
-  // parseColor(literal) is null, and parseColor cannot read oklch() (Chromium's canvas returns "oklch(0.623 0.214 258)",
-  // see .muster-evidence/T30/oklch-probe output). Every colour of the starter theme is oklch, so Detach on those styles
-  // would turn the layer black. The fix: test for "still a var() reference" instead of parseColor, e.g. /^var(/.test(literal).
-  it.fails('an oklch() style is detached to its oklch literal, not to black', () => {
+  it('an oklch() style is detached to its oklch literal, not to black', () => {
     S().upsertTokens(id, [{ name: '--color-blue', value: 'oklch(62.3% 0.214 258)' }])
     render('var(--color-blue)')
     openPopover()

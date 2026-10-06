@@ -166,9 +166,9 @@ export function ColorInput({
                 type="button"
                 className="insp-listitem insp-muted"
                 onClick={() => {
-                  // an unresolvable alias (circular, or ending in a non-colour) detaches to black, never a var() string
+                  // a circular alias still resolves to a var() reference: detach to black, never write a var() string
                   const literal = valueOf(current)
-                  onChange(literal && parseColor(literal) ? literal : '#000000', { live: false })
+                  onChange(!literal || /^\s*var\(/.test(literal) ? '#000000' : literal, { live: false })
                   close()
                 }}
               >
