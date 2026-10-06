@@ -1,5 +1,6 @@
 // Shared between main, preload and renderer. Keep this file free of runtime imports.
 import type { DiffSummary } from './docDiff'
+import type { McpEntry } from './mcpSnippets'
 
 /** Persisted JSON document. The renderer's `Doc` type (model/types.ts) is stored as-is. */
 export interface StoredDoc {
@@ -186,8 +187,8 @@ export interface CanvasApi {
   profiles: ProfilesApi
   updates: UpdatesApi
   history: HistoryApi
-  /** absolute path of the MCP server entry (mcp/dist/index.js), forward slashes */
-  mcpEntry: string
+  /** how an agent starts the MCP server: the packaged bundle run by the app's own Electron, or `node mcp/dist/index.js` for a clone */
+  mcpEntry: McpEntry
   /** set when an agent launched this window (Muster crew, or VELLUM_AGENT_DRIVEN): its name, else null */
   agentDriven: string | null
   // capture: rect in CSS px of the window's web contents; returns PNG base64 (no data: prefix)

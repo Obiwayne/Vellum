@@ -1,10 +1,11 @@
 import { useState } from 'react'
 import { Check, Copy } from 'lucide-react'
 import { Button, Modal } from '../ui'
+import { FALLBACK_MCP_ENTRY, claudeCommand } from '@shared/mcpSnippets'
 
-/** Where this copy of Vellum's MCP server lives (resolved by the main process). */
-export const MCP_ENTRY = window.canvasApi?.mcpEntry ?? '<path-to-Vellum>/mcp/dist/index.js'
-export const MCP_COMMAND = `claude mcp add vellum -- node ${MCP_ENTRY}`
+/** How this copy of Vellum's MCP server is started (resolved by the main process: the packaged bundle, or node + mcp/dist for a clone). */
+export const MCP_ENTRY = window.canvasApi?.mcpEntry ?? FALLBACK_MCP_ENTRY
+export const MCP_COMMAND = claudeCommand(MCP_ENTRY)
 
 const PROMPTS = [
   'Create a basic Hello World frame in Vellum',

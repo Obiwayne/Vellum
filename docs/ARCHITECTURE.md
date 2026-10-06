@@ -141,7 +141,8 @@ profile is open. The renderer shows a profile picker (`src/renderer/src/profile/
 - `get_screenshot`/`export` use `webContents.capturePage` on an offscreen render of the node (renderer provides rect),
   or render the node's HTML in a hidden BrowserWindow. PNG base64 returned.
 - `mcp/` exposes the design tools listed in docs/MCP.md. Registered in Claude Code as
-  `claude mcp add vellum -- node <path-to-Vellum>/mcp/dist/index.js`.
+  `claude mcp add vellum -- node <path-to-Vellum>/mcp/dist/index.js` for a clone; an installed build runs the bundled
+  `resources/mcp/index.mjs` with its own Electron (`ELECTRON_RUN_AS_NODE=1`). The command is built in `src/shared/mcpSnippets.ts`.
 - While the agent works on nodes they appear in `workingNodes` → canvas outlines them in teal with a label, and the
   `finish_working_on_nodes` clears it.
 
