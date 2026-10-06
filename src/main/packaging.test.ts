@@ -150,3 +150,48 @@ describe('MCP bundle in the package', () => {
     expect(yml).toMatch(/outside the asar/i)
   })
 })
+
+describe('release workflow (.github/workflows/release.yml)', () => {
+  const wf = read('.github/workflows/release.yml')
+
+  it('runs only for v* tags, never for branches or pull requests', () => {
+    expect(wf).toMatch(/^on:\n {2}push:\n {4}tags: \['v\*'\]\n/m)
+    expect(wf).not.toMatch(/pull_request|branches:/)
+  })
+
+  it('refuses a tag that differs from the package.json version before building anything', () => {
+    const guard = wf.indexOf('Tag matches package.json version')
+    expect(guard).toBeGreaterThan(0)
+    expect(guard).toBeLessThan(wf.indexOf('npm ci'))
+    expect(wf).toMatch(/GITHUB_REF_NAME#v/)
+    expect(wf).toMatch(/exit 1/)
+  })
+
+  it('typechecks and tests before it builds, then publishes a DRAFT with the repo token', () => {
+    const at = (s: string): number => wf.indexOf(s)
+    expect(at('npm run typecheck')).toBeGreaterThan(0)
+    expect(at('npm run typecheck')).toBeLessThan(at('npm test'))
+    expect(at('npm test')).toBeLessThan(at('--publish always'))
+    expect(wf).toMatch(/--publish always/)
+    expect(wf).toMatch(/--config\.publish\.releaseType=draft/)
+    expect(wf).toMatch(/GH_TOKEN: \$\{\{ secrets\.GITHUB_TOKEN \}\}/)
+    expect(wf).toMatch(/permissions:\n {2}contents: write/)
+    expect(wf).toMatch(/npm run build:mcp/)
+  })
+
+  it('runs on Windows and does not cancel a running release build', () => {
+    expect(wf).toMatch(/runs-on: windows-latest/)
+    expect(wf).toMatch(/cancel-in-progress: false/)
+  })
+
+  it('publishes to the same repository the installed app reads its updates from', () => {
+    expect(yml).toMatch(/provider: github\n\s+owner: Obiwayne\n\s+repo: Vellum/)
+  })
+
+  it('docs/RELEASING.md exists and covers tagging, publishing the draft and rolling back', () => {
+    const doc = read('docs/RELEASING.md')
+    expect(doc).toMatch(/git tag v/)
+    expect(doc).toMatch(/Publish release/)
+    expect(doc).toMatch(/## Roll back/)
+  })
+})

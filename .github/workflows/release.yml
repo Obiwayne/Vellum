@@ -1,0 +1,51 @@
+name: Release
+
+# Pushing a tag like v1.0.0 builds the Windows installer and uploads it, its blockmap and latest.yml to a DRAFT GitHub Release.
+# Nothing reaches users until a person publishes the draft (docs/RELEASING.md). The installed app's updater reads that release.
+on:
+  push:
+    tags: ['v*']
+
+# one release build per tag; a re-pushed tag waits for the first run instead of racing it for the same draft
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: write # create the draft release and upload its assets
+
+jobs:
+  release:
+    runs-on: windows-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            mcp/package-lock.json
+      # the tag is the version: v1.2.3 must equal package.json "version", or the installer name, latest.yml and the tag disagree
+      - name: Tag matches package.json version
+        shell: bash
+        run: |
+          pkg=$(node -p "require('./package.json').version")
+          tag="${GITHUB_REF_NAME#v}"
+          if [ "$tag" != "$pkg" ]; then
+            echo "::error::Tag $GITHUB_REF_NAME does not match package.json version $pkg. Bump the version, commit, and tag again."
+            exit 1
+          fi
+      - run: npm ci
+      # the installer carries the MCP bundle (npm run build:mcp), which needs mcp's packages
+      - run: npm ci
+        working-directory: mcp
+      # Electron has no postinstall here: fetch its binary (electron-builder copies it into the package)
+      - run: node node_modules/electron/install.js
+      - run: npm run typecheck
+      - run: npm test
+      # --publish always uploads installer + blockmap + latest.yml to the release for this tag; releaseType draft keeps it unpublished
+      - run: npm run build && npm run build:mcp && npx electron-builder --win nsis --publish always --config.publish.releaseType=draft
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
