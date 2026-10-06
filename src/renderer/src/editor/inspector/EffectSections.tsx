@@ -114,7 +114,7 @@ export function OutlineSection({ ctx }: { ctx: Ctx }): JSX.Element {
         />
         <IconButton icon={<Minus size={14} />} label="Remove outline" onClick={() => set(null)} />
       </div>
-      <ColorInput docId={ctx.docId} value={val.color} onChange={(c, { live }) => set({ ...val, color: c }, live)} />
+      <ColorInput docId={ctx.docId} nodeId={ctx.ids[0]} value={val.color} onChange={(c, { live }) => set({ ...val, color: c }, live)} />
     </Section>
   )
 }
@@ -218,7 +218,7 @@ export function BorderSection({ ctx }: { ctx: Ctx }): JSX.Element {
         />
         <IconButton icon={<Minus size={14} />} label="Remove border" onClick={() => set(null)} />
       </div>
-      <ColorInput docId={ctx.docId} value={val.color} onChange={(c, { live }) => set({ ...val, color: c }, live)} />
+      <ColorInput docId={ctx.docId} nodeId={ctx.ids[0]} value={val.color} onChange={(c, { live }) => set({ ...val, color: c }, live)} />
     </Section>
   )
 }
@@ -284,7 +284,7 @@ export function ShadowSection({ ctx, inset, text }: { ctx: Ctx; inset?: boolean;
             </div>
             <IconButton icon={<Minus size={14} />} label={`Remove ${title.toLowerCase()}`} onClick={() => commit(all.filter((_, j) => j !== i))} />
           </div>
-          <ColorInput docId={ctx.docId} value={s.color} onChange={(c, { live }) => update(i, { color: c }, live)} />
+          <ColorInput docId={ctx.docId} nodeId={ctx.ids[0]} value={s.color} onChange={(c, { live }) => update(i, { color: c }, live)} />
         </div>
       ))}
     </Section>
