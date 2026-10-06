@@ -20,7 +20,76 @@ const clamp = (v: number, lo: number, hi: number): number => Math.min(hi, Math.m
 
 let ctx: CanvasRenderingContext2D | null = null
 
-/** Parse any CSS colour (hex, rgb(), hsl(), named, oklch via the browser). Null if invalid. */
+// ---- oklab / oklch (CSS Color 4). The canvas fallback below hands wide-gamut colours back as oklch() text, so they are
+// parsed here, without a browser: the starter theme's whole palette is oklch.
+
+/** A number, a percentage (of `pct`), or 'none' (0) from a CSS colour component. */
+function component(t: string, pct: number): number | null {
+  if (t.toLowerCase() === 'none') return 0
+  const m = /^([+-]?(?:\d+\.?\d*|\.\d+)(?:e[+-]?\d+)?)(%?)$/i.exec(t)
+  if (!m) return null
+  return m[2] ? (parseFloat(m[1]) / 100) * pct : parseFloat(m[1])
+}
+
+/** A hue as degrees: plain number, deg, rad, grad or turn. */
+function hue(t: string): number | null {
+  if (t.toLowerCase() === 'none') return 0
+  const m = /^([+-]?(?:\d+\.?\d*|\.\d+)(?:e[+-]?\d+)?)(deg|rad|grad|turn)?$/i.exec(t)
+  if (!m) return null
+  const v = parseFloat(m[1])
+  const unit = (m[2] ?? 'deg').toLowerCase()
+  return unit === 'rad' ? (v * 180) / Math.PI : unit === 'grad' ? v * 0.9 : unit === 'turn' ? v * 360 : v
+}
+
+const srgbEncode = (v: number): number => (v <= 0.0031308 ? 12.92 * v : 1.055 * Math.pow(v, 1 / 2.4) - 0.055)
+
+/** Linear-light sRGB (unclamped) of an OKLab colour. */
+function oklabToLinear(L: number, a: number, b: number): [number, number, number] {
+  const l = Math.pow(L + 0.3963377774 * a + 0.2158037573 * b, 3)
+  const m = Math.pow(L - 0.1055613458 * a - 0.0638541728 * b, 3)
+  const s = Math.pow(L - 0.0894841775 * a - 1.291485548 * b, 3)
+  return [4.0767416621 * l - 3.3077115913 * m + 0.2309699292 * s, -1.2684380046 * l + 2.6097574011 * m - 0.3413193965 * s, -0.0041960863 * l - 0.7034186147 * m + 1.707614701 * s]
+}
+
+/**
+ * An OKLab / OKLCH colour as sRGB, the way the browser paints it: each linear-light channel clamped to 0..1, then encoded.
+ * A colour outside the sRGB gamut therefore gets the same rgb() as on the canvas (blue-500 of the starter theme is
+ * 29,129,255), so the swatch and hex shown in a picker are the colour the layer is drawn with.
+ */
+function oklchToRgba(L: number, C: number, h: number, a: number): RGBA {
+  const rad = (h * Math.PI) / 180
+  const light = clamp(L, 0, 1) // CSS clamps lightness to 0..100% before converting
+  const lin = oklabToLinear(light, C * Math.cos(rad), C * Math.sin(rad))
+  const to8 = (v: number): number => Math.round(clamp(srgbEncode(clamp(v, 0, 1)), 0, 1) * 255)
+  return { r: to8(lin[0]), g: to8(lin[1]), b: to8(lin[2]), a: clamp(a, 0, 1) }
+}
+
+/** True for an oklch()/oklab() literal (what the pickers keep as written instead of converting to hex). */
+export const isOklabLiteral = (s: string): boolean => /^okl(?:ch|ab)\(/i.test(s.trim())
+
+/** oklch(L C h / alpha) and oklab(L a b / alpha); null when it is not one of those or malformed. */
+function parseOklab(s: string): RGBA | null {
+  const m = /^(oklch|oklab)\(\s*([^)]*?)\s*\)$/i.exec(s)
+  if (!m) return null
+  const [main, alphaPart, extra] = m[2].split('/').map((x) => x.trim())
+  if (extra !== undefined || !main) return null
+  const parts = main.split(/[\s,]+/).filter(Boolean)
+  if (parts.length !== 3) return null
+  const alpha = alphaPart === undefined ? 1 : component(alphaPart, 1)
+  const L = component(parts[0], 1)
+  if (alpha === null || L === null) return null
+  if (m[1].toLowerCase() === 'oklch') {
+    const C = component(parts[1], 0.4)
+    const H = hue(parts[2])
+    return C === null || H === null ? null : oklchToRgba(L, Math.max(C, 0), H, alpha)
+  }
+  const A = component(parts[1], 0.4)
+  const B = component(parts[2], 0.4)
+  if (A === null || B === null) return null
+  return oklchToRgba(L, Math.hypot(A, B), (Math.atan2(B, A) * 180) / Math.PI, alpha)
+}
+
+/** Parse any CSS colour (hex, rgb(), oklch()/oklab(), hsl(), named via the browser). Null if invalid. */
 export function parseColor(input: string | undefined | null): RGBA | null {
   if (!input) return null
   const s = input.trim()
@@ -41,6 +110,8 @@ export function parseColor(input: string | undefined | null): RGBA | null {
     return { r: +rgb[1], g: +rgb[2], b: +rgb[3], a: clamp(a, 0, 1) }
   }
   if (s === 'transparent') return { r: 0, g: 0, b: 0, a: 0 }
+  const ok = parseOklab(s)
+  if (ok) return ok
   if (typeof document === 'undefined') return null
   if (!ctx) ctx = document.createElement('canvas').getContext('2d')
   if (!ctx) return null
