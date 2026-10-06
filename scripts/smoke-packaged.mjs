@@ -54,7 +54,7 @@ try {
   check(upd.state === 'error' && !/could not be loaded|installer/i.test(upd.message) && upd.commits === 0 && upd.behind === 0, `the update engine is running: a check against an unreachable feed is a network error, not "unsupported" (${JSON.stringify(upd)})`)
   try {
     const asar = await import('@electron/asar')
-    const inside = asar.listPackage(join(dirname(exe), 'resources', 'app.asar')).filter((f) => /node_modules[\/]electron-updater[\/]package\.json$/.test(f))
+    const inside = asar.listPackage(join(dirname(exe), 'resources', 'app.asar')).filter((f) => /node_modules[\\/]electron-updater[\\/]package\.json$/.test(f))
     check(inside.length === 1, 'electron-updater is packed into app.asar')
   } catch (e) {
     results.push(`skipped: could not read app.asar (${String(e.message).slice(0, 80)})`)
