@@ -1,6 +1,7 @@
 // Packaging config sanity (electron-builder.yml, package.json): one version source, the installer is per user and keeps data,
 // only what the packaged main process needs is a production dependency.
-import { readFileSync } from 'node:fs'
+import { readFileSync, readdirSync } from 'node:fs'
+import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 
 const read = (p: string): string => readFileSync(p, 'utf8').replace(/\r\n/g, '\n')
@@ -55,10 +56,30 @@ describe('package.json for packaging', () => {
 })
 
 describe('app version', () => {
-  it('the About/What\'s new version is the package.json version', async () => {
-    const src = read('src/renderer/src/editor/left/WhatsNew.tsx')
-    expect(src).toMatch(/import \{ version \} from '[./]*package\.json'/)
-    expect(src).toMatch(/export const APP_VERSION: string = version/)
+  it('APP_VERSION (the What is new dialog) equals the package.json version: a mismatch fails here', async () => {
+    const whatsNew = '../renderer/src/editor/left/WhatsNew' // a variable path: this node-side test must not pull the React file into the node typecheck
+    const { APP_VERSION } = (await import(/* @vite-ignore */ whatsNew)) as { APP_VERSION: string }
+    expect(APP_VERSION).toBe(pkg.version)
     expect(pkg.version).toMatch(/^\d+\.\d+\.\d+/)
+  })
+
+  it('no other file of the app hard-codes the version (it would drift from package.json)', () => {
+    const hits: string[] = []
+    const walk = (dir: string): void => {
+      for (const e of readdirSync(dir, { withFileTypes: true })) {
+        const f = join(dir, e.name)
+        if (e.isDirectory()) walk(f)
+        else if (/\.(ts|tsx)$/.test(e.name) && !/\.test\.ts$/.test(e.name) && read(f).includes(`'${pkg.version}'`)) hits.push(f)
+      }
+    }
+    walk('src')
+    expect(hits).toEqual([])
+  })
+})
+
+describe('MCP bundle placeholder', () => {
+  it('electron-builder.yml documents where the MCP bundle goes (outside the asar), for the bundle task to enable', () => {
+    expect(yml).toMatch(/#\s*extraResources:/)
+    expect(yml).toMatch(/outside the asar/i)
   })
 })
