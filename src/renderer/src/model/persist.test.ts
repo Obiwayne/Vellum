@@ -203,6 +203,9 @@ describe('restoring after a crash', () => {
     const root = createRoot(host)
     await act(async () => root.render(createElement(RecoveryPrompt)))
     expect(document.body.textContent).toContain('Restore unsaved changes to Alpha edited?')
+    // the question is asked once: the title does not repeat it
+    expect(document.body.textContent).toContain('Unsaved changes found')
+    expect(document.body.textContent?.match(/Restore unsaved changes/g)).toHaveLength(1)
     expect(document.body.textContent).toContain('1 more after this one')
     await act(async () => document.querySelector<HTMLButtonElement>('[data-recovery="restore"]')!.click())
     expect(s.useStore.getState().docs.a.name).toBe('Alpha edited')

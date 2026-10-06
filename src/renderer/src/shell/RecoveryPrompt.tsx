@@ -13,7 +13,7 @@ export function RecoveryPrompt(): JSX.Element | null {
       open
       onClose={() => (item ? postponeRecovery() : dismissNotices())}
       width={460}
-      title={item ? 'Restore unsaved changes?' : 'Restored from backup'}
+      title={item ? 'Unsaved changes found' : 'Restored from backup'}
       footer={
         item ? (
           <>

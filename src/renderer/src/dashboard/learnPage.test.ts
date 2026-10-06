@@ -20,6 +20,7 @@ describe('Learn page', () => {
     for (const s of ['Check for updates automatically', 'Check for Updates…', 'Version X is ready to install', 'Restart to update', 'Later', '%APPDATA%\\Vellum', 'Update and restart']) {
       expect(text, s).toContain(s)
     }
+    expect(text).toContain('Restart to update (your files are saved first)') // a space between the bold label and the bracket
     act(() => root.unmount())
     host.remove()
   })

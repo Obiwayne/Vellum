@@ -138,7 +138,7 @@ export function LearnPage(): JSX.Element {
           <b>Help → Check for Updates…</b> always checks.
         </p>
         <p>
-          A new version downloads in the background while you work. When it is ready, a card says <b>Version X is ready to install</b>: click <b>Restart to update</b>
+          A new version downloads in the background while you work. When it is ready, a card says <b>Version X is ready to install</b>: click <b>Restart to update</b>{' '}
           (your files are saved first) or <b>Later</b>. If you choose Later, it installs the next time you quit Vellum.
         </p>
         <p>
