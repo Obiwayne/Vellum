@@ -1,5 +1,6 @@
 import { contextBridge, ipcRenderer, type IpcRendererEvent } from 'electron'
 import { IPC, type BridgeRequest, type CanvasApi, type UpdateStatus } from '@shared/api'
+import type { McpEntry } from '@shared/mcpSnippets'
 
 const api: CanvasApi = {
   platform: process.platform,
@@ -25,6 +26,10 @@ const api: CanvasApi = {
   deleteDoc: (id) => ipcRenderer.invoke(IPC.deleteDoc, id),
   loadIndex: () => ipcRenderer.invoke(IPC.loadIndex),
   saveIndex: (index) => ipcRenderer.invoke(IPC.saveIndex, index),
+  saveRecovery: (doc) => ipcRenderer.invoke(IPC.saveRecovery, doc),
+  listRecoveries: () => ipcRenderer.invoke(IPC.listRecoveries),
+  discardRecovery: (id) => ipcRenderer.invoke(IPC.discardRecovery, id),
+  takeRestored: () => ipcRenderer.invoke(IPC.takeRestored),
   userDataPath: () => ipcRenderer.invoke(IPC.userDataPath),
   profiles: {
     state: () => ipcRenderer.invoke(IPC.profState),
@@ -56,7 +61,7 @@ const api: CanvasApi = {
     rename: (docId, versionId, name) => ipcRenderer.invoke(IPC.histRename, docId, versionId, name),
     remove: (docId, versionId) => ipcRenderer.invoke(IPC.histRemove, docId, versionId)
   },
-  mcpEntry: ipcRenderer.sendSync(IPC.mcpEntry) as string,
+  mcpEntry: ipcRenderer.sendSync(IPC.mcpEntry) as McpEntry,
   agentDriven: (ipcRenderer.sendSync(IPC.agentDriven) as string | null) ?? null,
 
   capturePage: (rect) => ipcRenderer.invoke(IPC.capturePage, rect),
