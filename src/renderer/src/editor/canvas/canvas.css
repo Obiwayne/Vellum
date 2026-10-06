@@ -86,24 +86,39 @@
 .cv-working {
   position: absolute;
   box-sizing: border-box;
-  border: 1px solid var(--agent-teal);
+  border: 1px solid var(--agent-blue);
+  background: var(--agent-blue-soft);
+  box-shadow: 0 0 0 1px var(--agent-blue-soft);
   pointer-events: none;
 }
-.cv-working__tag {
-  position: absolute;
-  right: -1px;
-  top: -18px;
-  height: 16px;
-  padding: 0 5px;
-  border-radius: 3px 3px 0 3px;
-  background: var(--agent-teal);
-  color: #10231F;
-  font-size: 11px;
-  line-height: 16px;
-  font-weight: 500;
-  white-space: nowrap;
+.cv-working--top {
+  background: none;
 }
 
+.cv-agent-dots {
+  position: absolute;
+  display: grid;
+  grid-template-columns: repeat(14, 3px);
+  grid-auto-rows: 3px;
+  gap: 2px;
+  pointer-events: none;
+}
+.cv-agent-dots > span {
+  border-radius: 50%;
+  background: var(--agent-blue);
+  box-shadow: 0 0 3px var(--agent-blue);
+  opacity: 0.12;
+  animation: cv-twinkle 1.2s ease-in-out infinite;
+}
+@keyframes cv-twinkle {
+  0%, 100% { opacity: 0.15; }
+  25% { opacity: 0.15; }
+  45% { opacity: 1; }
+  70% { opacity: 0.6; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .cv-agent-dots > span { animation: none; opacity: 0.6; }
+}
 
 .cv-guide {
   position: absolute;

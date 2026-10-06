@@ -353,9 +353,11 @@ registerHandler('finish_working_on_nodes', (args) => {
     const top = doc.nodes[id] ? topLevelOf(doc, id) : undefined
     if (top) release.add(top)
   }
-  const remaining = current.filter((id) => !release.has(id))
+  // releasing an artboard also releases the outlined elements inside it
+  const released = (id: string): boolean => release.has(id) || (Boolean(doc.nodes[id]) && release.has(topLevelOf(doc, id) ?? id))
+  const remaining = current.filter((id) => !released(id))
   s.setWorkingNodes(docId, remaining)
-  return scoped(docId, { released: current.filter((id) => release.has(id)), remaining })
+  return scoped(docId, { released: current.filter(released), remaining })
 })
 
 // ------------------------------------------------------------------------------------------------

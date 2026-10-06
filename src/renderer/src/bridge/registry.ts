@@ -1,6 +1,6 @@
 // Bridge handler registry + shared helpers for the MCP tools (renderer side).
 import { activeDocId, activePage, getStore } from '../model/store'
-import { anchoredAxes, isFlowChild, isPageRoot, modelWorldPosition, numericSize, pageOf, topLevelOf, worldRect } from '../model/ops'
+import { anchoredAxes, isFlowChild, isPageRoot, isTopLevel, modelWorldPosition, numericSize, pageOf, topLevelOf, worldRect } from '../model/ops'
 import { measureOffscreen } from './measure'
 import type { CNode, Doc, Page, Token } from '../model/types'
 
@@ -178,16 +178,23 @@ export function artboardOf(doc: Doc, id: string): string | null {
   return topLevelOf(doc, id) ?? null
 }
 
-/** Mark the artboards containing these nodes as "being worked on" by the agent. */
+/** Mark the artboards containing these nodes as "being worked on" by the agent. The nodes
+ *  themselves are outlined too, until the agent's next edit replaces them. */
 export function markWorking(docId: string, ids: string[]): void {
-  const doc = getStore().docs[docId]
+  const store = getStore()
+  const doc = store.docs[docId]
   if (!doc) return
-  const out = new Set<string>()
+  const tops = new Set<string>()
+  const inner: string[] = []
   for (const id of ids) {
     if (!doc.nodes[id] || isPageRoot(doc, id)) continue
-    out.add(topLevelOf(doc, id) ?? id)
+    const top = topLevelOf(doc, id) ?? id
+    tops.add(top)
+    if (top !== id) inner.push(id)
   }
-  if (out.size) getStore().addWorkingNodes(docId, [...out])
+  if (!tops.size) return
+  const prev = (store.editors[docId]?.workingNodes ?? []).filter((id) => isTopLevel(doc, id))
+  store.setWorkingNodes(docId, [...new Set([...prev, ...tops, ...inner])])
 }
 
 /** Next free spot to the right of the page's existing artboards (80px gap). */

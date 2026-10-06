@@ -37,6 +37,8 @@
   --accent-soft: oklch(0.65 0.2 38 / 0.25);
   --agent-teal: rgb(134, 234, 212);
   --agent-orange: rgb(217, 119, 87);
+  --agent-blue: rgb(59, 130, 246);
+  --agent-blue-soft: rgb(59 130 246 / 0.08);
   --danger: #E5484D;
 
   /* primary (white) button */

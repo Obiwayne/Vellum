@@ -155,6 +155,14 @@ export function Overlay({
     return r ? toScreen(r, cam) : null
   }
 
+  // top-level nodes the agent is working in: their label becomes the twinkling dot grid
+  const busy = new Set<string>()
+  for (const id of working) {
+    let n = doc.nodes[id]
+    while (n && n.parent && n.parent !== page.rootId) n = doc.nodes[n.parent]
+    if (n) busy.add(n.id)
+  }
+
   const selNodes = selection.map((id) => doc.nodes[id]).filter((n): n is CNode => Boolean(n))
   const selWorld = union(selection.map((id) => rects.get(id)))
   const selScreen = selWorld ? toScreen(selWorld, cam) : null
@@ -214,6 +222,7 @@ export function Overlay({
             />
           )
         }
+        if (busy.has(id)) return <AgentDots key={id} style={{ left: r.x, top: r.y - 14 }} />
         return (
           <div
             key={id}
@@ -248,9 +257,11 @@ export function Overlay({
       {working.map((id) => {
         const r = sr(id)
         if (!r) return null
+        const n = doc.nodes[id]
+        const loose = n?.parent === page.rootId && n.type !== 'frame'
         return (
-          <div key={'w' + id} className="cv-working" style={box(r)}>
-            <span className="cv-working__tag">Claude</span>
+          <div key={'w' + id} className={'cv-working' + (n?.parent === page.rootId ? ' cv-working--top' : '')} style={box(r)}>
+            {loose && <AgentDots style={{ left: -1, top: -14 }} />}
           </div>
         )
       })}
@@ -414,5 +425,25 @@ function PenPreview({ pen, cam }: { pen: NonNullable<Transient['pen']>; cam: Cam
         <rect key={i} x={p.x - 3.5} y={p.y - 3.5} width={7} height={7} fill="#fff" stroke="var(--accent)" strokeWidth={1} />
       ))}
     </svg>
+  )
+}
+
+// Twinkling dot grid shown in place of a frame's label while the agent works in it. Each dot gets
+// its own random rhythm once, so the grid shimmers instead of blinking in sync.
+const DOT_ROWS = 2
+const DOT_COLS = 14
+function AgentDots({ style }: { style: CSSProperties }): JSX.Element {
+  const [dots] = useState(() =>
+    Array.from({ length: DOT_ROWS * DOT_COLS }, () => ({
+      animationDuration: `${(0.6 + Math.random() * 1.4).toFixed(2)}s`,
+      animationDelay: `${(-Math.random() * 2).toFixed(2)}s`
+    }))
+  )
+  return (
+    <div className="cv-agent-dots" style={style} aria-label="Claude is working">
+      {dots.map((d, i) => (
+        <span key={i} style={d} />
+      ))}
+    </div>
   )
 }
