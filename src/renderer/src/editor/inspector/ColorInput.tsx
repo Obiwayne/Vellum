@@ -52,7 +52,9 @@ export function addColorToken(docId: string, rawName: string, color: string, app
   if (!c) return 'Not a colour'
   // base value only: in files with theme modes every mode starts on the same colour
   s.transact(docId, 'Add colour token', () => {
-    s.upsertTokens(docId, [{ name, value: formatColor(c) }])
+    // an oklch()/oklab() literal is kept as written: converting it to hex would silently change the colour
+    const literal = color.trim()
+    s.upsertTokens(docId, [{ name, value: /^okl(?:ch|ab)\(/i.test(literal) ? literal : formatColor(c) }])
     apply(`var(${name})`)
   })
   return null
