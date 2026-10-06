@@ -12,3 +12,6 @@ a box shadow, unicode text), "Old sketch" (text with no line height) and the Scr
 The layout is the pre-profile one: userData/files/*.json plus userData/index.json. v0.1.0 had no profiles (they came with
 8768d00) and no comments: docs/MCP.md at 1c0f58f says "Vellum has no comments" for the comment tools, and its Doc type has
 no comment field.
+
+Location: model/fixtures/ (next to the model code the tests exercise), not test-fixtures/, as the task asked.
+Made by: running the v0.1.0 app itself (not a script over its model code), so the bytes come from that commit.
