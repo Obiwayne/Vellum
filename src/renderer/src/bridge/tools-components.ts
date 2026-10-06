@@ -169,7 +169,7 @@ registerHandler('bind_component_prop', (args) => {
   const key = args.property === null ? null : str(args.property)
   if (key === undefined) throw new Error('property is required (a property name or id), or null to unbind')
   const propId = key === null ? null : findProp(propDefsOf(doc, mainId), key, aspect === 'visible' ? 'boolean' : aspect === 'text' ? 'text' : 'swap').id
-  getStore().bindProp(docId, node.id, aspect, propId, { keepDefault: true }) // an agent states its defaults: binding must not replace them
+  getStore().bindProp(docId, node.id, aspect, propId)
   markWorking(docId, [node.id])
   return scoped(docId, { nodeId: node.id, aspect, propertyId: propId })
 })
