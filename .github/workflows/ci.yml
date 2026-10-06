@@ -53,6 +53,31 @@ jobs:
         working-directory: mcp
       - run: npm run test:mcp
 
+  # Packs the app (npm run pack) and checks the packed result: what is inside app.asar (electron-updater, or the installed
+  # build's update check is broken), and the packaged-app smoke test, which opens it and checks the update engine runs.
+  package:
+    runs-on: windows-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            mcp/package-lock.json
+      - run: npm ci
+      - run: npm ci
+        working-directory: mcp
+      # Electron has no postinstall here: fetch its binary (electron-builder copies it into the package)
+      - run: node node_modules/electron/install.js
+      - run: npm run pack
+      - run: npx vitest run src/main/packaging.test.ts
+        env:
+          VELLUM_REQUIRE_PACK: '1'
+      - run: node scripts/smoke-packaged.mjs
+
   # Builds a test installer (own appId and product name) and runs it silently in temp folders: per-user install, shortcuts, uninstall entry, closing a
   # running Vellum, uninstall keeping the data folder (scripts/test-installer.ps1).
   installer:

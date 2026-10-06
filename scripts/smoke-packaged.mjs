@@ -5,7 +5,7 @@
 import { _electron as electron } from 'playwright'
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
-import { join } from 'node:path'
+import { dirname, join } from 'node:path'
 
 const out = process.argv[2] ?? '.muster-evidence/smoke-packaged'
 const exe = process.argv[3] ?? 'release/win-unpacked/Vellum.exe'
@@ -18,7 +18,7 @@ if (!existsSync(exe)) {
   process.exit(1)
 }
 const ud = mkdtempSync(join(tmpdir(), 'vellum-packaged-'))
-const app = await electron.launch({ executablePath: exe, args: [], env: { ...process.env, VELLUM_USER_DATA: ud } })
+const app = await electron.launch({ executablePath: exe, args: [], env: { ...process.env, VELLUM_USER_DATA: ud, VELLUM_UPDATE_URL: 'http://127.0.0.1:65000/feed' } }) // an update feed nobody listens on
 let n = 0
 try {
   const page = await app.firstWindow()
@@ -45,12 +45,20 @@ try {
   check((await page.locator('[data-node-id]').count()) >= 1, 'the editor draws a frame (renderer, fonts and canvas work in the packaged app)')
   const fonts = await page.evaluate(() => document.fonts.check('12px Inter'))
   check(fonts === true, 'the bundled Inter font is available')
-  // the git updater has nothing to do in a packaged build: no commands run, state is "unsupported", and the dashboard shows no update card
+  // The installed build runs electron-updater (never git or npm): against a feed nobody listens on its check ends as an error from
+  // the network, not "unsupported" (that is what a build without electron-updater in app.asar used to say).
   const upd = await page.evaluate(async () => {
     const s = await window.canvasApi.updates.check()
-    return { state: s.state, commits: s.commits.length, behind: s.behind }
+    return { state: s.state, message: s.message ?? '', commits: s.commits.length, behind: s.behind }
   })
-  check(upd.state === 'unsupported' && upd.commits === 0 && upd.behind === 0, `an update check in the packaged app is disabled (${JSON.stringify(upd)})`)
+  check(upd.state === 'error' && !/could not be loaded|installer/i.test(upd.message) && upd.commits === 0 && upd.behind === 0, `the update engine is running: a check against an unreachable feed is a network error, not "unsupported" (${JSON.stringify(upd)})`)
+  try {
+    const asar = await import('@electron/asar')
+    const inside = asar.listPackage(join(dirname(exe), 'resources', 'app.asar')).filter((f) => /node_modules[\\/]electron-updater[\\/]package\.json$/.test(f))
+    check(inside.length === 1, 'electron-updater is packed into app.asar')
+  } catch (e) {
+    check(false, `electron-updater is packed into app.asar (could not read the asar: ${String(e.message).slice(0, 80)})`)
+  }
   // work is saved inside the temp data folder
   await page.waitForTimeout(2500) // autosave debounce
   const files = []

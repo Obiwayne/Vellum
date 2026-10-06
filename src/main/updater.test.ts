@@ -54,14 +54,68 @@ beforeEach(() => {
 
 const noUpdater = { loadAutoUpdater: (): never => { throw new Error('electron-updater is not installed') } }
 
-describe('packaged build without electron-updater', () => {
-  it('starts as unsupported, and a check says so without running git or npm', async () => {
+// T50: a packed app whose electron-updater cannot be loaded (missing from app.asar) used to say "unsupported" and "download the
+// installer", as if updates were never meant to run there. That hides a packaging defect: it has to show up as an error.
+describe('packaged build where electron-updater cannot be loaded (T50)', () => {
+  it('reports an error that names the problem, never "unsupported"', async () => {
     state.packaged = true
     const u = await load(noUpdater)
-    expect((await u.status()).state).toBe('unsupported')
     const s = await u.check()
-    expect(s.state).toBe('unsupported')
-    expect(s.message).toMatch(/installer/i)
+    expect(s.state).toBe('error')
+    expect(s.message).toMatch(/electron-updater/i)
+    expect((await u.status()).state).not.toBe('unsupported')
+    expect(execFile).not.toHaveBeenCalled()
+    expect(spawn).not.toHaveBeenCalled()
+  })
+})
+
+describe('packaged build where electron-updater cannot be loaded: reporting (T50 test station)', () => {
+  const start = async (win: unknown) => {
+    vi.resetModules()
+    handlers.clear()
+    state.packaged = true
+    const mod = await import('./updater')
+    const { IPC } = await import('@shared/api')
+    mod.startUpdater(() => win as never, () => true, noUpdater)
+    return { IPC, call: (ch: string) => handlers.get(ch)!({}) as Promise<{ state: string; message?: string }> }
+  }
+
+  it('tells the window right away, and the message carries the reason from the loader', async () => {
+    const send = vi.fn()
+    const { IPC } = await start({ isDestroyed: () => false, webContents: { send } })
+    expect(send).toHaveBeenCalledWith(IPC.updChanged, expect.objectContaining({ state: 'error', message: expect.stringContaining('electron-updater is not installed') }))
+  })
+
+  it('install and check keep saying error, and never run git or npm', async () => {
+    state.hasGit = true
+    const { IPC, call } = await start(null)
+    expect((await call(IPC.updInstall)).state).toBe('error')
+    expect((await call(IPC.updCheck)).state).toBe('error')
+    expect((await call(IPC.updStatus)).state).toBe('error')
+    expect(execFile).not.toHaveBeenCalled()
+    expect(spawn).not.toHaveBeenCalled()
+  })
+
+  it('a clone without .git is still "unsupported" (unchanged)', async () => {
+    state.packaged = false
+    vi.resetModules()
+    handlers.clear()
+    const mod = await import('./updater')
+    const { IPC } = await import('@shared/api')
+    mod.startUpdater(() => null, () => true)
+    expect((await (handlers.get(IPC.updCheck)!({}) as Promise<{ state: string }>)).state).toBe('unsupported')
+  })
+})
+
+describe('packaged build without electron-updater', () => {
+  it('starts as an error, and a check says so without running git or npm', async () => {
+    state.packaged = true
+    const u = await load(noUpdater)
+    expect((await u.status()).state).toBe('error')
+    const s = await u.check()
+    expect(s.state).toBe('error')
+    expect(s.message).toMatch(/electron-updater.*could not be loaded/i)
+    expect(s.message).toMatch(/not installed/) // the reason from the loader
     expect(s.commits).toEqual([])
     expect(s.behind).toBe(0)
     expect(execFile).not.toHaveBeenCalled()
@@ -72,7 +126,7 @@ describe('packaged build without electron-updater', () => {
     state.packaged = true
     state.hasGit = true
     const u = await load(noUpdater)
-    expect((await u.check()).state).toBe('unsupported')
+    expect((await u.check()).state).toBe('error')
     expect(execFile).not.toHaveBeenCalled()
   })
 
@@ -81,7 +135,7 @@ describe('packaged build without electron-updater', () => {
     state.hasGit = true
     const u = await load(noUpdater)
     const s = await u.install()
-    expect(s.state).toBe('unsupported')
+    expect(s.state).toBe('error')
     expect(execFile).not.toHaveBeenCalled()
     expect(spawn).not.toHaveBeenCalled()
   })

@@ -1,12 +1,40 @@
 // Packaging config sanity (electron-builder.yml, package.json): one version source, the installer is per user and keeps data,
 // only what the packaged main process needs is a production dependency.
-import { readFileSync, readdirSync } from 'node:fs'
+import { existsSync, readFileSync, readdirSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 
 const read = (p: string): string => readFileSync(p, 'utf8').replace(/\r\n/g, '\n')
 const pkg = JSON.parse(read('package.json')) as { version: string; main: string; scripts: Record<string, string>; dependencies: Record<string, string>; devDependencies: Record<string, string> }
 const yml = read('electron-builder.yml')
+
+// The packed app (npm run pack -> release/win-unpacked, or the installer test build in release-test/): what is inside app.asar.
+// Skipped when nothing is packed here; with VELLUM_REQUIRE_PACK=1 (the CI job that packs) a missing pack is a failure.
+const packedDir = ['release', 'release-test'].map((d) => join(d, 'win-unpacked', 'resources')).find((d) => existsSync(join(d, 'app.asar')))
+describe('packed app.asar', () => {
+  it.runIf(!packedDir && Boolean(process.env.VELLUM_REQUIRE_PACK))('there is a packed app to check (VELLUM_REQUIRE_PACK is set)', () => {
+    throw new Error('no release/win-unpacked/resources/app.asar or release-test/...: run npm run pack (or dist:test) before this test')
+  })
+
+  it('the CI package job packs and then runs this file with VELLUM_REQUIRE_PACK=1, and the smoke test', () => {
+    const ci = read('.github/workflows/ci.yml')
+    expect(ci).toMatch(/^ {2}package:$/m)
+    expect(ci).toMatch(/npm run pack/)
+    expect(ci).toMatch(/VELLUM_REQUIRE_PACK: '1'/)
+    expect(ci).toMatch(/node scripts\/smoke-packaged\.mjs/)
+  })
+
+  it.skipIf(!packedDir)('contains electron-updater (the installed build needs it, or its update check is broken) and the app', async () => {
+    const asarModule = '@electron/asar' // a variable: the package comes with electron-builder and is not typed for this project
+    const asar = (await import(/* @vite-ignore */ asarModule)) as { listPackage: (p: string) => string[] }
+    const files = asar.listPackage(join(packedDir!, 'app.asar')).map((f) => f.replaceAll('\\', '/'))
+    expect(files).toContain('/node_modules/electron-updater/package.json')
+    expect(files).toContain('/package.json')
+    expect(files.some((f) => f.startsWith('/out/main/'))).toBe(true)
+    // default_app.asar (copied from electronDist) is only run by Electron when there is no app.asar: that is why it may stay
+    expect(existsSync(join(packedDir!, 'app.asar'))).toBe(true)
+  })
+})
 
 describe('AppUserModelID', () => {
   it('an installed build runs under the installer appId, so pins made from its shortcuts keep working', () => {
