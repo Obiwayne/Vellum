@@ -1,5 +1,5 @@
 // Drives the built app (npm run build first) through a crash (T45): edit, kill the app (taskkill /F) before the save
-// flushes, restart, get "Restore unsaved changes?", restore and find the edit back; then corrupt the saved file and
+// flushes, restart, get the prompt "Unsaved changes found" (body: "...Restore them?"), restore and find the edit back; then corrupt the saved file and
 // start again: it opens from its .bak with a note.
 // Usage: node scripts/e2e-crash.mjs <out-dir>. Needs `npm i -D playwright`. Windows (taskkill) or any OS with `kill -9`.
 import { _electron as electron } from 'playwright'
@@ -118,7 +118,7 @@ try {
   await page.waitForTimeout(3500)
   const prompt = await page.locator('[data-recovery-prompt]').textContent().catch(() => null)
   await shot(page, 'restore-prompt')
-  check(Boolean(prompt) && prompt.includes('Restore unsaved changes to Scratchpad?'), `the restore prompt appears (${prompt})`)
+  check(Boolean(prompt) && prompt.includes('last changes to Scratchpad were saved. Restore them?'), `the restore prompt appears (${prompt})`)
   await page.locator('[data-recovery="restore"]').click()
   await page.waitForTimeout(500)
   await openScratchpad(page)

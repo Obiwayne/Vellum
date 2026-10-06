@@ -1,4 +1,4 @@
-// "Restore unsaved changes to X?" after a crash, and a note when a damaged file was read from its backup.
+// "Unsaved changes found" after a crash (the text names the design and asks "Restore them?" once), and a note when a damaged file was read from its backup.
 import { Button, Modal } from '../ui'
 import { discardRecovery, dismissNotices, postponeRecovery, restoreRecovery, useRecovery } from '../model/recovery'
 
@@ -13,7 +13,7 @@ export function RecoveryPrompt(): JSX.Element | null {
       open
       onClose={() => (item ? postponeRecovery() : dismissNotices())}
       width={460}
-      title={item ? 'Restore unsaved changes?' : 'Restored from backup'}
+      title={item ? 'Unsaved changes found' : 'Restored from backup'}
       footer={
         item ? (
           <>
@@ -39,7 +39,7 @@ export function RecoveryPrompt(): JSX.Element | null {
         ))}
         {item && (
           <p style={{ margin: 0 }}>
-            Vellum closed before your last changes to <strong style={{ color: 'var(--text)' }}>{name}</strong> were saved. Restore unsaved changes to {name}?
+            Vellum closed before your last changes to <strong style={{ color: 'var(--text)' }}>{name}</strong> were saved. Restore them?
             {items.length > 1 ? ` (${items.length - 1} more after this one)` : ''}
           </p>
         )}
