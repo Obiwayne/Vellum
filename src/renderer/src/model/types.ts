@@ -208,6 +208,8 @@ export interface EditorState {
   hovered: string | null
   tool: Tool
   camera: Camera
+  /** each page keeps its own pan + zoom: the cameras of the pages not being shown */
+  pageCameras: Record<string, Camera>
   editingTextId: string | null
   /** nodes an agent is currently working on (teal outline) */
   workingNodes: string[]

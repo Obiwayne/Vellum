@@ -233,3 +233,31 @@ describe('docDiff over store edits', () => {
     expect([d.added, d.removed, d.changed].every((l) => l.length === 0)).toBe(true)
   })
 })
+
+describe('page cameras', () => {
+  const cam = () => S().editors[id].camera
+  it('each page keeps its own pan + zoom', () => {
+    const p1 = doc().pages[0].id
+    S().setActivePage(id, p1)
+    S().setCamera(id, { x: 10, y: 20, zoom: 0.25 })
+    const p2 = S().addPage(id)
+    expect(cam()).toEqual({ x: 120, y: 120, zoom: 1 })
+    S().setCamera(id, { x: -300, zoom: 2 })
+    S().setActivePage(id, p1)
+    expect(cam()).toEqual({ x: 10, y: 20, zoom: 0.25 })
+    S().setActivePage(id, p2)
+    expect(cam()).toEqual({ x: -300, y: 120, zoom: 2 })
+  })
+
+  it('deleting the shown page brings back the first page with its camera', () => {
+    const p1 = doc().pages[0].id
+    S().setActivePage(id, p1)
+    S().setCamera(id, { x: 5, y: 6, zoom: 0.5 })
+    const p2 = S().addPage(id)
+    S().setCamera(id, { zoom: 3 })
+    S().deletePage(id, p2)
+    expect(S().editors[id].pageId).toBe(p1)
+    expect(cam()).toEqual({ x: 5, y: 6, zoom: 0.5 })
+    expect(S().editors[id].pageCameras[p2]).toBeUndefined()
+  })
+})

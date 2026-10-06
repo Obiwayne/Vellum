@@ -187,6 +187,8 @@ export interface CommentAuthor {
   kind: 'user' | 'agent'
   name: string
 }
+const DEFAULT_CAMERA: Camera = { x: 120, y: 120, zoom: 1 }
+
 const YOU: CommentAuthor = { kind: 'user', name: 'You' }
 
 export function defaultEditor(doc: Doc): EditorState {
@@ -196,7 +198,8 @@ export function defaultEditor(doc: Doc): EditorState {
     selection: [],
     hovered: null,
     tool: 'move',
-    camera: { x: 120, y: 120, zoom: 1 },
+    camera: { ...DEFAULT_CAMERA },
+    pageCameras: {},
     editingTextId: null,
     workingNodes: []
   }
@@ -268,7 +271,11 @@ export const useStore = create<Store>()((set, get) => {
       if (e.hovered && !alive(e.hovered)) e.hovered = null
       if (e.editingTextId && !alive(e.editingTextId)) e.editingTextId = null
       if (e.workingNodes.some((id) => !alive(id))) e.workingNodes = e.workingNodes.filter(alive)
-      if (!doc.pages.some((p) => p.id === e.pageId)) e.pageId = doc.pages[0]?.id ?? ''
+      if (!doc.pages.some((p) => p.id === e.pageId)) {
+        e.pageId = doc.pages[0]?.id ?? ''
+        e.camera = { ...(e.pageCameras[e.pageId] ?? DEFAULT_CAMERA) }
+      }
+      for (const id of Object.keys(e.pageCameras)) if (!doc.pages.some((p) => p.id === id)) delete e.pageCameras[id]
     })
   }
 
@@ -470,6 +477,8 @@ export const useStore = create<Store>()((set, get) => {
     setActivePage(docId, pageId) {
       editor(docId, (e) => {
         if (e.pageId === pageId) return
+        e.pageCameras[e.pageId] = { ...e.camera }
+        e.camera = { ...(e.pageCameras[pageId] ?? DEFAULT_CAMERA) }
         e.pageId = pageId
         e.selection = []
         e.hovered = null
