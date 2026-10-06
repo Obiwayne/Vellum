@@ -41,8 +41,8 @@ jobs:
       # the installer carries the MCP bundle (npm run build:mcp), which needs mcp's packages
       - run: npm ci
         working-directory: mcp
-      # Electron has no postinstall here: fetch its binary (electron-builder copies it into the package)
-      - run: node node_modules/electron/install.js
+      # Electron has no postinstall: fetch its binary (electron-builder copies it into the package; pack, dist and dist:test also do this)
+      - run: npm run electron:download
       - run: npm run typecheck
       - run: npm test
       # --publish always uploads installer + blockmap + latest.yml to the release for this tag; releaseType draft keeps it unpublished

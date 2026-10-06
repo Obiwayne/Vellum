@@ -16,10 +16,11 @@
     "test": "vitest run",
     "test:mcp": "node --experimental-strip-types --no-warnings mcp/test/run-all.mjs",
     "e2e": "node scripts/e2e-all.mjs",
-    "pack": "npm run build && npm run build:mcp && electron-builder --dir",
-    "dist": "npm run build && npm run build:mcp && electron-builder",
+    "electron:download": "node scripts/electron-download.mjs",
+    "pack": "npm run electron:download && npm run build && npm run build:mcp && electron-builder --dir",
+    "dist": "npm run electron:download && npm run build && npm run build:mcp && electron-builder",
     "build:mcp": "node scripts/build-mcp-bundle.mjs",
-    "dist:test": "npm run build && npm run build:mcp && electron-builder --win nsis --publish never --config.appId=com.vellum.app.installertest --config.productName=VellumInstallTest --config.directories.output=release-test",
+    "dist:test": "npm run electron:download && npm run build && npm run build:mcp && electron-builder --win nsis --publish never --config.appId=com.vellum.app.installertest --config.productName=VellumInstallTest --config.directories.output=release-test",
     "test:installer": "npm run dist:test && powershell -NoProfile -ExecutionPolicy Bypass -File scripts/test-installer.ps1 -ProductName VellumInstallTest -AppId com.vellum.app.installertest"
   },
   "dependencies": {

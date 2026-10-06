@@ -97,9 +97,20 @@ describe('electron-builder.yml', () => {
 })
 
 describe('package.json for packaging', () => {
+  it('every script that runs electron-builder fetches the Electron binary first (a fresh npm ci does not download it)', () => {
+    for (const name of ['pack', 'dist', 'dist:test']) expect(pkg.scripts[name]).toMatch(/^npm run electron:download && /)
+    expect(pkg.scripts['electron:download']).toBe('node scripts/electron-download.mjs')
+    expect(read('scripts/electron-download.mjs')).toMatch(/install.js/)
+  })
+
+  it('the CI package job and the release workflow fetch it with the same script', () => {
+    expect(read('.github/workflows/ci.yml')).toMatch(/run: npm run electron:download/)
+    expect(read('.github/workflows/release.yml')).toMatch(/run: npm run electron:download/)
+  })
+
   it('has pack and dist scripts that build first', () => {
-    expect(pkg.scripts.pack).toBe("npm run build && npm run build:mcp && electron-builder --dir")
-    expect(pkg.scripts.dist).toBe("npm run build && npm run build:mcp && electron-builder")
+    expect(pkg.scripts.pack).toBe("npm run electron:download && npm run build && npm run build:mcp && electron-builder --dir")
+    expect(pkg.scripts.dist).toBe("npm run electron:download && npm run build && npm run build:mcp && electron-builder")
     expect(pkg.scripts["build:mcp"]).toBe("node scripts/build-mcp-bundle.mjs")
   })
 
