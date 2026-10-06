@@ -78,6 +78,60 @@ create → instance mirrors; edit main style/text/add child/remove child/reorder
 4. Bridge tools + docs/MCP.md + docDiff.
 
 ## Open questions for Obi
-- Variants/component sets: out of scope here (single main per component).
+- Variants/component sets: out of scope here (single main per component). Built later: see "Variants and properties" at the end of this file.
 - Cross-file/library components: out of scope (same-doc only).
 - Cross-page instances are allowed (`of` is a doc-wide id).
+
+---
+
+# Variants and properties (built: T18–T24, goal G6)
+
+What was actually built on top of the plan above. Model: `model/variants.ts`, `model/properties.ts`; UI: Inspector (Variant, Properties, Bind to property, instance controls), Assets panel; MCP: `docs/MCP.md`. Document format: `DOC_VERSION` 5 (v4 added sets and variants, v5 text styles; both only add optional fields, `migrateDoc` just bumps the version).
+
+## Component sets and variants
+- **Add variant** (context menu, or the button in the inspector of a main) duplicates a main next to itself. A lone component is first wrapped in a **set**: a flex frame (`componentSet`) whose direct children are the variant mains, each carrying `component.set` and `component.variant` (property id → option). The original becomes the `Default` variant of a property called `Variant`.
+- **Renaming:** the variant property and each value can be renamed in the inspector ("Variant" → `State`, "Variant 2" → `Hover`). Names stay unique in the set; variant mains that still carry their automatic layer name (`State=Hover`) follow the rename, mains you named yourself keep their name. Instances keep their choice: they point at a main, not at a name.
+- **Which main an instance shows:** `pickMain` — exact match on the variant values (missing values use the default), otherwise the main matching the most properties, ties go to the first in document order.
+- **Switching an instance** (dropdown per variant property in the instance's inspector, or `set_instance_props`) re-points `instance.of` to the matching main in one undo step. **Overrides carry over** by matching layers of the two mains (`matchTrees`): same layer type at the closest position, an equal name breaks ties. Overrides on a layer with no counterpart are dropped and a toast says how many ("2 overrides could not carry over"). The instance takes the new main's size.
+- **Deleting a variant main** re-points its instances to the set's default variant (detaches them when no variant is left). Duplicating a set duplicates its mains. Deleting the set frame deletes its mains like any frame.
+- Assets panel: a set is one row with its variant count ("Button · 3 variants") that expands to the variants; clicking or dragging the row places the default variant, a variant row places that variant. Rows show live thumbnails (rendered when scrolled into view).
+
+## Component properties
+A property is defined once on the **set** (shared by every variant) or on a lone main, bound to layers inside the main, and given a value per instance. Four types:
+
+| Type | Drives | Bound with |
+|---|---|---|
+| `variant` | which main of the set an instance shows | created by Add variant; chosen on the instance |
+| `boolean` | a layer's visibility | "Bind to property → Visible" |
+| `text` | a text layer's text (its auto layer name follows) | "Bind to property → Text" |
+| `swap` | which main a nested instance shows | "Bind to property → Swap" on a nested instance |
+
+- Properties are added, renamed, given defaults and deleted in the **Properties** section of a main's inspector. Deleting a property removes its bindings and drops the values instances held.
+- On an instance the inspector shows one control per property (dropdown, switch, text field, component picker). A value equal to the default is not stored.
+- **Precedence:** main < property value < explicit override. Editing a bound field of an instance edits the property: changing a bound text sets the text property, toggling a bound layer's visibility sets the boolean property. Only style changes and other unbound overrides (colour, size, ...) are stored as overrides and win over the property value until you reset them.
+- A **swap** that would put a component inside itself (through any depth of nested instances) is refused with "A component cannot contain an instance of itself". Overrides on the nodes of a swapped-in main are kept while it is shown and dropped when the instance swaps away.
+- Properties are not exposed through nested instances (a nested instance's own properties are set where the nested instance lives).
+
+## Code export: `get_jsx` (MCP)
+`get_jsx` exports instances as component usage with one definition per component above them (both formats):
+
+```jsx
+function Button({ size = "md", label = "Click", showIcon = true }) {
+  if (size === "lg") {
+    return ( ... )
+  }
+  return ( ... )
+}
+
+(
+    <Button size="lg" label="Buy" showIcon={false} />
+  )
+```
+
+Variant values and property values become props (camelCase; swap props capitalised); only non-default values appear on the usage. A set is one definition with an `if` per non-default variant. Per-layer overrides that are not properties and the instance's own size/position are **not** exported; detach the instance first to export it as plain markup. The canvas "Copy as React / Tailwind" commands do not use component output yet.
+
+## MCP
+`create_component`, `create_instance`, `detach_instance`, `create_variant`, `add_component_prop`, `bind_component_prop`, `set_instance_props` (props, variants and reset in one undo step). `get_node_info` / `get_children` / `find_nodes` / `get_selection` report `isComponent`, `instanceOf`, `componentSetId`, `variant`, properties. `write_html` into an instance is refused. See `docs/MCP.md`.
+
+## Tests
+Unit: `model/variants*.test.ts`, `model/properties*.test.ts`, `model/components*.test.ts`, `editor/left/componentAssets*.test.ts`, `bridge/tools-components.test.ts`, `bridge/jsx-components*.test.ts`. App flows (built app): `scripts/e2e-components.mjs`, `e2e-variants.mjs`, `e2e-variants-switch.mjs`, `e2e-variants-ui.mjs`, `e2e-assets.mjs`; run them all with `npm run e2e` (builds first; `SKIP_BUILD=1`, `ONLY=variants,assets`, `OUT=<dir>`).
