@@ -191,23 +191,30 @@ describe('overrides that are not properties', () => {
     const after = await Promise.all(FORMATS.map((f) => jsx(inst, f)))
     expect(after).toEqual(before)
     for (const out of after) parses(out)
-    // the documented way out: detach, then it exports as plain markup with the edit
-    await call('detach_instance', { nodeId: inst })
-    const plain = await jsx(inst, 'inline-styles')
-    expect(plain).toContain('30')
-    expect(plain).not.toContain('function Button')
-  })
-
-  it('an in-place text edit of a text bound to a property IS the property (shows as the prop), not an override', async () => {
-    const b = await buttonSet()
-    const inst = await instance(b.frame, { Label: 'Buy' })
-    const twin = doc().nodes[inst].children.map((c) => doc().nodes[c]).find((n) => n.type === 'text')!
+    // editing the bound text itself edits the property (it is not an override), so it shows up as the Label prop
     await call('set_text_content', { updates: [{ nodeId: twin.id, textContent: 'Edited in place' }] })
-    for (const format of FORMATS) {
-      const out = await jsx(inst, format)
+    const edited = await Promise.all(FORMATS.map((f) => jsx(inst, f)))
+    for (const out of edited) {
       parses(out)
       expect(out).toContain('<Button label="Edited in place" />')
     }
+    // the documented way out for real overrides: detach, then it exports as plain markup with the edit
+    await call('detach_instance', { nodeId: inst })
+    expect(await jsx(inst, 'inline-styles')).toContain('Edited in place')
+  })
+})
+
+describe('detached instances', () => {
+  it('a style override travels with the instance once it is detached: plain markup, no component definition', async () => {
+    const b = await buttonSet()
+    const inst = await instance(b.frame, { Label: 'Buy' })
+    const twin = doc().nodes[inst].children.map((c) => doc().nodes[c]).find((n) => n.type === 'text')!
+    await call('update_styles', { updates: [{ nodeIds: [twin.id], styles: { fontSize: '30px' } }] })
+    await call('detach_instance', { nodeId: inst })
+    const plain = await jsx(inst, 'inline-styles')
+    parses(plain)
+    expect(plain).toContain('30')
+    expect(plain).not.toContain('function Button')
   })
 })
 
