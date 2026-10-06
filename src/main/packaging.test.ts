@@ -39,12 +39,12 @@ describe('package.json for packaging', () => {
   })
 
   it('ships only what the main process requires at run time (everything else is bundled by Vite into out/)', () => {
-    expect(Object.keys(pkg.dependencies)).toEqual(['ws'])
+    expect(Object.keys(pkg.dependencies).sort()).toEqual(['electron-updater', 'ws']) // electron-updater is loaded at run time by the installed build only
     expect(pkg.devDependencies['electron-builder']).toBeTruthy()
     expect(pkg.devDependencies.electron).toBeTruthy()
   })
 
-  it('the built main bundle requires no other package than ws (guards the line above)', () => {
+  it('the built main bundle requires no other package than ws and electron-updater (guards the line above)', () => {
     let built = ''
     try {
       built = read('out/main/index.js')
@@ -52,7 +52,7 @@ describe('package.json for packaging', () => {
       return // no build in this checkout: the packaged-app smoke test covers it
     }
     const external = [...built.matchAll(/require\("([^".][^"]*)"\)/g)].map((m) => m[1]).filter((m) => !/^(electron|node:.*|path|fs|fs\/promises|os|crypto|child_process|url|net|http|https|util|stream|zlib|events|buffer|tls|dns|readline)$/.test(m))
-    expect([...new Set(external)]).toEqual(['ws'])
+    expect([...new Set(external)].sort()).toEqual(['electron-updater', 'ws'])
   })
 })
 

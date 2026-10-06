@@ -32,3 +32,9 @@ nsis:
   createStartMenuShortcut: true
   runAfterFinish: true
   deleteAppDataOnUninstall: false
+
+# the feed electron-updater reads in installed builds (latest.yml + installer + blockmap on GitHub Releases); nothing is published by `npm run dist`
+publish:
+  provider: github
+  owner: Obiwayne
+  repo: Vellum
