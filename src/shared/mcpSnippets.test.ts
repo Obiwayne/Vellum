@@ -79,3 +79,35 @@ describe('config snippets', () => {
     expect(codexToml(clone)).toBe('[mcp_servers.vellum]\ncommand = "node"\nargs = ["C:/dev/Vellum/mcp/dist/index.js"]')
   })
 })
+
+describe('test station: odd inputs', () => {
+  it('a UNC install path and a path with & are kept and quoted', () => {
+    const bs = String.fromCharCode(92)
+    const unc = mcpEntryFor({ isPackaged: true, execPath: ['', '', 'server', 'share', 'My Apps', 'Vellum.exe'].join(bs), appPath: '', resourcesPath: ['', '', 'server', 'share', 'My Apps', 'resources'].join(bs) })
+    expect(unc.command).toBe('//server/share/My Apps/Vellum.exe')
+    expect(claudeCommand(unc)).toContain('"//server/share/My Apps/Vellum.exe" "//server/share/My Apps/resources/mcp/index.mjs"')
+    const amp = mcpEntryFor({ isPackaged: false, execPath: '', appPath: String.raw`C:\R&D\Vellum`, resourcesPath: '' })
+    expect(claudeCommand(amp)).toBe('claude mcp add vellum -- node "C:/R&D/Vellum/mcp/dist/index.js"')
+  })
+  it('an environment value with a space is quoted as one word', () => {
+    const e: McpEntry = { command: 'node', args: ['x.js'], env: { A: 'one two', B: '2' } }
+    expect(claudeCommand(e)).toBe('claude mcp add vellum -e "A=one two" -e B=2 -- node x.js')
+    expect(codexCommand(e)).toBe('codex mcp add vellum --env "A=one two" --env B=2 -- node x.js')
+  })
+  it('TOML escapes quotes and backslashes in values, and the JSON snippets parse back to the entry', () => {
+    const bs = String.fromCharCode(92)
+    const e: McpEntry = { command: 'C:/a "b"/node', args: [`x${bs}y`], env: { K: 'v"1' } }
+    const t = codexToml(e)
+    expect(t).toContain('command = "C:/a \\"b\\"/node"')
+    expect(t).toContain(`args = ["x${bs}${bs}y"]`)
+    expect(t).toContain('K = "v\\"1"')
+    expect(JSON.parse(mcpServersJson(e)).mcpServers.vellum).toEqual(e)
+  })
+  it('an entry without env (a clone) never prints an env flag or table', () => {
+    const e: McpEntry = { command: 'node', args: ['a.js'] }
+    expect(claudeCommand(e)).not.toMatch(/ -e /)
+    expect(codexCommand(e)).not.toContain('--env')
+    expect(codexToml(e)).not.toContain('env')
+    expect(vscodeJson(e)).not.toContain('env')
+  })
+})
