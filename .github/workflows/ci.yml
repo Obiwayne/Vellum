@@ -95,3 +95,24 @@ jobs:
       - run: npm ci
         working-directory: mcp
       - run: npm run test:installer
+
+  # An installed old version updates itself to the next one from a local feed (scripts/test-update.mjs): states over IPC, silent
+  # install, relaunch, data untouched. Uses the test product only.
+  update:
+    runs-on: windows-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            mcp/package-lock.json
+      - run: npm ci
+      - run: npm ci
+        working-directory: mcp
+      - run: node node_modules/electron/install.js
+      - run: npm run test:update
+

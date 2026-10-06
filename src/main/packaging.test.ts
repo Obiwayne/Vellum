@@ -46,6 +46,38 @@ describe('AppUserModelID', () => {
   })
 })
 
+describe('real update test (T49)', () => {
+  const script = read('scripts/test-update.mjs')
+  const build = read('scripts/build-update-test.mjs')
+  it('is wired to npm scripts and a CI job', () => {
+    expect(pkg.scripts['dist:update-test']).toBe('node scripts/build-update-test.mjs')
+    expect(pkg.scripts['test:update']).toContain('node scripts/test-update.mjs')
+    const ci = read('.github/workflows/ci.yml')
+    expect(ci).toMatch(/^ {2}update:$/m)
+    expect(ci).toMatch(/npm run test:update/)
+  })
+  it('builds only the test product, with its own updater cache folder, and bumps the version without touching package.json', () => {
+    expect(build).toContain('--config.appId=com.vellum.app.installertest')
+    expect(build).toContain('--config.productName=VellumInstallTest')
+    expect(build).toContain('--config.extraMetadata.name=vellum-installtest')
+    expect(build).toContain('--config.extraMetadata.version=')
+    expect(build).not.toMatch(/writeFileSync/)
+  })
+  it('never deletes under the real LOCALAPPDATA except its own cache folder, refuses over a real install, and fails with an exit code', () => {
+    expect(script).toContain("const CACHE_DIR = 'vellum-installtest-updater'")
+    expect(script).toContain('rmSync(updaterCache')
+    expect(script).toContain('updaterCache && updaterCache.toLowerCase().endsWith(CACHE_DIR)')
+    expect(script).toMatch(/refusing to run/)
+    expect(script).toContain('finish(results.every(Boolean) ? 0 : 1)')
+    expect(script).toContain('realDataStamp() === realBefore')
+    expect(script).toContain('quitAndInstall') // the install() call is what it exercises
+  })
+  it('an installed build keeps its data in a folder named after its exe, so the test product never shares the real one', () => {
+    expect(read('src/main/index.ts')).toContain("app.isPackaged ? parse(process.execPath).name : 'Vellum'")
+    expect(yml).toMatch(/^productName: Vellum$/m)
+  })
+})
+
 describe('installer test script', () => {
   const script = read('scripts/test-installer.ps1')
   it('is wired to an npm script and a CI job', () => {
