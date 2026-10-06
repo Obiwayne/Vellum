@@ -96,6 +96,8 @@ export interface UpdateStatus {
   checkedAt?: number
   /** true when running under `npm run dev`: after an update, restart the dev server yourself */
   dev: boolean
+  /** true for an installed (packaged) build, which updates through electron-updater; clones update through git */
+  installed?: boolean
 }
 
 export interface UpdatesApi {
@@ -104,6 +106,8 @@ export interface UpdatesApi {
   /** clones: pull, install packages, rebuild and restart. Installed builds: restart into a downloaded update (state `ready`) */
   install(): Promise<UpdateStatus>
   onStatus(cb: (status: UpdateStatus) => void): () => void
+  /** the "Check for updates automatically" setting: read by the main process before each timed check */
+  setAutoCheck(on: boolean): Promise<void>
 }
 
 /** How a version came to be: saved automatically, named by the user, or kept before a restore. */
@@ -272,6 +276,7 @@ export const IPC = {
   updCheck: 'updates:check',
   updInstall: 'updates:install',
   updChanged: 'updates:changed',
+  updAuto: 'updates:auto',
   histList: 'history:list',
   histLoad: 'history:load',
   histSave: 'history:save',

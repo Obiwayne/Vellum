@@ -52,12 +52,34 @@ interface UpdateInfoLike {
   releaseNotes?: unknown
 }
 
-/** electron-updater gives release notes as a string, or a list of { version, note }. */
+/**
+ * GitHub release notes arrive from electron-updater as HTML (<p>, <ul><li>, entities). The card shows plain text, so
+ * tags become line breaks / bullets and are dropped, and the common entities are decoded. Plain text passes through.
+ */
+export function plainNotes(note: string): string {
+  if (!/<\/?[a-z][^>]*>/i.test(note)) return note.trim()
+  return note
+    .replace(/<(script|style)[\s\S]*?<\/\1>/gi, '')
+    .replace(/<li[^>]*>/gi, '\n- ')
+    .replace(/<\/(p|div|ul|ol|h[1-6]|li|pre|blockquote)>|<br\s*\/?>/gi, '\n')
+    .replace(/<[^>]+>/g, '')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;|&apos;/g, "'")
+    .replace(/&amp;/g, '&')
+    .replace(/[ \t]+\n/g, '\n')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim()
+}
+
+/** electron-updater gives release notes as a string (HTML from GitHub), or a list of { version, note }. */
 export function notesText(notes: unknown): string | undefined {
-  if (typeof notes === 'string') return notes.trim() || undefined
+  if (typeof notes === 'string') return plainNotes(notes) || undefined
   if (Array.isArray(notes)) {
     const text = notes
-      .map((n) => (n && typeof n === 'object' && typeof (n as { note?: unknown }).note === 'string' ? (n as { note: string }).note : ''))
+      .map((n) => (n && typeof n === 'object' && typeof (n as { note?: unknown }).note === 'string' ? plainNotes((n as { note: string }).note) : ''))
       .filter(Boolean)
       .join('\n\n')
       .trim()
@@ -74,7 +96,8 @@ export function createAppUpdater(opts: AppUpdaterOptions): AppUpdater {
     commits: [],
     behind: 0,
     dirty: [],
-    dev: false
+    dev: false,
+    installed: isPackaged
   }
   let busy: Promise<UpdateStatus> | null = null
   let first: ReturnType<typeof setTimeout> | null = null
