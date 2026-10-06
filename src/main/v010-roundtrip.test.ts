@@ -23,6 +23,7 @@ vi.mock('electron', () => ({
 vi.mock('./offscreen', () => ({ disposeRenderer: async () => undefined }))
 
 import { IPC } from '@shared/api'
+import { isEncrypted } from './vault'
 
 const models = join(__dirname, '../renderer/src/model/fixtures')
 type Raw = Record<string, unknown> & { id: string; version?: number }
