@@ -469,6 +469,12 @@ button.db-account__btn:hover {
   line-height: 1.5;
   color: var(--text-2);
 }
+.db-card-panel[data-learn] p {
+  margin: 10px 0;
+}
+.db-learn__updates-title {
+  margin-top: 28px;
+}
 .db-card-panel[data-learn] b {
   color: var(--text);
   font-weight: 500;

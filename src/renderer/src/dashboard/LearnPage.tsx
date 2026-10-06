@@ -131,7 +131,7 @@ export function LearnPage(): JSX.Element {
       <div className="db-card-panel">
         <ConnectAgentBody />
       </div>
-      <h2 className="db-h2">Updates</h2>
+      <h2 className="db-h2 db-learn__updates-title">Updates</h2>
       <div className="db-card-panel" data-learn="updates">
         <p>
           Vellum looks for a new version a few seconds after it starts and every few hours. Turn that off under <b>Settings → Check for updates automatically</b>;{' '}
