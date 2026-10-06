@@ -115,12 +115,27 @@ protected profiles.
 - Upgrading from a version without profiles: the first profile you create takes over your existing files (they are
   copied into the profile, encrypted if you set a password, checked, and only then removed from the old folder).
 
-## Requirements
+## Install
 
-- Windows 10 or 11
-- [Node.js](https://nodejs.org) 22+ and npm
+**Windows 10 or 11, no other software needed.** Download `Vellum-Setup-<version>.exe` from the
+[Releases page](https://github.com/Obiwayne/Vellum/releases) and run it.
 
-## Getting started
+- It installs **for your user only** (no administrator prompt) into `%LOCALAPPDATA%\Programs\Vellum` (you can pick another
+  folder), adds Vellum to the Start Menu and the Desktop, and offers **Run Vellum** at the end. Installing over a copy that is
+  running closes it first.
+- **Windows may say "Windows protected your PC" (SmartScreen).** The installers are not code-signed yet, so Windows does not
+  know the publisher. Choose **More info → Run anyway** if you downloaded it from the Releases page above. See
+  [`docs/SECURITY.md`](docs/SECURITY.md) for what signing would add.
+- A silent install for scripts: `Vellum-Setup-<version>.exe /S` (add `/D=C:\Some\Folder` as the last argument to choose the folder).
+- To uninstall: Windows **Settings → Apps** ("Installed apps" or "Apps & features") **→ Vellum → Uninstall**. **Your files are kept** (see
+  [Where your data lives](#where-your-data-lives)); uninstalling and updating never delete them.
+
+Then follow [Let Claude design in Vellum](#let-claude-design-in-vellum): the app shows the exact command for your install under
+**Connect your agent**. The installed app carries its own MCP server, so Node.js is not needed for that either.
+
+## Run from source (developers)
+
+Requires Windows 10 or 11 and [Node.js](https://nodejs.org) 22+ with npm.
 
 ```bash
 git clone https://github.com/Obiwayne/Vellum.git
@@ -150,24 +165,45 @@ powershell -ExecutionPolicy Bypass -File scripts\make-shortcuts.ps1
 
 ## Updates
 
-Vellum checks GitHub for new versions when it starts and every four hours after that. When one is out, an
-**Update** badge appears in the title bar and a card lists what changed. **Update and restart** downloads it,
-installs any new packages, rebuilds and reopens Vellum. Your files are not touched. **Later** hides the card
-for a day. You can also check at any time with **Help → Check for Updates…**.
+**Installed Vellum** (from the installer) updates itself from GitHub Releases:
 
-This works for copies installed with `git clone`. If you edited Vellum's own files, commit or undo those edits
-first. Otherwise the update is refused so nothing is overwritten. A copy downloaded as a ZIP can't update
-itself: download the new version from GitHub instead. Set `VELLUM_NO_UPDATE_CHECK=1` to turn the automatic
-check off.
+1. A few seconds after it starts, and every four hours after that, Vellum looks for a newer version. Turn the automatic check off
+   under **Settings → Check for updates automatically**; **Help → Check for Updates…** always checks.
+2. A new version is downloaded in the background while you keep working. Nothing is installed behind your back.
+3. When it is ready a card says **Version X is ready to install** (with the release notes, if the release has any), and the title
+   bar shows **Restart to update**. Click **Restart to update**: your files are saved first, the update is installed without
+   a wizard, and Vellum opens again on the new version. **Later** closes the card; the update is also installed the next time you
+   quit Vellum.
+4. If a check or download fails, the card says so with **Retry**; Vellum keeps working and tries again at the next interval.
 
-Your data lives in `%APPDATA%\Vellum`: `profiles.json` lists the profiles, and each profile's files are in
-`profiles\<id>\` (plain JSON, or encrypted when the profile has a password).
+**A copy run from source** (`git clone`) updates differently: the card lists what changed, and **Update and restart** pulls the new
+code, installs changed packages, rebuilds and reopens Vellum. If you edited Vellum's own files, commit or undo those edits first,
+otherwise the update is refused so nothing is overwritten. A copy downloaded as a ZIP can't update itself.
+
+Set `VELLUM_NO_UPDATE_CHECK=1` to turn the automatic check off for both kinds of copy.
+
+## Where your data lives
+
+Everything you make is stored locally in `%APPDATA%\Vellum`: `profiles.json` lists the profiles, and each profile's files are in
+`profiles\<id>\` (plain JSON, or encrypted when the profile has a password). The installed app and a copy run from source share this
+folder, so you can switch between them.
+
+- **Updating** replaces the program, never this folder.
+- **Uninstalling** removes the program, its shortcuts and its entry in Settings → Apps, and **leaves this folder**. A small update
+  download cache in `%LOCALAPPDATA%\vellum-updater` can stay behind too. To remove your data as well, delete `%APPDATA%\Vellum`
+  yourself afterwards.
+- To move to another PC, copy that folder (and keep your recovery key if a profile has a password).
 
 ## Let Claude design in Vellum
 
 1. Start Vellum.
 2. Register the MCP server with Claude Code. The exact command for your copy is shown in the app under
-   **Connect your agent**; it looks like this:
+   **Connect your agent**. For the installed app it looks like this (Vellum.exe runs the bundled server as plain Node, which is
+   what `ELECTRON_RUN_AS_NODE=1` does):
+   ```bash
+   claude mcp add vellum -e ELECTRON_RUN_AS_NODE=1 -- "C:/Users/<you>/AppData/Local/Programs/Vellum/Vellum.exe" "C:/Users/<you>/AppData/Local/Programs/Vellum/resources/mcp/index.mjs"
+   ```
+   and for a copy run from source:
    ```bash
    claude mcp add vellum -- node C:/path/to/Vellum/mcp/dist/index.js
    ```
@@ -189,7 +225,7 @@ See [`docs/MCP.md`](docs/MCP.md) for the full tool list and troubleshooting.
 | Comment · Show/hide comments | `C` · `Shift+C` |
 | Icons | `Shift+I` |
 | Add / wrap in flex | `Shift+A` |
-| Group � Ungroup � Frame selection | `Ctrl+G` � `Ctrl+Shift+G` or `Shift+Backspace` � `Ctrl+Alt+G` or `Shift+F` |
+| Group � Ungroup � Frame selection | `Ctrl+G` � `Ctrl+Shift+G` or `Shift+Backspace` � `Ctrl+Alt+G` or `Shift+F` |
 | Create component / Detach instance | `Ctrl+Alt+K` / `Ctrl+Alt+B` |
 | Opacity 10%–90% · 100% | `1`–`9` · `0` |
 | Bold · Italic · Underline | `Ctrl+B` · `Ctrl+I` · `Ctrl+U` |
@@ -223,4 +259,4 @@ Built with Electron, electron-vite, React, TypeScript, zustand and immer.
 
 - [Architecture](docs/ARCHITECTURE.md) · [Foundation / store API](docs/FOUNDATION.md)
 - [Canvas](docs/CANVAS.md) · [Inspector](docs/INSPECTOR.md) · [Left panel & dashboard](docs/LEFT_DASHBOARD.md)
-- [MCP server](docs/MCP.md) · [Bug log](docs/BUGS.md)
+- [MCP server](docs/MCP.md) · [Security review](docs/SECURITY.md) · [Bug log](docs/BUGS.md)

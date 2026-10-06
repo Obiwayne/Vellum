@@ -15,6 +15,13 @@ claude mcp add vellum -e ELECTRON_RUN_AS_NODE=1 -- "C:/Users/<you>/AppData/Local
 The Codex command and the JSON/TOML snippets for Claude Desktop, Cursor, VS Code and Codex carry the same command, arguments and
 environment. Paths with spaces are quoted. The commands are built in `src/shared/mcpSnippets.ts`.
 
+**Why `ELECTRON_RUN_AS_NODE=1`.** `Vellum.exe` is Electron, not Node. With this variable set, Electron starts as a plain Node runtime and
+runs the script it is given, here the bundled server (`resources/mcp/index.mjs`, one file with the MCP SDK, zod and ws inside), so
+no separate Node.js install is needed. Every agent snippet carries it (`-e ELECTRON_RUN_AS_NODE=1` in the commands, an `env` entry in the JSON
+and TOML). Without it, `Vellum.exe` starts the app instead of the server. The server still talks to the running app over
+`ws://127.0.0.1:29170` and needs the app open, as before. The folder of the installed app is `%LOCALAPPDATA%\Programs\Vellum`
+unless you chose another one; **Connect your agent** always shows the real path of the copy you are running.
+
 **Clone (developers).**
 
 ```

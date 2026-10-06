@@ -131,6 +131,21 @@ export function LearnPage(): JSX.Element {
       <div className="db-card-panel">
         <ConnectAgentBody />
       </div>
+      <h2 className="db-h2">Updates</h2>
+      <div className="db-card-panel" data-learn="updates">
+        <p>
+          Vellum looks for a new version a few seconds after it starts and every few hours. Turn that off under <b>Settings → Check for updates automatically</b>;{' '}
+          <b>Help → Check for Updates…</b> always checks.
+        </p>
+        <p>
+          A new version downloads in the background while you work. When it is ready, a card says <b>Version X is ready to install</b>: click <b>Restart to update</b>
+          (your files are saved first) or <b>Later</b>. If you choose Later, it installs the next time you quit Vellum.
+        </p>
+        <p>
+          Your files live in <code>%APPDATA%\Vellum</code>. Updating or uninstalling Vellum never removes them. A copy run from source updates with{' '}
+          <b>Update and restart</b> instead.
+        </p>
+      </div>
     </div>
   )
 }
