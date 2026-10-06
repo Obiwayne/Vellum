@@ -99,7 +99,7 @@ export function createAppUpdater(opts: AppUpdaterOptions): AppUpdater {
       set({ state: 'up-to-date', latest: undefined, releaseNotes: undefined, message: undefined, progress: undefined, checkedAt: Date.now() })
     )
     autoUpdater.on('download-progress', (p: { percent?: number }) =>
-      set({ state: 'downloading', progress: Math.max(0, Math.min(100, Math.round(p?.percent ?? 0))) })
+      set({ state: 'downloading', progress: Math.max(0, Math.min(100, Math.round(Number(p?.percent) || 0))) })
     )
     autoUpdater.on('update-downloaded', (info: UpdateInfoLike) =>
       set({
@@ -110,9 +110,11 @@ export function createAppUpdater(opts: AppUpdaterOptions): AppUpdater {
         message: undefined
       })
     )
-    autoUpdater.on('error', (err: unknown) =>
+    autoUpdater.on('error', (err: unknown) => {
+      // a downloaded update stays installable (restart, or next quit) whatever a later request reports
+      if (status.state === 'ready') return
       set({ state: 'error', message: `Could not update: ${err instanceof Error ? err.message : String(err)}`, progress: undefined, checkedAt: Date.now() })
-    )
+    })
   }
 
   const check = (): Promise<UpdateStatus> => {
@@ -141,7 +143,11 @@ export function createAppUpdater(opts: AppUpdaterOptions): AppUpdater {
     start() {
       if (!isPackaged || first || every) return
       const timed = (): void => {
-        if (opts.autoCheck && !opts.autoCheck()) return
+        try {
+          if (opts.autoCheck && !opts.autoCheck()) return
+        } catch {
+          /* an unreadable setting counts as "on" */
+        }
         void check()
       }
       first = setTimeout(timed, opts.firstCheckMs ?? FIRST_CHECK_MS)

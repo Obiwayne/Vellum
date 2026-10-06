@@ -188,3 +188,62 @@ describe('packaged build with electron-updater', () => {
     expect(loader).not.toHaveBeenCalled()
   })
 })
+
+describe('packaged build: IPC wiring', () => {
+  const engineMock = () => {
+    const listeners = new Map<string, (...a: unknown[]) => void>()
+    return {
+      u: {
+        autoDownload: false,
+        autoInstallOnAppQuit: false,
+        allowPrerelease: false,
+        setFeedURL: vi.fn(),
+        checkForUpdates: vi.fn(async () => undefined),
+        quitAndInstall: vi.fn(),
+        on: (ev: string, fn: (...a: unknown[]) => void) => void listeners.set(ev, fn)
+      },
+      fire: (ev: string, ...a: unknown[]) => listeners.get(ev)?.(...a)
+    }
+  }
+  const start = async (win: unknown, isTrusted: boolean, m = engineMock(), env: Record<string, string> = {}) => {
+    vi.resetModules()
+    handlers.clear()
+    state.packaged = true
+    for (const [k, v] of Object.entries(env)) process.env[k] = v
+    const mod = await import('./updater')
+    const { IPC } = await import('@shared/api')
+    mod.startUpdater(() => win as never, () => isTrusted, { loadAutoUpdater: () => m.u as never })
+    return { m, IPC, call: (ch: string) => handlers.get(ch)!({}) }
+  }
+
+  it('an untrusted sender gets nothing from status, check or install, and nothing runs', async () => {
+    const { m, IPC, call } = await start(null, false)
+    expect(await call(IPC.updStatus)).toBeNull()
+    expect(await call(IPC.updCheck)).toBeNull()
+    expect(await call(IPC.updInstall)).toBeNull()
+    expect(m.u.checkForUpdates).not.toHaveBeenCalled()
+    m.fire('update-downloaded', {})
+    expect(await call(IPC.updInstall)).toBeNull()
+    expect(m.u.quitAndInstall).not.toHaveBeenCalled()
+  })
+
+  it('every status change is pushed to the window, and a destroyed or missing window is skipped', async () => {
+    const send = vi.fn()
+    const win = { isDestroyed: () => false, webContents: { send } }
+    const { m, IPC } = await start(win, true)
+    m.fire('update-available', { version: '3.0.0' })
+    expect(send).toHaveBeenCalledWith(IPC.updChanged, expect.objectContaining({ state: 'available', latest: '3.0.0' }))
+    const dead = { isDestroyed: () => true, webContents: { send: vi.fn() } }
+    const d = await start(dead, true)
+    d.m.fire('update-available', { version: '3.0.0' })
+    expect(dead.webContents.send).not.toHaveBeenCalled()
+    const none = await start(null, true)
+    expect(() => none.m.fire('update-available', { version: '3.0.0' })).not.toThrow()
+  })
+
+  it('an empty VELLUM_UPDATE_URL is ignored', async () => {
+    const { m } = await start(null, true, engineMock(), { VELLUM_UPDATE_URL: '' })
+    expect(m.u.setFeedURL).not.toHaveBeenCalled()
+    delete process.env.VELLUM_UPDATE_URL
+  })
+})
