@@ -82,7 +82,14 @@ its design system, component sheets and every screen and dialog (85 artboards), 
 - **Editing** — undo/redo, copy/paste (including HTML from other apps), right-click menus and keyboard
   shortcuts throughout.
 - **Profiles & privacy** — local profiles with an optional password that encrypts your files (see below).
-- **MCP server** — 35 tools (`write_html`, `update_styles`, `get_screenshot`, `get_jsx`, tokens and theme
+- **Components & variants** — make a component (`Ctrl+Alt+K`), place instances that follow the main, override
+  text and styles per instance, detach. **Add variant** turns a component into a set (State / Size / …): rename the
+  property and its values, switch an instance's variant (overrides carry over, with a toast for any that can't),
+  and add boolean, text and swap properties that drive layers inside the component. The Assets panel lists
+  components of every page with live thumbnails and expandable sets; drag one onto the canvas to place it. See
+  `docs/COMPONENTS.md`.
+- **MCP server** — 47 tools (`write_html`, `update_styles`, `get_screenshot`, `get_jsx` (instances export as
+  component usage plus definitions), components, variants and properties, text styles, tokens and theme
   modes, comments, pages, export to PNG/JPG/WebP/SVG/PDF/HTML/JSX…). Works with Claude Code, Codex and other MCP clients. Layers an agent is
   working on are outlined live on the canvas with a tag.
 
@@ -181,7 +188,7 @@ See [`docs/MCP.md`](docs/MCP.md) for the full tool list and troubleshooting.
 | Comment · Show/hide comments | `C` · `Shift+C` |
 | Icons | `Shift+I` |
 | Add / wrap in flex | `Shift+A` |
-| Group � Ungroup � Frame selection | `Ctrl+G` � `Ctrl+Shift+G` or `Shift+Backspace` � `Ctrl+Alt+G` or `Shift+F` |
+| Group � Ungroup � Frame selection | `Ctrl+G` � `Ctrl+Shift+G` or `Shift+Backspace` � `Ctrl+Alt+G` or `Shift+F` |
 | Create component / Detach instance | `Ctrl+Alt+K` / `Ctrl+Alt+B` |
 | Opacity 10%–90% · 100% | `1`–`9` · `0` |
 | Bold · Italic · Underline | `Ctrl+B` · `Ctrl+I` · `Ctrl+U` |
