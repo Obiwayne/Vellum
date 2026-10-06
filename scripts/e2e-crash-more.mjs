@@ -128,7 +128,7 @@ try {
     await unlock(page, PW)
     const prompt = await page.locator('[data-recovery-prompt]').textContent().catch(() => null)
     await shot(page, 'protected-restore-prompt')
-    check(Boolean(prompt) && prompt.includes('Restore unsaved changes to Scratchpad?'), 'protected profile: after unlocking, the restore prompt appears')
+    check(Boolean(prompt) && prompt.includes('last changes to Scratchpad were saved. Restore them?'), 'protected profile: after unlocking, the restore prompt appears')
     await page.locator('[data-recovery="discard"]').click()
     await page.waitForTimeout(600)
     check(names(ud, '.recovery').length === 0, 'Discard deletes the recovery copy')
@@ -221,12 +221,12 @@ try {
     const first = await page.locator('[data-recovery-prompt]').textContent().catch(() => null)
     await shot(page, 'two-recoveries-first')
     check(Boolean(first) && first.includes('1 more after this one'), `two designs with unsaved changes: the prompt says one more follows (${first})`)
-    const firstName = /Restore unsaved changes to (.*?)\?/.exec(first ?? '')?.[1]
+    const firstName = /last changes to (.*?) were saved/.exec(first ?? '')?.[1]
     await page.locator('[data-recovery="discard"]').click()
     await page.waitForTimeout(500)
     const next = await page.locator('[data-recovery-prompt]').textContent().catch(() => null)
     await shot(page, 'two-recoveries-second')
-    const nextName = /Restore unsaved changes to (.*?)\?/.exec(next ?? '')?.[1]
+    const nextName = /last changes to (.*?) were saved/.exec(next ?? '')?.[1]
     check(Boolean(nextName) && nextName !== firstName && !next.includes('more after'), `the other design is offered next (${firstName} then ${nextName})`)
     await page.locator('[data-recovery="restore"]').click()
     await page.waitForTimeout(1500)

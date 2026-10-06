@@ -464,6 +464,22 @@ button.db-account__btn:hover {
   border-radius: var(--radius-menu);
   background: var(--bg-panel);
 }
+.db-card-panel[data-learn] {
+  padding: 4px 16px;
+  line-height: 1.5;
+  color: var(--text-2);
+}
+.db-card-panel[data-learn] p {
+  margin: 10px 0;
+}
+.db-learn__updates-title,
+.db-learn__section-title {
+  margin-top: 28px;
+}
+.db-card-panel[data-learn] b {
+  color: var(--text);
+  font-weight: 500;
+}
 
 /* connect */
 .db-connect {

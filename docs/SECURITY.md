@@ -306,5 +306,40 @@ would change behaviour, so they are left out.
 - **The saved recovery key file is plaintext.** "Save recovery key" writes a `.txt` file to a folder the user
   picks. The dialog text says to keep it private.
 
+## Installer, updates and the packaged MCP server
+
+### 14. Installed build and its updates — Info (accepted risks listed below)
+- **What is installed.** The installer is per user: no administrator rights, files in `%LOCALAPPDATA%\Programs\Vellum` (or the folder the
+  user picks), shortcuts and an uninstall entry under the current user only. Uninstalling or updating never touches `%APPDATA%\Vellum`
+  (`deleteAppDataOnUninstall: false`).
+- **Where updates come from.** An installed build asks the GitHub Releases feed of the project (`app-update.yml`, provider `github`)
+  over HTTPS for `latest.yml`, then downloads the installer it names. The download is checked against the SHA-512 in `latest.yml`
+  before it is run (differential downloads use the `.blockmap`). The request is an ordinary HTTPS request to github.com: it shows your IP address
+  and the app's user agent to GitHub, and sends nothing from your files. Turn the automatic check off under Settings, or with
+  `VELLUM_NO_UPDATE_CHECK=1`; **Help → Check for Updates…** always checks.
+- **Nothing installs without the user.** The new version is downloaded in the background; it is installed when the user clicks
+  **Restart to update**, or when Vellum is next closed (`autoInstallOnAppQuit`). The installer runs silently as the same user, with no
+  elevation. Files are saved first.
+- **What signing would and would not cover.** The installers are **not code-signed yet**. Windows SmartScreen therefore shows "Windows
+  protected your PC" on first run, and the updater cannot check *who* built the new installer: the SHA-512 only proves that the
+  installer matches `latest.yml`, which comes from the same release. Anyone who can publish to the project's GitHub releases, or break
+  TLS to github.com, can ship an update. Signing the installer and setting the publisher name in the build configuration
+  (`win.publisherName`) would make the updater refuse an installer signed by anyone else, and SmartScreen would show the publisher. It
+  would still not protect against someone who steals the signing key. Until then the first install should come from the Releases page
+  of this repository.
+- **`VELLUM_UPDATE_URL`** points an installed build at a different feed (a plain `generic` feed, HTTP allowed). It exists for the update
+  test (`scripts/test-update.mjs`, `npm run test:update`) and is honoured **only in packaged builds**. A clone ignores it. It is an
+  environment variable of the Vellum process, so whoever can set it can already run code as that user; it is not a privilege boundary. Don't
+  set it system-wide.
+- **`ELECTRON_RUN_AS_NODE` and the bundled MCP server.** The agent starts `Vellum.exe` with `ELECTRON_RUN_AS_NODE=1` and the bundle
+  `resources/mcp/index.mjs`; Electron then behaves as plain Node and runs the bundle. That gives an agent nothing it does not already have
+  (it can run any program as the user); the server still needs the bridge token (see 1). Without the variable `Vellum.exe` starts the app.
+- **Accepted: a per-user install is writable by the user.** Other programs running as the same Windows user can change the files in
+  `%LOCALAPPDATA%\Programs\Vellum`, including the MCP bundle. This is the same trade-off as any per-user application; protect the
+  account (and see "Tampered files are out of scope" above).
+- **Accepted: unsigned builds.** See the signing paragraph; signing needs a certificate and secrets the project does not hold yet.
+- **The data folder name.** An installed build keeps its data in a folder named after its executable (`Vellum.exe` → `%APPDATA%\Vellum`);
+  the installer test product `VellumInstallTest.exe` uses `%APPDATA%\VellumInstallTest`, so tests never open a real profile.
+
 ## Backups and recovery copies
 `<file>.bak` (the previous version of a design, `index.json` or `profiles.json`) and `files/<id>.recovery` (unsaved edits) follow the profile: in a password-protected profile they are AES-256-GCM sealed with the data key like the files themselves (a `.bak` with its file's AAD, a `.recovery` with its own), and they are converted when the password is set or removed. Deleting a design deletes both. Stale `*.tmp` files are removed when a profile is opened.
