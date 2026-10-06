@@ -18,6 +18,8 @@ const dev = Boolean(process.env.ELECTRON_RENDERER_URL)
 let status: UpdateStatus = { state: app.isPackaged ? 'unsupported' : 'idle', commits: [], behind: 0, dirty: [], dev }
 let getWindow: () => BrowserWindow | null = () => null
 let busy: Promise<UpdateStatus> | null = null
+/** the "Check for updates automatically" setting, pushed by the renderer (default on); read before every timed check */
+let autoCheckOn = true
 
 function set(patch: Partial<UpdateStatus>): UpdateStatus {
   status = { ...status, ...patch }
@@ -179,6 +181,9 @@ export function startUpdater(
   opts: UpdaterOptions = {}
 ): void {
   getWindow = window
+  ipcMain.handle(IPC.updAuto, (e, on: unknown) => {
+    if (trusted(e) && typeof on === 'boolean') autoCheckOn = on
+  })
   if (app.isPackaged) {
     // installed build: electron-updater and the GitHub Releases feed. The git updater below never runs here.
     try {
@@ -187,7 +192,7 @@ export function startUpdater(
         isPackaged: true,
         version: app.getVersion(),
         updateUrl: process.env.VELLUM_UPDATE_URL || undefined,
-        autoCheck: opts.autoCheck,
+        autoCheck: opts.autoCheck ?? (() => autoCheckOn),
         emit: (s) => {
           const w = getWindow()
           if (w && !w.isDestroyed()) w.webContents.send(IPC.updChanged, s)
@@ -207,6 +212,9 @@ export function startUpdater(
   ipcMain.handle(IPC.updCheck, (e) => (trusted(e) ? once(check) : null))
   ipcMain.handle(IPC.updInstall, (e) => (trusted(e) ? once(install) : null))
   if (process.env.VELLUM_NO_UPDATE_CHECK || app.isPackaged) return // a packaged build has nothing to poll
-  setTimeout(() => void once(check), FIRST_CHECK_MS)
-  setInterval(() => void once(check), CHECK_EVERY_MS).unref()
+  const timed = (): void => {
+    if (autoCheckOn) void once(check)
+  }
+  setTimeout(timed, FIRST_CHECK_MS)
+  setInterval(timed, CHECK_EVERY_MS).unref()
 }

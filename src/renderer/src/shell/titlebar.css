@@ -194,6 +194,44 @@
   justify-content: flex-end;
   gap: 6px;
 }
+.upd-card__dot--error {
+  background: var(--danger, #e5484d);
+}
+.upd-progress {
+  height: 4px;
+  margin-top: 8px;
+  border-radius: 2px;
+  background: var(--border, rgba(128, 128, 128, 0.3));
+  overflow: hidden;
+}
+.upd-progress__bar {
+  height: 100%;
+  background: var(--accent, #4c8dff);
+  transition: width 0.2s ease;
+}
+.upd-card__notes-toggle {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 8px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--text-2);
+  font: inherit;
+  cursor: pointer;
+}
+.upd-card__notes {
+  margin-top: 6px;
+  max-height: 120px;
+  overflow: auto;
+  white-space: pre-wrap;
+  color: var(--text-3);
+}
+.upd-dialog__notes {
+  max-height: 200px;
+  margin: 0;
+}
 
 /* update dialog */
 .upd-dialog {

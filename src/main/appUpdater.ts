@@ -74,7 +74,8 @@ export function createAppUpdater(opts: AppUpdaterOptions): AppUpdater {
     commits: [],
     behind: 0,
     dirty: [],
-    dev: false
+    dev: false,
+    installed: isPackaged
   }
   let busy: Promise<UpdateStatus> | null = null
   let first: ReturnType<typeof setTimeout> | null = null
