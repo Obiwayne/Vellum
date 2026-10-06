@@ -189,11 +189,14 @@ describe('clone build keeps the git wording', () => {
 })
 
 describe('initUpdates and the auto-check setting', () => {
-  it('loads the status, follows pushes, and sends the setting (default on) then every change', async () => {
+  it('loads the status, follows pushes, and sends the setting once the profile is loaded (default on), then every change', async () => {
     api.status.mockResolvedValue(inst({ state: 'up-to-date' }))
     const off = initUpdates()
     await act(async () => undefined)
     expect(useUpdates.getState().status?.state).toBe('up-to-date')
+    // nothing is sent while the profile (and so the setting) is not loaded yet
+    expect(api.setAutoCheck).not.toHaveBeenCalled()
+    act(() => useStore.getState().hydrate({ docs: {}, recents: [], tabs: ['dashboard'], activeTab: 'dashboard', prefs: {} } as never))
     expect(api.setAutoCheck).toHaveBeenLastCalledWith(true)
     act(() => push(inst({ state: 'available', latest: '0.2.0' })))
     expect(useUpdates.getState().status?.latest).toBe('0.2.0')
@@ -210,5 +213,25 @@ describe('initUpdates and the auto-check setting', () => {
   it('without the bridge (a plain browser) it does nothing and does not throw', () => {
     ;(window as unknown as { canvasApi?: unknown }).canvasApi = undefined
     expect(() => initUpdates()()).not.toThrow()
+  })
+})
+
+describe('the setting is sent from the profile, not before it', () => {
+  it('a profile that has it off sends false and never a premature true', async () => {
+    const off = initUpdates()
+    await act(async () => undefined)
+    expect(api.setAutoCheck).not.toHaveBeenCalled()
+    act(() => useStore.getState().hydrate({ docs: {}, recents: [], tabs: ['dashboard'], activeTab: 'dashboard', prefs: { 'updates.auto': false } } as never))
+    expect(api.setAutoCheck.mock.calls.map((c) => c[0])).toEqual([false])
+    off()
+  })
+
+  it('a hydrate that changes nothing about the setting sends nothing more', async () => {
+    const off = initUpdates()
+    act(() => useStore.getState().hydrate({ docs: {}, recents: [], tabs: ['dashboard'], activeTab: 'dashboard', prefs: {} } as never))
+    const n = api.setAutoCheck.mock.calls.length
+    act(() => useStore.getState().setPref('other', 1))
+    expect(api.setAutoCheck.mock.calls.length).toBe(n)
+    off()
   })
 })

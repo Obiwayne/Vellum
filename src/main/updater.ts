@@ -18,8 +18,15 @@ const dev = Boolean(process.env.ELECTRON_RENDERER_URL)
 let status: UpdateStatus = { state: 'idle', commits: [], behind: 0, dirty: [], dev }
 let getWindow: () => BrowserWindow | null = () => null
 let busy: Promise<UpdateStatus> | null = null
-/** the "Check for updates automatically" setting, pushed by the renderer (default on); read before every timed check */
-let autoCheckOn = true
+/**
+ * The "Check for updates automatically" setting, pushed by the renderer once it has loaded it from the open profile (the setting
+ * lives in the profile, so it is unknown until then, e.g. while a protected profile is still locked). Timed checks run only
+ * when it is known to be on.
+ */
+let autoCheckOn: boolean | null = null
+let startedAt = Date.now()
+/** runs the check a timed one would have, for a setting that arrives after the first timed check was skipped */
+let catchUp: (() => void) | null = null
 
 function set(patch: Partial<UpdateStatus>): UpdateStatus {
   status = { ...status, ...patch }
@@ -186,8 +193,15 @@ export function startUpdater(
   opts: UpdaterOptions = {}
 ): void {
   getWindow = window
+  startedAt = Date.now()
+  autoCheckOn = null
+  catchUp = null
   ipcMain.handle(IPC.updAuto, (e, on: unknown) => {
-    if (trusted(e) && typeof on === 'boolean') autoCheckOn = on
+    if (!trusted(e) || typeof on !== 'boolean') return
+    const firstValue = autoCheckOn === null
+    autoCheckOn = on
+    // the first timed check came and went while the setting was unknown: do it now that it is known to be on
+    if (firstValue && on && Date.now() - startedAt >= FIRST_CHECK_MS && !process.env.VELLUM_NO_UPDATE_CHECK) catchUp?.()
   })
   if (app.isPackaged) {
     // installed build: electron-updater and the GitHub Releases feed. The git updater below never runs here.
@@ -197,7 +211,7 @@ export function startUpdater(
         isPackaged: true,
         version: app.getVersion(),
         updateUrl: process.env.VELLUM_UPDATE_URL || undefined,
-        autoCheck: opts.autoCheck ?? (() => autoCheckOn),
+        autoCheck: opts.autoCheck ?? (() => autoCheckOn === true),
         emit: (s) => {
           const w = getWindow()
           if (w && !w.isDestroyed()) w.webContents.send(IPC.updChanged, s)
@@ -206,6 +220,7 @@ export function startUpdater(
       ipcMain.handle(IPC.updStatus, (e) => (trusted(e) ? engine.status() : null))
       ipcMain.handle(IPC.updCheck, (e) => (trusted(e) ? engine.check() : null))
       ipcMain.handle(IPC.updInstall, (e) => (trusted(e) ? engine.install() : null))
+      catchUp = () => void engine.check()
       if (!process.env.VELLUM_NO_UPDATE_CHECK) engine.start()
       return
     } catch (err) {
@@ -219,8 +234,9 @@ export function startUpdater(
   ipcMain.handle(IPC.updCheck, (e) => (trusted(e) ? once(check) : null))
   ipcMain.handle(IPC.updInstall, (e) => (trusted(e) ? once(install) : null))
   if (process.env.VELLUM_NO_UPDATE_CHECK || app.isPackaged) return // a packaged build has nothing to poll
+  catchUp = () => void once(check)
   const timed = (): void => {
-    if (autoCheckOn) void once(check)
+    if (autoCheckOn === true) void once(check)
   }
   setTimeout(timed, FIRST_CHECK_MS)
   setInterval(timed, CHECK_EVERY_MS).unref()

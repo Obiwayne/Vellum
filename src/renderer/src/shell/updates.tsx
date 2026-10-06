@@ -34,9 +34,11 @@ export function initUpdates(): () => void {
   const a = api()
   if (!a) return () => undefined
   void a.status().then((status) => status && useUpdates.setState({ status }))
-  // tell the main process the setting now and whenever it changes: it reads it before every timed check
+  // tell the main process the setting once the profile's prefs are loaded (the setting lives in the profile, so before that it
+  // is unknown, not "on"), and whenever it changes: it reads it before every timed check
   let last: boolean | undefined
   const push = (): void => {
+    if (!useStore.getState().ready) return
     const on = autoCheckOn(useStore.getState().prefs)
     if (on !== last) {
       last = on
@@ -203,6 +205,7 @@ export function UpdateReminder(): JSX.Element | null {
 function statusLine(s: UpdateStatus | null): string {
   if (!s) return 'Checking for updates…'
   if (s.installed) {
+    const who = s.latest ? `Version ${s.latest}` : 'A new version'
     switch (s.state) {
       case 'idle':
       case 'checking':
@@ -210,11 +213,11 @@ function statusLine(s: UpdateStatus | null): string {
       case 'up-to-date':
         return `You're on the latest version (${s.current}).`
       case 'available':
-        return `Version ${s.latest ?? ''} is available. Downloading in the background…`.replace('Version  ', 'A new version ')
+        return `${who} is available. Downloading in the background…`
       case 'downloading':
-        return `Version ${s.latest ?? ''} is downloading… ${s.progress ?? 0}%`.replace('Version  ', 'A new version ')
+        return `${who} is downloading… ${s.progress ?? 0}%`
       case 'ready':
-        return `Version ${s.latest ?? ''} is ready. Restart Vellum to install it.`.replace('Version  ', 'The new version ')
+        return `${who} is ready. Restart Vellum to install it.`
       case 'installing':
         return 'Restarting to update…'
       default:
