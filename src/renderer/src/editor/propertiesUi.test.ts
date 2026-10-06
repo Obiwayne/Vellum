@@ -256,3 +256,21 @@ describe('renaming the variant property and values', () => {
     await r.done()
   })
 })
+
+describe('a refused rename snaps the field back', () => {
+  it('a duplicate value name shows the old value again', async () => {
+    const { btn } = button()
+    const second = S().addVariant(id, btn)
+    const set = doc().nodes[btn].component!.set as string
+    const r = await render([second])
+    const input = r.host.querySelector<HTMLInputElement>('input[aria-label="Value of Variant"]')!
+    expect(input.value).toBe('Variant 2')
+    await setValue(input, 'Default') // taken by the other variant
+    expect(toast).toHaveBeenCalled()
+    expect(doc().nodes[second].component!.variant![doc().nodes[set].componentSet!.props[0].id]).toBe('Variant 2')
+    expect(r.host.querySelector<HTMLInputElement>('input[aria-label="Value of Variant"]')!.value).toBe('Variant 2')
+    await setValue(r.host.querySelector<HTMLInputElement>('input[aria-label="Value of Variant"]')!, 'Hover')
+    expect(r.host.querySelector<HTMLInputElement>('input[aria-label="Value of Variant"]')!.value).toBe('Hover')
+    await r.done()
+  })
+})
