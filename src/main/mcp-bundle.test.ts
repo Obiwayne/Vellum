@@ -1,5 +1,7 @@
 // The MCP server bundle (scripts/build-mcp-bundle.mjs -> resources-out/mcp/index.mjs): one file, no node_modules needed, speaks MCP over
 // stdio and offers the same tools as the source. (The packaged app runs it with its own Electron as Node: scripts/smoke-packaged-mcp.mjs.)
+// Needs the mcp dependencies (`cd mcp && npm ci`). Without them the suite is skipped locally, but fails when CI is set, so a CI
+// run can never go green without building and running the bundle.
 import { spawn, spawnSync } from 'node:child_process'
 import { existsSync, mkdtempSync, readFileSync, rmSync, statSync } from 'node:fs'
 import { tmpdir } from 'node:os'
@@ -8,6 +10,10 @@ import { describe, expect, it } from 'vitest'
 
 const haveMcpDeps = existsSync('mcp/node_modules/@modelcontextprotocol')
 const bundle = 'resources-out/mcp/index.mjs'
+
+it.runIf(!haveMcpDeps && Boolean(process.env.CI))('mcp/node_modules is installed (needed to build and test the bundle)', () => {
+  throw new Error('mcp/node_modules is missing: run `cd mcp && npm ci` before `npm test` in CI, otherwise the MCP bundle tests are skipped')
+})
 
 describe.skipIf(!haveMcpDeps)('MCP server bundle', () => {
   it('builds into one file that does not import any package from node_modules', () => {

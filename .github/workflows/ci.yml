@@ -27,9 +27,10 @@ jobs:
       # --ignore-scripts: skip Electron's binary download, nothing here launches the app
       - run: npm ci --ignore-scripts
       - run: npm run typecheck
-      - run: npm test
+      # the MCP bundle tests (src/main/mcp-bundle.test.ts) need mcp's dependencies and fail without them in CI
       - run: npm ci
         working-directory: mcp
+      - run: npm test
       - run: npm run build
         working-directory: mcp
 
