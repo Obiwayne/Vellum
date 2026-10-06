@@ -183,5 +183,28 @@ describe('install', () => {
     fire('update-downloaded', { version: '2.0.0' })
     engine.install()
     expect(u.quitAndInstall).toHaveBeenCalledTimes(1)
+    expect(u.quitAndInstall).toHaveBeenCalledWith(true, true) // silent, then run the new version
+  })
+})
+
+describe('release notes from GitHub arrive as HTML (T48 test station)', () => {
+  it('become plain text: paragraphs, bullets, no tags, entities decoded', () => {
+    const html = '<h2>What\'s new</h2>\n<p>Faster saves &amp; safer files.</p>\n<ul>\n<li>Crash recovery</li>\n<li>Components &amp; Assets &lt;3</li>\n</ul>\n<p>Thanks!<br>See you</p>'
+    const text = notesText(html)!
+    expect(text).not.toMatch(/<\/?[a-z]/i)
+    expect(text).toContain("What's new")
+    expect(text).toContain('Faster saves & safer files.')
+    expect(text).toContain('- Crash recovery')
+    expect(text).toContain('- Components & Assets <3')
+    expect(text.split('\n').filter((l) => l.startsWith('- '))).toHaveLength(2)
+    expect(text).not.toMatch(/\n{3,}/)
+  })
+
+  it('drops script and style blocks, keeps plain text and markdown as written, and handles a list of notes', () => {
+    expect(notesText('<p>ok</p><script>alert(1)</script><style>p{}</style>')).toBe('ok')
+    expect(notesText('Plain text\n- one\n- two < three')).toBe('Plain text\n- one\n- two < three')
+    expect(notesText([{ version: '1', note: '<p>A</p>' }, { version: '2', note: '<p>B</p>' }])).toBe('A\n\nB')
+    expect(notesText('<p></p>')).toBeUndefined()
+    expect(notesText('<br>')).toBeUndefined()
   })
 })

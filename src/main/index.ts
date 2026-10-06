@@ -8,6 +8,7 @@ import { clearCachesIfProtected, migrateLegacyUserData, registerStorageIpc } fro
 import { startBridge } from './bridge'
 import { startUpdater } from './updater'
 import { mcpEntryFor } from '@shared/mcpSnippets'
+import { userDataDir } from './userDataDir'
 import { cleanStaleRenderTemp, disposeRenderer, registerRenderScheme, renderHtml, renderPdf } from './offscreen'
 import appIcon from '../../resources/icon.ico?asset'
 
@@ -218,12 +219,16 @@ function registerWindowIpc(): void {
 // before the single-instance lock, which lives in userData. VELLUM_USER_DATA points the app at a
 // separate data folder (profiles.json, profiles/…) — used for testing without touching real data.
 app.setName('Vellum')
-const testUserData = process.env.VELLUM_USER_DATA
-if (testUserData) {
-  app.setPath('userData', testUserData)
-} else if (!app.commandLine.hasSwitch('user-data-dir')) {
-  app.setPath('userData', join(app.getPath('appData'), 'Vellum'))
-  migrateLegacyUserData()
+const dataDir = userDataDir({
+  env: process.env.VELLUM_USER_DATA,
+  hasUserDataSwitch: app.commandLine.hasSwitch('user-data-dir'),
+  isPackaged: app.isPackaged,
+  execPath: process.execPath,
+  appData: app.getPath('appData')
+})
+if (dataDir) {
+  app.setPath('userData', dataDir)
+  if (!process.env.VELLUM_USER_DATA) migrateLegacyUserData()
 }
 registerRenderScheme()
 

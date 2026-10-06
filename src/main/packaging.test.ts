@@ -47,6 +47,40 @@ describe('AppUserModelID', () => {
   })
 })
 
+describe('real update test (T49)', () => {
+  const script = read('scripts/test-update.mjs')
+  const build = read('scripts/build-update-test.mjs')
+  it('is wired to npm scripts and a CI job', () => {
+    expect(pkg.scripts['dist:update-test']).toBe('node scripts/build-update-test.mjs')
+    expect(pkg.scripts['test:update']).toContain('node scripts/test-update.mjs')
+    const ci = read('.github/workflows/ci.yml')
+    expect(ci).toMatch(/^ {2}update:$/m)
+    expect(ci).toMatch(/npm run test:update/)
+  })
+  it('builds only the test product, with its own updater cache folder, and bumps the version without touching package.json', () => {
+    expect(build).toContain('--config.appId=com.vellum.app.installertest')
+    expect(build).toContain('--config.productName=VellumInstallTest')
+    expect(build).toContain('--config.extraMetadata.name=vellum-installtest')
+    expect(build).toContain('--config.extraMetadata.version=')
+    expect(build).not.toMatch(/writeFileSync/)
+    expect(build).toContain("run('npm', ['run', 'electron:download'])") // fetches the Electron binary electron-builder copies, like pack and dist
+    expect(read('.github/workflows/ci.yml')).toMatch(/- run: npm run electron:download\n {6}- run: npm run test:update/)
+  })
+  it('never deletes under the real LOCALAPPDATA except its own cache folder, refuses over a real install, and fails with an exit code', () => {
+    expect(script).toContain("const CACHE_DIR = 'vellum-installtest-updater'")
+    expect(script).toContain('rmSync(updaterCache')
+    expect(script).toContain('updaterCache && updaterCache.toLowerCase().endsWith(CACHE_DIR)')
+    expect(script).toMatch(/refusing to run/)
+    expect(script).toContain('finish(results.every(Boolean) ? 0 : 1)')
+    expect(script).toContain('realDataStamp() === realBefore')
+    expect(script).toContain('quitAndInstall') // the install() call is what it exercises
+  })
+  it('an installed build keeps its data in a folder named after its exe, so the test product never shares the real one', () => {
+    expect(read('src/main/index.ts')).toContain('const dataDir = userDataDir({') // the rules and their tests are in userDataDir.ts
+    expect(yml).toMatch(/^productName: Vellum$/m)
+  })
+})
+
 describe('installer test script', () => {
   const script = read('scripts/test-installer.ps1')
   it('is wired to an npm script and a CI job', () => {
