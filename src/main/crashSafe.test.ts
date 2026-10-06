@@ -173,3 +173,33 @@ describe('.bak and recovery files follow a password change', () => {
     expect(((await v.readJson(path)) as { name: string }).name).toBe('third version')
   }, T)
 })
+
+describe('adversarial: what the session remembers about a file', () => {
+  it('a file damaged while the profile was closed never replaces the good backup after reopening', async () => {
+    const v = new Vault(join(base, 'reopen'), { throttleBaseMs: 0 })
+    const id = (await v.create({ name: 'Re' })).profile.id
+    const path = v.path('files', 'ro.json')
+    await v.writeJson(path, JSON.stringify(doc('ro', 'one')))
+    await v.writeJson(path, JSON.stringify(doc('ro', 'two'))) // main = two, .bak = one
+    await v.close()
+    truncate(path) // damaged on disk while nothing had it open (a crash during a previous run, a disk fault)
+    await v.open(id)
+    await v.writeJson(path, JSON.stringify(doc('ro', 'three')))
+    expect(((await v.readJson(path)) as { name: string }).name).toBe('three')
+    expect(((await v.readJson(BAK(path))) as { name: string }).name).toBe('one') // not the truncated file
+  })
+
+  it('opening a second profile does not carry the first one\'s notes over', async () => {
+    const v = new Vault(join(base, 'two-profiles'), { throttleBaseMs: 0 })
+    const a = (await v.create({ name: 'A' })).profile.id
+    const path = v.path('files', 'x.json')
+    await v.writeJson(path, JSON.stringify(doc('x', '1')))
+    await v.writeJson(path, JSON.stringify(doc('x', '2')))
+    truncate(path)
+    await v.readJson(path)
+    await v.close()
+    const b = (await v.create({ name: 'B' })).profile.id
+    expect(b).not.toBe(a)
+    expect(v.takeRestored()).toEqual([]) // A's damaged file is not announced in B's session
+  })
+})

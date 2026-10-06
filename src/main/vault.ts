@@ -538,6 +538,10 @@ export class Vault {
     if (this.dek) this.dek.fill(0)
     this.dek = null
     this.current = null
+    // what this session knew about its files no longer holds (they can change while nothing has them open); the list of
+    // profiles outlives sessions, so its state stays
+    for (const k of [...this.good]) if (k !== this.profilesPath) this.good.delete(k)
+    for (const k of [...this.restored.keys()]) if (k !== 'profiles.json') this.restored.delete(k)
   }
 
   async open(id: string, password?: string): Promise<ProfileRecord> {
