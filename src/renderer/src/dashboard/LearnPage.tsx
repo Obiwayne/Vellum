@@ -149,8 +149,8 @@ export function LearnPage(): JSX.Element {
       <h2 className="db-h2 db-learn__section-title">Crash recovery</h2>
       <div className="db-card-panel" data-learn="recovery">
         <p>
-          While you edit, Vellum keeps a recovery copy of the design. If Vellum or the PC stops before your last changes are saved, the next start asks
-          <b> Restore unsaved changes?</b> with <b>Restore</b> and <b>Discard</b>. If a saved file is damaged, Vellum opens its last backup (<code>.bak</code>) and says so.
+          While you edit, Vellum keeps a recovery copy of the design. If Vellum or the PC stops before your last changes are saved, the next start shows
+          <b>Unsaved changes found</b> and offers <b>Restore</b> or <b>Discard</b>. If a saved file is damaged, Vellum opens its last backup (<code>.bak</code>) and says so.
         </p>
         <p>
           Recovery copies and backups sit next to your files in <code>%APPDATA%\Vellum</code>, and are encrypted like them when the profile has a password.

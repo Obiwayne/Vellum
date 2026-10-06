@@ -78,17 +78,17 @@ describe('docs text is clean', () => {
 
   it('the README describes crash recovery with the real prompt wording', () => {
     expect(readme).toContain('Crash recovery')
-    expect(readme).toContain('Restore unsaved changes?')
-    expect(read('src/renderer/src/shell/RecoveryPrompt.tsx')).toContain('Restore unsaved changes?')
+    expect(readme).toContain('Unsaved changes found')
+    expect(read('src/renderer/src/shell/RecoveryPrompt.tsx')).toContain('Unsaved changes found')
     expect(read('src/renderer/src/shell/RecoveryPrompt.tsx')).toContain('Restore them?')
   })
 
-  it('the restore prompt names the design once and does not repeat "Restore unsaved changes"', () => {
+  it('the restore prompt names the design once and does not repeat itself', () => {
     const code = read('src/renderer/src/shell/RecoveryPrompt.tsx') // read() turns line ends into \n
       .split('\n')
       .filter((l) => !l.trim().startsWith('//'))
     const src = code.join(' ')
-    expect(src.match(/Restore unsaved changes/g)).toHaveLength(1) // the title only, never the body
-    expect(src).not.toMatch(/Restore unsaved changes to/)
+    expect(src.match(/Restore (unsaved changes|them)/g)).toHaveLength(1) // asked once, in the body; the title says what was found
+    expect(src).toContain('Unsaved changes found')
   })
 })

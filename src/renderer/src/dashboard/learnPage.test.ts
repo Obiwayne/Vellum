@@ -20,6 +20,7 @@ describe('Learn page', () => {
     for (const s of ['Check for updates automatically', 'Check for Updates…', 'Version X is ready to install', 'Restart to update', 'Later', '%APPDATA%\\Vellum', 'Update and restart']) {
       expect(text, s).toContain(s)
     }
+    expect(text).toContain('Restart to update (your files are saved first)') // a space between the bold label and the bracket
     act(() => root.unmount())
     host.remove()
   })
@@ -31,7 +32,7 @@ describe('Learn page', () => {
     act(() => root.render(createElement(LearnPage)))
     expect([...host.querySelectorAll('h2')].map((h) => h.textContent)).toContain('Crash recovery')
     const text = host.querySelector('[data-learn="recovery"]')?.textContent ?? ''
-    for (const x of ['Restore unsaved changes?', 'Restore', 'Discard', '.bak', '%APPDATA%\\Vellum']) expect(text, x).toContain(x)
+    for (const x of ['Unsaved changes found', 'Restore', 'Discard', '.bak', '%APPDATA%\\Vellum']) expect(text, x).toContain(x)
     act(() => root.unmount())
     host.remove()
   })

@@ -1,4 +1,4 @@
-// "Restore unsaved changes?" after a crash (naming the design once in the text), and a note when a damaged file was read from its backup.
+// "Unsaved changes found" after a crash (the text names the design and asks "Restore them?" once), and a note when a damaged file was read from its backup.
 import { Button, Modal } from '../ui'
 import { discardRecovery, dismissNotices, postponeRecovery, restoreRecovery, useRecovery } from '../model/recovery'
 
@@ -13,7 +13,7 @@ export function RecoveryPrompt(): JSX.Element | null {
       open
       onClose={() => (item ? postponeRecovery() : dismissNotices())}
       width={460}
-      title={item ? 'Restore unsaved changes?' : 'Restored from backup'}
+      title={item ? 'Unsaved changes found' : 'Restored from backup'}
       footer={
         item ? (
           <>
