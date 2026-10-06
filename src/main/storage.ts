@@ -15,6 +15,22 @@ export function getVault(): Vault {
   return vault
 }
 
+/**
+ * Save requests that have arrived but not finished. They are not in the vault's write queue until their handler gets to
+ * writeJson (it mkdirs and snapshots history first), so closing the vault (lock, quit) must wait for them too, or the
+ * last edits sent while the window was closing are dropped.
+ */
+const saving = new Set<Promise<unknown>>()
+function tracked<T>(p: Promise<T>): Promise<T> {
+  saving.add(p)
+  const done = (): void => void saving.delete(p)
+  p.then(done, done)
+  return p
+}
+async function settleSaves(): Promise<void> {
+  while (saving.size) await Promise.allSettled([...saving])
+}
+
 /** false after the user locks / switches, so a lone unprotected profile doesn't reopen by itself */
 let autoOpen = true
 
@@ -27,6 +43,8 @@ const optStr = (v: unknown): string | undefined => (typeof v === 'string' ? v : 
 
 /** Doc file of the open profile; the id is validated (charset, length, no device names). */
 const docPath = (id: unknown): string => join(filesDir(), `${safeId(id)}.json`)
+/** Unsaved-changes copy of a design: written while edits wait for their save, deleted by the save. */
+const recoveryPath = (id: unknown): string => join(filesDir(), `${safeId(id)}.recovery`)
 
 /**
  * One-time migration from the app's old name: when %APPDATA%\Vellum has no profiles yet, its files
@@ -136,6 +154,7 @@ export async function clearCachesIfProtected(): Promise<void> {
 export async function lockProfile(): Promise<void> {
   const v = getVault()
   const wasProtected = Boolean(v.currentProfile?.hasPassword)
+  await settleSaves()
   await v.close()
   autoOpen = false
   disposeRenderer() // the hidden MCP render window may still hold the last rendered design
@@ -146,7 +165,8 @@ export function registerStorageIpc(): void {
   ipcMain.handle(IPC.userDataPath, () => root())
   ipcMain.handle(IPC.listDocs, () => listDocs())
   ipcMain.handle(IPC.loadDoc, (_e, id: unknown) => getVault().readJson<StoredDoc>(docPath(id)))
-  ipcMain.handle(IPC.saveDoc, async (_e, doc: StoredDoc) => {
+  ipcMain.handle(IPC.saveDoc, (_e, doc: StoredDoc) => tracked(saveDoc(doc)))
+  const saveDoc = async (doc: StoredDoc): Promise<void> => {
     if (!doc || typeof doc !== 'object') throw new Error('Invalid document')
     const path = docPath(doc.id)
     await fs.mkdir(filesDir(), { recursive: true })
@@ -156,9 +176,35 @@ export function registerStorageIpc(): void {
       console.error('[history] before save:', err instanceof Error ? err.message : err)
     }
     await getVault().writeJson(path, JSON.stringify(doc))
+    // the file is on disk: the recovery copy has done its job
+    await getVault().remove(recoveryPath(doc.id))
+  }
+  ipcMain.handle(IPC.saveRecovery, (_e, doc: StoredDoc) => tracked(saveRecovery(doc)))
+  const saveRecovery = async (doc: StoredDoc): Promise<void> => {
+    if (!doc || typeof doc !== 'object') throw new Error('Invalid document')
+    const path = recoveryPath(doc.id)
+    await fs.mkdir(filesDir(), { recursive: true })
+    await getVault().writeJson(path, JSON.stringify(doc), { backup: false })
+  }
+  ipcMain.handle(IPC.listRecoveries, async () => {
+    const v = getVault()
+    const dir = filesDir()
+    await fs.mkdir(dir, { recursive: true })
+    const out: StoredDoc[] = []
+    for (const n of (await fs.readdir(dir)).filter((x) => x.endsWith('.recovery'))) {
+      const path = join(dir, n)
+      const d = await v.readJson<StoredDoc>(path)
+      // an unreadable or foreign copy is of no use: drop it
+      if (d && typeof d.id === 'string' && `${d.id}.recovery` === n) out.push(d)
+      else await v.remove(path)
+    }
+    return out
   })
+  ipcMain.handle(IPC.discardRecovery, (_e, id: unknown) => getVault().remove(recoveryPath(id)))
+  ipcMain.handle(IPC.takeRestored, () => getVault().takeRestored().map((r) => r.file))
   ipcMain.handle(IPC.deleteDoc, async (_e, id: unknown) => {
     await getVault().remove(docPath(id))
+    await getVault().remove(recoveryPath(id))
     await removeHistory(safeId(id))
   })
 
@@ -179,10 +225,14 @@ export function registerStorageIpc(): void {
   )
   ipcMain.handle(IPC.histRemove, (_e, docId: unknown, vid: unknown) => removeVersion(safeId(docId), safeId(vid)))
   ipcMain.handle(IPC.loadIndex, () => getVault().readJson<IndexData>(indexPath()))
-  ipcMain.handle(IPC.saveIndex, async (_e, index: IndexData) => {
-    if (!index || typeof index !== 'object') throw new Error('Invalid index')
-    await getVault().writeJson(indexPath(), JSON.stringify(index, null, 2))
-  })
+  ipcMain.handle(IPC.saveIndex, (_e, index: IndexData) =>
+    tracked(
+      (async () => {
+        if (!index || typeof index !== 'object') throw new Error('Invalid index')
+        await getVault().writeJson(indexPath(), JSON.stringify(index, null, 2))
+      })()
+    )
+  )
 
   // profiles
   const v = getVault
@@ -269,8 +319,8 @@ export function registerStorageIpc(): void {
     e.preventDefault()
     const done = (): void => app.quit()
     const timer = setTimeout(done, 5000)
-    void getVault()
-      .close()
+    void settleSaves()
+      .then(() => getVault().close())
       .catch((err) => console.error('[vault] close on quit failed:', err instanceof Error ? err.message : err))
       .finally(() => {
         clearTimeout(timer)

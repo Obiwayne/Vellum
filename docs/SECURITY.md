@@ -305,3 +305,6 @@ would change behaviour, so they are left out.
   change the app itself.
 - **The saved recovery key file is plaintext.** "Save recovery key" writes a `.txt` file to a folder the user
   picks. The dialog text says to keep it private.
+
+## Backups and recovery copies
+`<file>.bak` (the previous version of a design, `index.json` or `profiles.json`) and `files/<id>.recovery` (unsaved edits) follow the profile: in a password-protected profile they are AES-256-GCM sealed with the data key like the files themselves (a `.bak` with its file's AAD, a `.recovery` with its own), and they are converted when the password is set or removed. Deleting a design deletes both. Stale `*.tmp` files are removed when a profile is opened.

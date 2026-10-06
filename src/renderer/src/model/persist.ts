@@ -5,8 +5,15 @@ import type { Doc } from './types'
 import { DASHBOARD, useStore, type Store } from './store'
 import { makeDoc, migrateDoc } from './ops'
 import { nanoid } from 'nanoid'
+import { restoredNotice, useRecovery } from './recovery'
 
 const DOC_DEBOUNCE = 500
+/** under constant editing (dragging, scrubbing) the trailing debounce never fires: save at least this often */
+const DOC_MAX_WAIT = 2000
+/** a copy of the unsaved design goes to <id>.recovery this soon after an edit (a crash before the save lands loses nothing) */
+const RECOVERY_DELAY = 120
+/** ...and then at most this often while edits keep arriving (a full-document write, fsync and rename, encrypted in protected profiles) */
+const RECOVERY_EVERY = 3000
 const INDEX_DEBOUNCE = 300
 
 const api = (): Window['canvasApi'] | undefined => (typeof window !== 'undefined' ? window.canvasApi : undefined)
@@ -87,8 +94,28 @@ export async function initPersistence(): Promise<void> {
   }
   subscribe(saved)
   // write new/patched docs + index right away
-  scheduleDocs(useStore.getState(), saved)
+  scheduleDocs(useStore.getState(), saved, false)
   scheduleIndex(useStore.getState())
+  await checkRecovery(a, docs)
+}
+
+/** After a crash: designs with unsaved changes newer than their file are offered back; files read from a backup are announced. */
+async function checkRecovery(a: NonNullable<Window['canvasApi']>, docs: Record<string, Doc>): Promise<void> {
+  try {
+    const items: { doc: Doc; existing: boolean }[] = []
+    for (const raw of await a.listRecoveries()) {
+      if (!isDoc(raw)) continue
+      const rec = migrateDoc(raw as unknown as Doc)
+      const saved = docs[rec.id]
+      // the saved file is as new as the copy (the crash came after the save): nothing is lost
+      if (saved && saved.updatedAt >= rec.updatedAt) await a.discardRecovery(rec.id)
+      else items.push({ doc: rec, existing: Boolean(saved) })
+    }
+    const notices = (await a.takeRestored()).map((f) => restoredNotice(f, docs))
+    if (items.length || notices.length) useRecovery.setState({ items, notices })
+  } catch (err) {
+    console.error('[persist] recovery check failed', err)
+  }
 }
 
 // ------------------------------------------------------------------------------------------------
@@ -97,6 +124,11 @@ const docTimers = new Map<string, ReturnType<typeof setTimeout>>()
 let indexTimer: ReturnType<typeof setTimeout> | null = null
 let lastIndexJson = ''
 const pendingDocs = new Map<string, Doc>()
+/** when each design first became dirty since its last save (for DOC_MAX_WAIT) */
+const dirtySince = new Map<string, number>()
+const recoveryTimers = new Map<string, ReturnType<typeof setTimeout>>()
+/** when each design last got a recovery copy since its last save */
+const recoveryAt = new Map<string, number>()
 
 function toIndex(s: Store): IndexData {
   return { recents: s.recents, tabs: s.tabs, activeTab: s.activeTab, scratchpadId: s.scratchpadId, prefs: s.prefs }
@@ -111,8 +143,17 @@ function track(p: Promise<unknown> | undefined): void {
   inflight.add(q)
 }
 
+function clearPending(id: string): void {
+  dirtySince.delete(id)
+  const r = recoveryTimers.get(id)
+  if (r) clearTimeout(r)
+  recoveryTimers.delete(id)
+  recoveryAt.delete(id)
+}
+
 function writeDoc(doc: Doc): void {
   pendingDocs.delete(doc.id)
+  clearPending(doc.id) // the save deletes the recovery copy in main
   if (!enabled) return
   track(
     api()
@@ -121,26 +162,44 @@ function writeDoc(doc: Doc): void {
   )
 }
 
-function scheduleDocs(s: Store, saved: Map<string, Doc>): void {
+function scheduleDocs(s: Store, saved: Map<string, Doc>, withRecovery = true): void {
   for (const [id, doc] of Object.entries(s.docs)) {
     if (saved.get(id) === doc) continue
     saved.set(id, doc)
     pendingDocs.set(id, doc)
+    const now = Date.now()
+    if (!dirtySince.has(id)) dirtySince.set(id, now)
     const t = docTimers.get(id)
     if (t) clearTimeout(t)
+    const wait = Math.max(0, Math.min(DOC_DEBOUNCE, (dirtySince.get(id) as number) + DOC_MAX_WAIT - now))
     docTimers.set(
       id,
       setTimeout(() => {
         docTimers.delete(id)
         const latest = pendingDocs.get(id)
         if (latest) writeDoc(latest)
-      }, DOC_DEBOUNCE)
+      }, wait)
     )
+    if (withRecovery && !recoveryTimers.has(id)) {
+      // the first copy after a save comes soon; later ones are throttled
+      const last = recoveryAt.get(id)
+      const delay = last === undefined ? RECOVERY_DELAY : Math.max(RECOVERY_DELAY, last + RECOVERY_EVERY - now)
+      recoveryTimers.set(
+        id,
+        setTimeout(() => {
+          recoveryTimers.delete(id)
+          recoveryAt.set(id, Date.now())
+          const latest = pendingDocs.get(id) // always the newest state
+          if (latest && enabled) track(api()?.saveRecovery?.(latest as unknown as StoredDoc))
+        }, delay)
+      )
+    }
   }
   for (const id of [...saved.keys()]) {
     if (!s.docs[id]) {
       saved.delete(id)
       pendingDocs.delete(id)
+      clearPending(id)
       const t = docTimers.get(id)
       if (t) clearTimeout(t)
       docTimers.delete(id)
@@ -168,6 +227,9 @@ function subscribe(saved: Map<string, Doc>): void {
     }
   })
   window.addEventListener('beforeunload', flushNow)
+  // leaving the window (alt-tab, minimise, a dialog) is a good moment to put pending edits on disk
+  window.addEventListener('blur', flushNow)
+  if (typeof document !== 'undefined') document.addEventListener('visibilitychange', () => document.visibilityState === 'hidden' && flushNow())
 }
 
 /** Write all pending changes immediately. */
