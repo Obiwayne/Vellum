@@ -75,7 +75,7 @@ describe.each([
     expect(r.ok).toBe(true)
     expect(r.migrated).toBe(originals.length)
     const onDisk = readFileSync(join(storage.getVault().currentDir(), 'files', `${originals[0].id}.json`))
-    expect(onDisk.subarray(0, 4).toString() === 'VLME').toBe(Boolean(password))
+    expect(isEncrypted(onDisk)).toBe(Boolean(password))
   }, 60_000)
 
   it('the renderer startup loads and migrates every file, and writes the upgraded docs back', async () => {
