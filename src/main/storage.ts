@@ -27,6 +27,8 @@ const optStr = (v: unknown): string | undefined => (typeof v === 'string' ? v : 
 
 /** Doc file of the open profile; the id is validated (charset, length, no device names). */
 const docPath = (id: unknown): string => join(filesDir(), `${safeId(id)}.json`)
+/** Unsaved-changes copy of a design: written while edits wait for their save, deleted by the save. */
+const recoveryPath = (id: unknown): string => join(filesDir(), `${safeId(id)}.recovery`)
 
 /**
  * One-time migration from the app's old name: when %APPDATA%\Vellum has no profiles yet, its files
@@ -156,9 +158,34 @@ export function registerStorageIpc(): void {
       console.error('[history] before save:', err instanceof Error ? err.message : err)
     }
     await getVault().writeJson(path, JSON.stringify(doc))
+    // the file is on disk: the recovery copy has done its job
+    await getVault().remove(recoveryPath(doc.id))
   })
+  ipcMain.handle(IPC.saveRecovery, async (_e, doc: StoredDoc) => {
+    if (!doc || typeof doc !== 'object') throw new Error('Invalid document')
+    const path = recoveryPath(doc.id)
+    await fs.mkdir(filesDir(), { recursive: true })
+    await getVault().writeJson(path, JSON.stringify(doc), { backup: false })
+  })
+  ipcMain.handle(IPC.listRecoveries, async () => {
+    const v = getVault()
+    const dir = filesDir()
+    await fs.mkdir(dir, { recursive: true })
+    const out: StoredDoc[] = []
+    for (const n of (await fs.readdir(dir)).filter((x) => x.endsWith('.recovery'))) {
+      const path = join(dir, n)
+      const d = await v.readJson<StoredDoc>(path)
+      // an unreadable or foreign copy is of no use: drop it
+      if (d && typeof d.id === 'string' && `${d.id}.recovery` === n) out.push(d)
+      else await v.remove(path)
+    }
+    return out
+  })
+  ipcMain.handle(IPC.discardRecovery, (_e, id: unknown) => getVault().remove(recoveryPath(id)))
+  ipcMain.handle(IPC.takeRestored, () => getVault().takeRestored().map((r) => r.file))
   ipcMain.handle(IPC.deleteDoc, async (_e, id: unknown) => {
     await getVault().remove(docPath(id))
+    await getVault().remove(recoveryPath(id))
     await removeHistory(safeId(id))
   })
 

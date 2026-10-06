@@ -25,6 +25,10 @@ const api: CanvasApi = {
   deleteDoc: (id) => ipcRenderer.invoke(IPC.deleteDoc, id),
   loadIndex: () => ipcRenderer.invoke(IPC.loadIndex),
   saveIndex: (index) => ipcRenderer.invoke(IPC.saveIndex, index),
+  saveRecovery: (doc) => ipcRenderer.invoke(IPC.saveRecovery, doc),
+  listRecoveries: () => ipcRenderer.invoke(IPC.listRecoveries),
+  discardRecovery: (id) => ipcRenderer.invoke(IPC.discardRecovery, id),
+  takeRestored: () => ipcRenderer.invoke(IPC.takeRestored),
   userDataPath: () => ipcRenderer.invoke(IPC.userDataPath),
   profiles: {
     state: () => ipcRenderer.invoke(IPC.profState),

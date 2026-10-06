@@ -178,6 +178,13 @@ export interface CanvasApi {
   deleteDoc(id: string): Promise<void>
   loadIndex(): Promise<IndexData | null>
   saveIndex(index: IndexData): Promise<void>
+  /** unsaved-changes copy of a design (files/<id>.recovery), written while edits are pending; a clean save deletes it */
+  saveRecovery(doc: StoredDoc): Promise<void>
+  /** designs with a recovery copy left behind (a crash before the save landed) */
+  listRecoveries(): Promise<StoredDoc[]>
+  discardRecovery(id: string): Promise<void>
+  /** files that could not be read and were restored from their last backup since the last call (profile-relative names) */
+  takeRestored(): Promise<string[]>
   userDataPath(): Promise<string>
   profiles: ProfilesApi
   updates: UpdatesApi
@@ -231,6 +238,10 @@ export const IPC = {
   deleteDoc: 'fs:deleteDoc',
   loadIndex: 'fs:loadIndex',
   saveIndex: 'fs:saveIndex',
+  saveRecovery: 'fs:saveRecovery',
+  listRecoveries: 'fs:listRecoveries',
+  discardRecovery: 'fs:discardRecovery',
+  takeRestored: 'fs:takeRestored',
   userDataPath: 'fs:userDataPath',
   mcpEntry: 'app:mcpEntry',
   agentDriven: 'app:agentDriven',

@@ -290,6 +290,15 @@ export async function writeAtomic(path: string, data: Buffer | string): Promise<
   }
 }
 
+/** The backup copy of a data file. */
+export const BAK = (path: string): string => `${path}.bak`
+
+export interface RestoredFile {
+  /** profile-relative name, e.g. files/abc.json */
+  file: string
+  label: string
+}
+
 const newId = (): string => randomBytes(9).toString('base64url')
 
 /** Windows device names ("CON", "nul", "COM1"…) must never become a file or folder name. */
@@ -370,6 +379,10 @@ export class Vault {
   /** password checks run one at a time per profile, so parallel guesses can't skip the delay */
   private gates = new Map<string, Promise<unknown>>()
   private readonly throttleBaseMs: number
+  /** files whose content on disk is known to parse (written by us this session, or checked): safe to keep as .bak */
+  private good = new Set<string>()
+  /** files that failed to read and were restored from their .bak (shown to the user once) */
+  private restored = new Map<string, RestoredFile>()
 
   constructor(root: string, opts: { throttleBaseMs?: number } = {}) {
     this.root = root
@@ -423,20 +436,40 @@ export class Vault {
 
   // ------------------------------------------------------------------ profiles.json
   async readProfiles(): Promise<ProfileRecord[]> {
-    try {
-      const f = JSON.parse(await fs.readFile(this.profilesPath, 'utf8')) as ProfilesFile
+    const parse = (text: string): ProfileRecord[] => {
+      const f = JSON.parse(text) as ProfilesFile
       // an entry whose id can't be a folder name is unusable; skip it rather than fail everything
       return Array.isArray(f.profiles) ? f.profiles.filter((p) => p && isSafeId(p.id)) : []
+    }
+    let text: string
+    try {
+      text = await fs.readFile(this.profilesPath, 'utf8')
     } catch (err) {
       if ((err as NodeJS.ErrnoException).code === 'ENOENT') return []
       throw err
+    }
+    try {
+      return parse(text)
+    } catch (err) {
+      // a damaged profiles.json: use the copy kept before the last save
+      try {
+        const list = parse(await fs.readFile(BAK(this.profilesPath), 'utf8'))
+        this.restored.set('profiles.json', { file: 'profiles.json', label: 'The list of profiles' })
+        return list
+      } catch {
+        throw err
+      }
     }
   }
 
   private async writeProfiles(list: ProfileRecord[]): Promise<void> {
     await fs.mkdir(this.root, { recursive: true })
     const data: ProfilesFile = { version: 1, profiles: list }
-    await this.enqueue(this.profilesPath, () => writeAtomic(this.profilesPath, JSON.stringify(data, null, 2)))
+    await this.enqueue(this.profilesPath, async () => {
+      await this.keepBackup(this.profilesPath, (buf) => void JSON.parse(buf.toString('utf8')))
+      await writeAtomic(this.profilesPath, JSON.stringify(data, null, 2))
+      this.good.add(this.profilesPath)
+    })
   }
 
   private async patchProfile(id: string, fn: (p: ProfileRecord) => void): Promise<ProfileRecord> {
@@ -773,10 +806,16 @@ export class Vault {
   private contextOf(path: string): string {
     const dir = this.currentDir()
     if (!isInside(dir, path)) throw new Error('Path outside the profile')
-    return relative(resolve(dir), resolve(path)).split('\\').join('/')
+    const rel = relative(resolve(dir), resolve(path)).split('\\').join('/')
+    // a .bak is a byte copy of its file, so it is sealed with the file's context
+    return rel.endsWith('.bak') ? rel.slice(0, -4) : rel
   }
 
-  /** Read + decode a file of the open profile. null when missing or unreadable. */
+  /**
+   * Read + decode a file of the open profile. null when missing or unreadable. A file that is there but
+   * damaged (truncated, bad JSON, fails to decrypt) is read from its `.bak` copy instead, which is noted
+   * for the user (takeRestored); a locked profile never falls back.
+   */
   async readJson<T>(path: string): Promise<T | null> {
     const context = this.contextOf(path)
     let buf: Buffer
@@ -786,10 +825,53 @@ export class Vault {
       return null
     }
     try {
-      return JSON.parse(this.decode(buf, context).toString('utf8')) as T
+      const value = JSON.parse(this.decode(buf, context).toString('utf8')) as T
+      this.good.add(path)
+      return value
+    } catch (err) {
+      if (err instanceof Error && err.message === LOCKED_ERROR) return null
+      this.good.delete(path)
+      return this.readBackup<T>(path, context)
+    }
+  }
+
+  /** The `.bak` copy of a damaged file (same bytes, same encryption context as the file itself). */
+  private async readBackup<T>(path: string, context: string): Promise<T | null> {
+    try {
+      const value = JSON.parse(this.decode(await fs.readFile(BAK(path)), context).toString('utf8')) as T
+      this.restored.set(context, { file: context, label: context })
+      return value
     } catch {
       return null
     }
+  }
+
+  /** Files that were restored from their .bak since the last call, once each. */
+  takeRestored(): RestoredFile[] {
+    const out = [...this.restored.values()]
+    this.restored.clear()
+    return out
+  }
+
+  /**
+   * Before a file is overwritten, keep the current one as `<path>.bak` when it is known to be good (written by
+   * this session, or it parses): a bad file never replaces a good backup.
+   */
+  private async keepBackup(path: string, check: (buf: Buffer) => Promise<void> | void): Promise<void> {
+    let buf: Buffer
+    try {
+      buf = await fs.readFile(path)
+    } catch {
+      return // nothing there yet
+    }
+    if (!this.good.has(path)) {
+      try {
+        await check(buf)
+      } catch {
+        return
+      }
+    }
+    await fs.copyFile(path, BAK(path)).catch(() => undefined)
   }
 
   private decode(buf: Buffer, context: string, dek = this.dek): Buffer {
@@ -798,18 +880,24 @@ export class Vault {
     return decryptBytes(dek, buf, context)
   }
 
-  writeJson(path: string, text: string): Promise<void> {
+  writeJson(path: string, text: string, opts: { backup?: boolean } = {}): Promise<void> {
     const context = this.contextOf(path)
-    return this.enqueue(path, () => {
+    return this.enqueue(path, async () => {
+      if (opts.backup !== false) await this.keepBackup(path, (buf) => void JSON.parse(this.decode(buf, context).toString('utf8')))
       // encode when the write runs, with the key current at that moment
       const plain = Buffer.from(text, 'utf8')
-      return writeAtomic(path, this.dek ? encryptBytes(this.dek, plain, context) : plain)
+      await writeAtomic(path, this.dek ? encryptBytes(this.dek, plain, context) : plain)
+      this.good.add(path)
     })
   }
 
   remove(path: string): Promise<void> {
     this.contextOf(path)
-    return this.enqueue(path, () => fs.rm(path, { force: true }))
+    return this.enqueue(path, async () => {
+      this.good.delete(path)
+      await fs.rm(path, { force: true })
+      await fs.rm(BAK(path), { force: true }).catch(() => undefined)
+    })
   }
 
   /** Read + decode a binary file of the open profile (version history). null when missing or unreadable. */
@@ -837,9 +925,9 @@ export class Vault {
   private async dataFiles(): Promise<string[]> {
     const dir = this.currentDir()
     const out: string[] = []
-    if (existsSync(join(dir, 'index.json'))) out.push(join(dir, 'index.json'))
+    for (const n of ['index.json', 'index.json.bak']) if (existsSync(join(dir, n))) out.push(join(dir, n))
     try {
-      for (const n of await fs.readdir(join(dir, 'files'))) if (n.endsWith('.json')) out.push(join(dir, 'files', n))
+      for (const n of await fs.readdir(join(dir, 'files'))) if (/\.(json|json\.bak|recovery)$/.test(n)) out.push(join(dir, 'files', n))
     } catch {
       /* no files yet */
     }

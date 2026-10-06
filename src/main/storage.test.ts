@@ -111,3 +111,83 @@ describe('saveDoc / loadDoc / listDocs over IPC', () => {
     expect(await call(IPC.loadDoc, 'd1')).toBeNull()
   })
 })
+
+describe('recovery copies and backups over IPC', () => {
+  const dir = (): string => join(getVault().currentDir(), 'files')
+
+  it('saveRecovery writes an encrypted <id>.recovery; listRecoveries returns it; a clean saveDoc deletes it', async () => {
+    const d = doc('rx', 'Unsaved plan', { updatedAt: 5 })
+    await call(IPC.saveRecovery, d)
+    const onDisk = readFileSync(join(dir(), 'rx.recovery'))
+    expect(onDisk.subarray(0, 4).toString()).toBe('VLME')
+    expect(onDisk.includes(Buffer.from('Unsaved plan'))).toBe(false)
+    expect(existsSync(join(dir(), 'rx.recovery.bak'))).toBe(false)
+    expect(((await call(IPC.listRecoveries)) as { id: string }[]).map((r) => r.id)).toEqual(['rx'])
+    expect((await listDocs()).some((x) => x.id === 'rx')).toBe(false) // a recovery copy is not a file in the list
+    await call(IPC.saveDoc, d)
+    expect(existsSync(join(dir(), 'rx.recovery'))).toBe(false)
+    expect(await call(IPC.listRecoveries)).toEqual([])
+  })
+
+  it('a newer recovery copy replaces an older one; discardRecovery removes it', async () => {
+    await call(IPC.saveRecovery, doc('ry', 'v1', { updatedAt: 1 }))
+    await call(IPC.saveRecovery, doc('ry', 'v2', { updatedAt: 2 }))
+    expect(((await call(IPC.listRecoveries)) as { name: string }[]).map((r) => r.name)).toEqual(['v2'])
+    await call(IPC.discardRecovery, 'ry')
+    expect(await call(IPC.listRecoveries)).toEqual([])
+    await call(IPC.discardRecovery, 'ry') // nothing left: fine
+  })
+
+  it('unreadable, foreign and empty recovery files are dropped instead of offered', async () => {
+    writeFileSync(join(dir(), 'zz.recovery'), 'garbage')
+    await call(IPC.saveRecovery, doc('other', 'Other'))
+    // a copy whose content belongs to another id (renamed by hand) is refused
+    writeFileSync(join(dir(), 'liar.recovery'), readFileSync(join(dir(), 'other.recovery')))
+    const got = (await call(IPC.listRecoveries)) as { id: string }[]
+    expect(got.map((r) => r.id)).toEqual(['other'])
+    expect(existsSync(join(dir(), 'zz.recovery'))).toBe(false)
+    expect(existsSync(join(dir(), 'liar.recovery'))).toBe(false)
+    await call(IPC.discardRecovery, 'other')
+  })
+
+  it('rejects invalid recovery payloads and ids', async () => {
+    await expect(call(IPC.saveRecovery, null)).rejects.toThrow('Invalid document')
+    await expect(call(IPC.saveRecovery, doc('../x', 'x'))).rejects.toThrow()
+    await expect(call(IPC.discardRecovery, '../x')).rejects.toThrow()
+  })
+
+  it('a damaged design loads from its .bak, and takeRestored names it once', async () => {
+    const d1 = doc('bk', 'First', { updatedAt: 1 })
+    const d2 = doc('bk', 'Second', { updatedAt: 2 })
+    await call(IPC.saveDoc, d1)
+    await call(IPC.saveDoc, d2) // .bak = First
+    await call(IPC.takeRestored)
+    const file = join(dir(), 'bk.json')
+    writeFileSync(file, readFileSync(file).subarray(0, 30)) // truncated: the kind of file a crash leaves
+    expect(await call(IPC.loadDoc, 'bk')).toEqual(d1)
+    expect((await listDocs()).some((x) => x.id === 'bk' && x.name === 'First')).toBe(true)
+    expect(await call(IPC.takeRestored)).toEqual(['files/bk.json'])
+    expect(await call(IPC.takeRestored)).toEqual([])
+    // the next save heals the file; the backup stays the last good copy until then
+    await call(IPC.saveDoc, doc('bk', 'Third', { updatedAt: 3 }))
+    expect(((await call(IPC.loadDoc, 'bk')) as { name: string }).name).toBe('Third')
+  })
+
+  it('the file index falls back to its .bak', async () => {
+    await call(IPC.saveIndex, { recents: ['a'], tabs: ['dashboard'], activeTab: 'dashboard', prefs: {} })
+    await call(IPC.saveIndex, { recents: ['a', 'b'], tabs: ['dashboard'], activeTab: 'dashboard', prefs: {} })
+    await call(IPC.takeRestored)
+    writeFileSync(join(getVault().currentDir(), 'index.json'), 'xx')
+    expect(((await call(IPC.loadIndex)) as { recents: string[] }).recents).toEqual(['a'])
+    expect(await call(IPC.takeRestored)).toEqual(['index.json'])
+  })
+
+  it('deleting a design removes its recovery copy and its backup', async () => {
+    await call(IPC.saveDoc, doc('del', 'One', { updatedAt: 1 }))
+    await call(IPC.saveDoc, doc('del', 'Two', { updatedAt: 2 }))
+    await call(IPC.saveRecovery, doc('del', 'Three', { updatedAt: 3 }))
+    expect(existsSync(join(dir(), 'del.json.bak'))).toBe(true)
+    await call(IPC.deleteDoc, 'del')
+    for (const n of ['del.json', 'del.json.bak', 'del.recovery']) expect(existsSync(join(dir(), n))).toBe(false)
+  })
+})

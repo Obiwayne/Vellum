@@ -8,6 +8,7 @@ import { ProfilePicker } from './profile/ProfilePicker'
 import { useProfiles } from './profile/profile'
 import { HistoryView } from './history/HistoryView'
 import { SaveVersionModal } from './history/SaveVersionModal'
+import { RecoveryPrompt } from './shell/RecoveryPrompt'
 
 export default function App(): JSX.Element {
   const ready = useStore((s) => s.ready)
@@ -33,6 +34,7 @@ export default function App(): JSX.Element {
         )}
       </main>
       <SaveVersionModal />
+      <RecoveryPrompt />
       <UpdateReminder />
       <UpdateDialog />
     </div>
