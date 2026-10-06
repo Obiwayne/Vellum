@@ -52,7 +52,7 @@ jobs:
         working-directory: mcp
       - run: npm run test:mcp
 
-  # Builds the installer and runs it silently in temp folders: per-user install, shortcuts, uninstall entry, closing a
+  # Builds a test installer (own appId and product name) and runs it silently in temp folders: per-user install, shortcuts, uninstall entry, closing a
   # running Vellum, uninstall keeping the data folder (scripts/test-installer.ps1).
   installer:
     runs-on: windows-latest
@@ -65,5 +65,4 @@ jobs:
           cache: npm
           cache-dependency-path: package-lock.json
       - run: npm ci
-      - run: npm run dist
       - run: npm run test:installer

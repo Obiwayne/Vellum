@@ -32,6 +32,14 @@ describe('installer test script', () => {
     expect(script).toMatch(/refusing to run/)
     expect(script).not.toMatch(/\$env:APPDATA/i)
   })
+  it('tests a build with its own appId and product name, so it can never meet or remove a real install', () => {
+    expect(pkg.scripts['test:installer']).toContain('com.vellum.app.installertest')
+    expect(pkg.scripts['dist:test']).toContain('--config.appId=com.vellum.app.installertest')
+    expect(pkg.scripts['dist:test']).toContain('--config.productName=VellumInstallTest')
+    expect(pkg.scripts['dist:test']).toContain('--publish never')
+    expect(script).toMatch(/refusing to run/)
+    expect(script).toMatch(/already installed or registered/)
+  })
   it('checks the behaviours the installer promises', () => {
     for (const what of ['AppUserModelID', 'HKLM', 'reinstall over a running app', 'data folder and its file are still there', 'runAfterFinish']) expect(script).toContain(what)
   })

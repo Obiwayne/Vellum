@@ -10,3 +10,4 @@ reference/
 *.tsbuildinfo
 
 release/
+release-test/

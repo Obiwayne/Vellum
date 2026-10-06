@@ -1,12 +1,12 @@
 <#
   Silent install / reinstall / uninstall test for the Windows installer (npm run dist first).
 
-    powershell -NoProfile -ExecutionPolicy Bypass -File scripts\test-installer.ps1 [-Installer release\Vellum-Setup-0.1.0.exe] [-Out <folder for the log>]
+    powershell -NoProfile -ExecutionPolicy Bypass -File scripts\test-installer.ps1 [-Installer release-test\Vellum-Setup-0.1.0.exe -ProductName VellumInstallTest -AppId com.vellum.app.installertest] [-Out <folder for the log>]
 
   Everything happens in temp folders: the app is installed with /D=<temp>, the app's data folder is a temp VELLUM_USER_DATA
   (never %APPDATA%\Vellum), and the HKCU uninstall key and the Start Menu / Desktop shortcuts the installer makes are removed
   afterwards. A shortcut that already existed under the same name is backed up first and put back. The script refuses to run
-  when a Vellum install is registered, or when a Vellum.exe that is not ours is running, so it cannot touch a real install.
+  when a Vellum install is registered, or when the product is already installed (the installer would uninstall it first, wherever /D= points) or its exe is running, so it cannot touch a real install.
 
   Checks: per-user install (no admin rights, HKCU entry, nothing in HKLM), files, uninstall entry, Start Menu and Desktop
   shortcuts and their AppUserModelID, a running Vellum is closed by a reinstall, "Run Vellum"
@@ -15,12 +15,16 @@
 #>
 param(
   [string]$Installer,
+  # the installer's product name and appId: the test build (npm run dist:test) uses its own, so the test can never meet a real
+  # Vellum install; the defaults are the real ones (CI runs on a clean runner)
+  [string]$ProductName = 'Vellum',
+  [string]$AppId,
   [string]$Out = (Join-Path (Get-Location) '.muster-evidence\test-installer')
 )
 $ErrorActionPreference = 'Stop'
 $root = Split-Path -Parent $PSScriptRoot
 if (-not $Installer) {
-  $Installer = Get-ChildItem (Join-Path $root 'release') -Filter 'Vellum-Setup-*.exe' -ErrorAction SilentlyContinue | Sort-Object LastWriteTime -Descending | Select-Object -First 1 -ExpandProperty FullName
+  $Installer = Get-ChildItem (Join-Path $root 'release-test'), (Join-Path $root 'release') -Filter 'Vellum-Setup-*.exe' -ErrorAction SilentlyContinue | Sort-Object LastWriteTime -Descending | Select-Object -First 1 -ExpandProperty FullName
 }
 if (-not $Installer -or -not (Test-Path $Installer)) { Write-Host 'FAILED: no installer found (npm run dist, or pass -Installer)'; exit 2 }
 $Installer = (Resolve-Path $Installer).Path
@@ -34,7 +38,7 @@ function Check([bool]$ok, [string]$label) {
 }
 function Step([string]$m) { Write-Host "-- $m" }
 
-$appId = (Select-String -Path (Join-Path $root 'electron-builder.yml') -Pattern '^appId:\s*(\S+)').Matches[0].Groups[1].Value
+$appId = if ($AppId) { $AppId } else { (Select-String -Path (Join-Path $root 'electron-builder.yml') -Pattern '^appId:\s*(\S+)').Matches[0].Groups[1].Value }
 $version = (Get-Content (Join-Path $root 'package.json') -Raw | ConvertFrom-Json).version
 $uninstallRoot = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall'
 $desktop = [Environment]::GetFolderPath('Desktop')
@@ -53,18 +57,18 @@ function Read-Aumid([string]$lnk) {
 }
 
 function Find-Uninstall {
-  Get-ChildItem $uninstallRoot -ErrorAction SilentlyContinue | Where-Object { (Get-ItemProperty $_.PSPath).DisplayName -like 'Vellum*' }
+  Get-ChildItem $uninstallRoot -ErrorAction SilentlyContinue | Where-Object { (Get-ItemProperty $_.PSPath).DisplayName -like "$ProductName*" }
 }
 function Shortcut-Paths {
-  $list = @((Join-Path $desktop 'Vellum.lnk'))
-  $list += Get-ChildItem ([Environment]::GetFolderPath('Programs')) -Filter 'Vellum*.lnk' -Recurse -ErrorAction SilentlyContinue | ForEach-Object { $_.FullName }
+  $list = @((Join-Path $desktop "$ProductName.lnk"))
+  $list += Get-ChildItem ([Environment]::GetFolderPath('Programs')) -Filter "$ProductName*.lnk" -Recurse -ErrorAction SilentlyContinue | ForEach-Object { $_.FullName }
   $list | Select-Object -Unique
 }
 function Ours-Running {
-  Get-Process -Name Vellum -ErrorAction SilentlyContinue | Where-Object { $_.Path -and $_.Path.StartsWith($installDir, [StringComparison]::OrdinalIgnoreCase) }
+  Get-Process -Name $ProductName -ErrorAction SilentlyContinue | Where-Object { $_.Path -and $_.Path.StartsWith($installDir, [StringComparison]::OrdinalIgnoreCase) }
 }
 function Foreign-Running {
-  Get-Process -Name Vellum -ErrorAction SilentlyContinue | Where-Object { -not $_.Path -or -not $_.Path.StartsWith($installDir, [StringComparison]::OrdinalIgnoreCase) }
+  Get-Process -Name $ProductName -ErrorAction SilentlyContinue | Where-Object { -not $_.Path -or -not $_.Path.StartsWith($installDir, [StringComparison]::OrdinalIgnoreCase) }
 }
 function Run-Installer([string[]]$extra, [string]$dir) {
   # /D=<dir> must be the last argument and unquoted
@@ -77,8 +81,14 @@ $saved = @{}
 $exit = 1
 try {
   # ---- guards: never touch a real install
-  if (Find-Uninstall) { Write-Host 'FAILED: a Vellum uninstall entry already exists; refusing to run (it would be replaced and removed)'; exit 2 }
-  if (Foreign-Running) { Write-Host 'FAILED: a Vellum.exe that is not part of this test is running; close it first (the installer closes running copies)'; exit 2 }
+  # The installer removes a previous install of the same appId first (found through HKCU\Software\<guid>\InstallLocation), wherever
+  # /D= points, and shares its uninstall key and shortcut names. So never run against a product name that is already installed.
+  $known = Get-ChildItem 'HKCU:\Software' -ErrorAction SilentlyContinue | Where-Object { (Get-ItemProperty $_.PSPath -ErrorAction SilentlyContinue).ShortcutName -eq $ProductName }
+  if ($known -or (Find-Uninstall) -or (Test-Path (Join-Path ([Environment]::GetFolderPath('LocalApplicationData')) "Programs\$ProductName"))) {
+    Write-Host "FAILED: '$ProductName' is already installed or registered on this PC; refusing to run, the installer would uninstall it first. Use the test build (npm run test:installer builds one under its own name)."
+    exit 2
+  }
+  if (Foreign-Running) { Write-Host "FAILED: a $ProductName.exe that is not part of this test is running; close it first (the installer closes running copies)"; exit 2 }
   $i = 0
   foreach ($s in $preShortcuts) { $copy = Join-Path $backup "$((++$i)).lnk"; Copy-Item $s $copy; $saved[$s] = $copy }
   Step "installer $Installer, appId $appId, version $version"
@@ -88,10 +98,10 @@ try {
   # ---- 1. silent install, per user
   $code = Run-Installer @() $installDir
   Check ($code -eq 0) "silent install exits 0 (no admin prompt, ran as a normal user)"
-  $exe = Join-Path $installDir 'Vellum.exe'
-  Check (Test-Path $exe) 'Vellum.exe is in the install folder'
+  $exe = Join-Path $installDir "$ProductName.exe"
+  Check (Test-Path $exe) "$ProductName.exe is in the install folder"
   Check (Test-Path (Join-Path $installDir 'resources\app.asar')) 'resources\app.asar is installed'
-  Check (Test-Path (Join-Path $installDir 'Uninstall Vellum.exe')) 'an uninstaller is installed'
+  Check (Test-Path (Join-Path $installDir "Uninstall $ProductName.exe")) 'an uninstaller is installed'
   $isAdmin = ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
   Check (-not $isAdmin) 'the test itself runs without admin rights, so the install was per user'
 
@@ -105,17 +115,17 @@ try {
     Check ([bool]$p.UninstallString) 'uninstall entry has an UninstallString'
     Write-Host "uninstall key name: $($key.PSChildName)"
   }
-  Check (-not (Get-ChildItem 'HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall' -ErrorAction SilentlyContinue | Where-Object { (Get-ItemProperty $_.PSPath -ErrorAction SilentlyContinue).DisplayName -like 'Vellum*' })) 'nothing registered under HKLM (per user)'
+  Check (-not (Get-ChildItem 'HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall' -ErrorAction SilentlyContinue | Where-Object { (Get-ItemProperty $_.PSPath -ErrorAction SilentlyContinue).DisplayName -like "$ProductName*" })) 'nothing registered under HKLM (per user)'
 
   # ---- 3. shortcuts, with the appId on them
-  $desk = Join-Path $desktop 'Vellum.lnk'
+  $desk = Join-Path $desktop "$ProductName.lnk"
   $menu = Shortcut-Paths | Where-Object { $_ -ne $desk -and (Test-Path $_) } | Select-Object -First 1
   Check (Test-Path $desk) 'Desktop shortcut exists'
   Check ([bool]$menu) "Start Menu shortcut exists ($menu)"
   $wsh = New-Object -ComObject WScript.Shell
   foreach ($lnk in @($desk, $menu)) {
     if ($lnk -and (Test-Path $lnk)) {
-      Check ($wsh.CreateShortcut($lnk).TargetPath -eq $exe) "shortcut $([IO.Path]::GetFileName($lnk)) targets the installed Vellum.exe"
+      Check ($wsh.CreateShortcut($lnk).TargetPath -eq $exe) "shortcut $([IO.Path]::GetFileName($lnk)) targets the installed $ProductName.exe"
       $aumid = Read-Aumid $lnk
       Check ($aumid -eq $appId) "shortcut AppUserModelID is '$aumid' (appId '$appId')"
     }
@@ -146,12 +156,12 @@ try {
   Check ((Get-Content $cfg -Raw) -match '(?m)^\s*runAfterFinish:\s*true') 'electron-builder.yml has runAfterFinish: true (the finish page offers "Run Vellum")'
 
   # ---- 7. uninstall (while the app is running): app, shortcuts and entry go, data stays
-  $uninst = Join-Path $installDir 'Uninstall Vellum.exe'
+  $uninst = Join-Path $installDir "Uninstall $ProductName.exe"
   $u = Start-Process -FilePath $uninst -ArgumentList @('/S', "_?=$installDir") -PassThru -Wait
   Check ($u.ExitCode -eq 0) 'silent uninstall exits 0'
   Start-Sleep -Seconds 2
   Check (-not [bool](Ours-Running)) 'uninstall closed the running Vellum'
-  Check (-not (Test-Path $exe)) 'Vellum.exe is gone'
+  Check (-not (Test-Path $exe)) "$ProductName.exe is gone"
   Check (-not (Test-Path (Join-Path $installDir 'resources'))) 'the resources folder is gone'
   Check (-not (Find-Uninstall)) 'the uninstall entry is gone'
   Check (-not (Test-Path $desk)) 'the Desktop shortcut is gone'
@@ -165,8 +175,9 @@ try {
   Check $false "script error: $($_.Exception.Message)"
 } finally {
   # ---- cleanup: only what this run made
-  Get-Process -Name Vellum -ErrorAction SilentlyContinue | Where-Object { $_.Path -and $_.Path.StartsWith($installDir, [StringComparison]::OrdinalIgnoreCase) } | Stop-Process -Force -ErrorAction SilentlyContinue
+  Get-Process -Name $ProductName -ErrorAction SilentlyContinue | Where-Object { $_.Path -and $_.Path.StartsWith($installDir, [StringComparison]::OrdinalIgnoreCase) } | Stop-Process -Force -ErrorAction SilentlyContinue
   Start-Sleep -Milliseconds 800
+  Get-ChildItem 'HKCU:\Software' -ErrorAction SilentlyContinue | Where-Object { (Get-ItemProperty $_.PSPath -ErrorAction SilentlyContinue).InstallLocation -eq $installDir } | ForEach-Object { Remove-Item $_.PSPath -Recurse -Force -ErrorAction SilentlyContinue }
   Find-Uninstall | Where-Object { (Get-ItemProperty $_.PSPath).UninstallString -like "*$installDir*" } | ForEach-Object { Remove-Item $_.PSPath -Recurse -Force -ErrorAction SilentlyContinue }
   foreach ($s in (Shortcut-Paths | Where-Object { Test-Path $_ })) {
     try { if ((New-Object -ComObject WScript.Shell).CreateShortcut($s).TargetPath.StartsWith($installDir, [StringComparison]::OrdinalIgnoreCase)) { Remove-Item $s -Force } } catch { }
