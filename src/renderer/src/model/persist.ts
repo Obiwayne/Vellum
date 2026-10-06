@@ -12,6 +12,8 @@ const DOC_DEBOUNCE = 500
 const DOC_MAX_WAIT = 2000
 /** a copy of the unsaved design goes to <id>.recovery this soon after an edit (a crash before the save lands loses nothing) */
 const RECOVERY_DELAY = 120
+/** ...and then at most this often while edits keep arriving (a full-document write, fsync and rename, encrypted in protected profiles) */
+const RECOVERY_EVERY = 3000
 const INDEX_DEBOUNCE = 300
 
 const api = (): Window['canvasApi'] | undefined => (typeof window !== 'undefined' ? window.canvasApi : undefined)
@@ -125,6 +127,8 @@ const pendingDocs = new Map<string, Doc>()
 /** when each design first became dirty since its last save (for DOC_MAX_WAIT) */
 const dirtySince = new Map<string, number>()
 const recoveryTimers = new Map<string, ReturnType<typeof setTimeout>>()
+/** when each design last got a recovery copy since its last save */
+const recoveryAt = new Map<string, number>()
 
 function toIndex(s: Store): IndexData {
   return { recents: s.recents, tabs: s.tabs, activeTab: s.activeTab, scratchpadId: s.scratchpadId, prefs: s.prefs }
@@ -144,6 +148,7 @@ function clearPending(id: string): void {
   const r = recoveryTimers.get(id)
   if (r) clearTimeout(r)
   recoveryTimers.delete(id)
+  recoveryAt.delete(id)
 }
 
 function writeDoc(doc: Doc): void {
@@ -176,13 +181,17 @@ function scheduleDocs(s: Store, saved: Map<string, Doc>, withRecovery = true): v
       }, wait)
     )
     if (withRecovery && !recoveryTimers.has(id)) {
+      // the first copy after a save comes soon; later ones are throttled
+      const last = recoveryAt.get(id)
+      const delay = last === undefined ? RECOVERY_DELAY : Math.max(RECOVERY_DELAY, last + RECOVERY_EVERY - now)
       recoveryTimers.set(
         id,
         setTimeout(() => {
           recoveryTimers.delete(id)
-          const latest = pendingDocs.get(id)
+          recoveryAt.set(id, Date.now())
+          const latest = pendingDocs.get(id) // always the newest state
           if (latest && enabled) track(api()?.saveRecovery?.(latest as unknown as StoredDoc))
-        }, RECOVERY_DELAY)
+        }, delay)
       )
     }
   }

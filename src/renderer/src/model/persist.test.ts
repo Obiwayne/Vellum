@@ -99,8 +99,9 @@ describe('saving: debounce, max wait, recovery copies', () => {
     expect(api.saveDoc.mock.calls.length).toBeGreaterThanOrEqual(1)
     const first = api.saveDoc.mock.calls.length
     expect(first).toBeLessThanOrEqual(2)
-    // the recovery copy is refreshed every ~120 ms meanwhile
-    expect(api.saveRecovery.mock.calls.length).toBeGreaterThan(10)
+    // the recovery copy is not rewritten on every edit: the first soon, later ones throttled (a save also restarts the cycle)
+    expect(api.saveRecovery.mock.calls.length).toBeGreaterThanOrEqual(1)
+    expect(api.saveRecovery.mock.calls.length).toBeLessThanOrEqual(3)
     await tick(1000)
     expect(api.saveDoc.mock.calls.length).toBeGreaterThan(first) // and the tail end lands after the edits stop
   })
@@ -237,5 +238,29 @@ describe('postponing', () => {
     expect(s.recovery.useRecovery.getState().items).toEqual([])
     expect(api.discardRecovery).not.toHaveBeenCalled()
     expect(s.useStore.getState().docs.a.name).toBe('Alpha') // nothing restored either
+  })
+})
+
+describe('recovery copy throttling', () => {
+  it('writes the first copy after 120 ms, then at most once every 3 s while edits keep arriving, always the newest state', async () => {
+    const s = await boot()
+    api.saveDoc.mockClear()
+    // inside one save cycle (the 2 s max wait ends it): one copy soon, no more while the edits go on
+    edit(s, 'a', 1)
+    await tick(130)
+    expect(api.saveRecovery).toHaveBeenCalledTimes(1)
+    for (let i = 2; i < 12; i++) {
+      edit(s, 'a', i)
+      await tick(100) // 1 s of edits: no second copy yet
+    }
+    expect(api.saveRecovery).toHaveBeenCalledTimes(1)
+    // a save (max wait 2 s) starts a new cycle: the next edit gets a quick copy again
+    await tick(1500)
+    expect(api.saveDoc).toHaveBeenCalled()
+    api.saveRecovery.mockClear()
+    edit(s, 'a', 99)
+    await tick(130)
+    expect(api.saveRecovery).toHaveBeenCalledTimes(1)
+    expect((api.saveRecovery.mock.calls[0][0] as StoredDoc & { nodes: Record<string, { style: Record<string, number> }> }).nodes.r.style.width).toBe(199)
   })
 })
