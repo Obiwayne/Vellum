@@ -204,6 +204,13 @@ export function defaultEditor(doc: Doc): EditorState {
 
 const touchRecents = (recents: string[], id: string): string[] => [id, ...recents.filter((r) => r !== id)]
 
+/** Listeners told about every undoable edit, after it is applied (see bridge/agentDriven.ts). */
+const editListeners = new Set<(docId: string, patches: Patch[]) => void>()
+export function onDocEdit(fn: (docId: string, patches: Patch[]) => void): () => void {
+  editListeners.add(fn)
+  return () => editListeners.delete(fn)
+}
+
 export const useStore = create<Store>()((set, get) => {
   /** Apply an undoable recipe to a doc. Returns false if the doc does not exist. */
   function mutate(docId: string, label: string, recipe: (d: Doc) => void, opts: MutateOptions = {}): boolean {
@@ -237,6 +244,7 @@ export const useStore = create<Store>()((set, get) => {
       recents: s.recents[0] === docId ? s.recents : touchRecents(s.recents, docId),
       historyTick: s.historyTick + 1
     }))
+    for (const fn of editListeners) fn(docId, patches)
     return true
   }
 

@@ -5,10 +5,12 @@ import './ui'
 import App from './App'
 import { startProfiles } from './profile/profile'
 import { installBridge } from './bridge/handlers'
+import { installAgentDriven } from './bridge/agentDriven'
 import { installAppShortcuts } from './shell/commands'
 
 installAppShortcuts()
 installBridge()
+installAgentDriven()
 void startProfiles()
 
 // Dropping a file outside a drop target must not navigate the window to it.

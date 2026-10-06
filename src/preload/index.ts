@@ -57,6 +57,7 @@ const api: CanvasApi = {
     remove: (docId, versionId) => ipcRenderer.invoke(IPC.histRemove, docId, versionId)
   },
   mcpEntry: ipcRenderer.sendSync(IPC.mcpEntry) as string,
+  agentDriven: (ipcRenderer.sendSync(IPC.agentDriven) as string | null) ?? null,
 
   capturePage: (rect) => ipcRenderer.invoke(IPC.capturePage, rect),
   renderHtml: (args) => ipcRenderer.invoke(IPC.renderHtml, args),

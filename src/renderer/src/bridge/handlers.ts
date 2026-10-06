@@ -18,6 +18,8 @@ export type { BridgeHandler } from './registry'
 handlers.ping = () => ({ pong: true, app: 'Vellum', time: Date.now() })
 
 let installed = false
+/** True while an MCP tool runs (agentDriven.ts leaves those edits to the tool's own working marks). */
+export let inBridgeCall = false
 
 export function installBridge(): void {
   const api = window.canvasApi
@@ -42,7 +44,13 @@ export function installBridge(): void {
         // let React commit renders from earlier mutations so DOM measurements are current
         await settle()
         await settle()
-        const result = await fn(req.args ?? {})
+        inBridgeCall = true
+        let result: unknown
+        try {
+          result = await fn(req.args ?? {})
+        } finally {
+          inBridgeCall = false
+        }
         api.bridgeRespond({ id: req.id, result: result === undefined ? null : JSON.parse(JSON.stringify(result)) })
       } catch (err) {
         api.bridgeRespond({ id: req.id, error: err instanceof Error ? err.message : String(err) })

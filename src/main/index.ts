@@ -183,6 +183,9 @@ function registerWindowIpc(): void {
   ipcMain.on(IPC.mcpEntry, (e) => {
     e.returnValue = join(app.getAppPath(), 'mcp', 'dist', 'index.js').split('\\').join('/')
   })
+  ipcMain.on(IPC.agentDriven, (e) => {
+    e.returnValue = agentDriven()
+  })
   ipcMain.handle(IPC.readClipboardMedia, (e) => {
     if (!trustedSender(e)) throw new Error('Not allowed')
     return readClipboardMedia()
@@ -249,4 +252,13 @@ if (!gotLock) {
   app.on('window-all-closed', () => {
     if (process.platform !== 'darwin') app.quit()
   })
+}
+
+/** Name of the agent driving this window, or null. Muster puts MUSTER_AGENT in its crew agents' env,
+ *  which their test scripts pass on; VELLUM_AGENT_DRIVEN=1 (or a name) turns it on, =0 turns it off. */
+function agentDriven(): string | null {
+  const flag = process.env.VELLUM_AGENT_DRIVEN?.trim()
+  if (flag === '0') return null
+  if (flag) return flag === '1' ? 'agent' : flag
+  return process.env.MUSTER_AGENT?.trim() || null
 }
