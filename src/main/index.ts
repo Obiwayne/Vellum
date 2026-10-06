@@ -66,7 +66,10 @@ function hardenDefaultSession(): void {
   })
 }
 
-const APP_ID = 'app.vellum.desktop'
+// An installed build uses electron-builder's appId (electron-builder.yml), which the installer also stamps on its Start Menu
+// and Desktop shortcuts, so a taskbar pin made from a shortcut and the running window are the same app and the pin survives
+// updates. A clone keeps its own id (the launcher shortcut from scripts/make-shortcuts.ps1).
+const APP_ID = app.isPackaged ? 'com.vellum.app' : 'app.vellum.desktop'
 
 // Pinning a running window to the taskbar would otherwise pin the bare electron.exe (with its own icon).
 // Point the pin at the Vellum launcher and icon instead.
