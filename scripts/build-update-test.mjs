@@ -27,6 +27,7 @@ const run = (cmd, args) => {
   }
 }
 rmSync(join(root, 'release-update'), { recursive: true, force: true })
+run('npm', ['run', 'electron:download']) // the electron binary electron-builder copies (not downloaded by npm ci here)
 run('npm', ['run', 'build'])
 run('npm', ['run', 'build:mcp'])
 run('npx', ['electron-builder', ...common, `--config.directories.output=release-update/old`])

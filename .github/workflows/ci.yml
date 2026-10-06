@@ -70,8 +70,8 @@ jobs:
       - run: npm ci
       - run: npm ci
         working-directory: mcp
-      # Electron has no postinstall here: fetch its binary (electron-builder copies it into the package)
-      - run: node node_modules/electron/install.js
+      # Electron has no postinstall: fetch its binary (electron-builder copies it into the package; pack, dist and dist:test also do this)
+      - run: npm run electron:download
       - run: npm run pack
       - run: npx vitest run src/main/packaging.test.ts
         env:
@@ -113,6 +113,6 @@ jobs:
       - run: npm ci
       - run: npm ci
         working-directory: mcp
-      - run: node node_modules/electron/install.js
+      - run: npm run electron:download
       - run: npm run test:update
 
