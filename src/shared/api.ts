@@ -73,13 +73,17 @@ export interface ProfilesApi {
   saveRecoveryKey(profileName: string, recoveryKey: string): Promise<ProfileResult<{ path?: string }>>
 }
 
-/** State of the git-based updater (src/main/updater.ts). */
+/** State of the updater: git for clones (src/main/updater.ts), electron-updater for installed builds (src/main/appUpdater.ts). */
 export interface UpdateStatus {
-  state: 'idle' | 'checking' | 'up-to-date' | 'available' | 'installing' | 'error' | 'unsupported'
+  state: 'idle' | 'checking' | 'up-to-date' | 'available' | 'downloading' | 'ready' | 'installing' | 'error' | 'unsupported'
   /** short hash of the running version */
   current?: string
-  /** short hash of the newest version on GitHub */
+  /** short hash of the newest version on GitHub (installed builds: the newest version number) */
   latest?: string
+  /** installed builds: download progress 0-100 while `downloading` */
+  progress?: number
+  /** installed builds: the release notes of the new version, when the release has any */
+  releaseNotes?: string
   /** commits on GitHub that this copy doesn't have yet (newest first, at most 30) */
   commits: { hash: string; subject: string; date: number }[]
   /** how many commits behind (may be more than commits.length) */
@@ -96,7 +100,7 @@ export interface UpdateStatus {
 export interface UpdatesApi {
   status(): Promise<UpdateStatus>
   check(): Promise<UpdateStatus>
-  /** pull, install packages, rebuild and restart */
+  /** clones: pull, install packages, rebuild and restart. Installed builds: restart into a downloaded update (state `ready`) */
   install(): Promise<UpdateStatus>
   onStatus(cb: (status: UpdateStatus) => void): () => void
 }

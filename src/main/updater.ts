@@ -6,6 +6,7 @@ import { execFile, spawn } from 'child_process'
 import { existsSync, writeFileSync } from 'fs'
 import { join } from 'path'
 import { IPC, type UpdateStatus } from '@shared/api'
+import { createAppUpdater, type AutoUpdaterLike } from './appUpdater'
 
 const FIRST_CHECK_MS = 15_000
 const CHECK_EVERY_MS = 4 * 60 * 60 * 1000
@@ -61,7 +62,7 @@ async function upstream(): Promise<string> {
   }
 }
 
-/** A packaged (installer) build never runs git or npm: its updates come from a new installer or release (T-E adds the in-app updater). */
+/** A packaged (installer) build never runs git or npm: its updates come from a new installer or release (appUpdater.ts runs electron-updater there). */
 const PACKAGED_MESSAGE = 'This is the installed version of Vellum. Download the latest installer from the Vellum releases page on GitHub to update.'
 
 async function check(): Promise<UpdateStatus> {
@@ -162,11 +163,46 @@ function once(fn: () => Promise<UpdateStatus>): Promise<UpdateStatus> {
   return busy
 }
 
+/** electron-updater is only loaded in a packaged build (it needs the app's update metadata); a clone never touches it. */
+const loadElectronUpdater = (): AutoUpdaterLike => (require('electron-updater') as { autoUpdater: AutoUpdaterLike }).autoUpdater
+
+export interface UpdaterOptions {
+  /** how to get electron-updater's autoUpdater (tests pass a mock) */
+  loadAutoUpdater?: () => AutoUpdaterLike
+  /** the "Check for updates automatically" setting (default on); read before every timed check of an installed build */
+  autoCheck?: () => boolean
+}
+
 export function startUpdater(
   window: () => BrowserWindow | null,
-  trusted: (e: Electron.IpcMainInvokeEvent) => boolean
+  trusted: (e: Electron.IpcMainInvokeEvent) => boolean,
+  opts: UpdaterOptions = {}
 ): void {
   getWindow = window
+  if (app.isPackaged) {
+    // installed build: electron-updater and the GitHub Releases feed. The git updater below never runs here.
+    try {
+      const engine = createAppUpdater({
+        autoUpdater: (opts.loadAutoUpdater ?? loadElectronUpdater)(),
+        isPackaged: true,
+        version: app.getVersion(),
+        updateUrl: process.env.VELLUM_UPDATE_URL || undefined,
+        autoCheck: opts.autoCheck,
+        emit: (s) => {
+          const w = getWindow()
+          if (w && !w.isDestroyed()) w.webContents.send(IPC.updChanged, s)
+        }
+      })
+      ipcMain.handle(IPC.updStatus, (e) => (trusted(e) ? engine.status() : null))
+      ipcMain.handle(IPC.updCheck, (e) => (trusted(e) ? engine.check() : null))
+      ipcMain.handle(IPC.updInstall, (e) => (trusted(e) ? engine.install() : null))
+      if (!process.env.VELLUM_NO_UPDATE_CHECK) engine.start()
+      return
+    } catch (err) {
+      // the updater could not start: the app still works, and says why it will not update
+      console.error('[updater] electron-updater unavailable:', err)
+    }
+  }
   ipcMain.handle(IPC.updStatus, (e) => (trusted(e) ? status : null))
   ipcMain.handle(IPC.updCheck, (e) => (trusted(e) ? once(check) : null))
   ipcMain.handle(IPC.updInstall, (e) => (trusted(e) ? once(install) : null))
