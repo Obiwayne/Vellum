@@ -1,12 +1,13 @@
 import { app, BrowserWindow, ipcMain, session, shell } from 'electron'
 import { readClipboardMedia } from './clipboard'
 import { existsSync } from 'fs'
-import { join, parse } from 'path'
+import { join } from 'path'
 import { pathToFileURL } from 'url'
 import { IPC, type Rect } from '@shared/api'
 import { clearCachesIfProtected, migrateLegacyUserData, registerStorageIpc } from './storage'
 import { startBridge } from './bridge'
 import { startUpdater } from './updater'
+import { userDataDir } from './userDataDir'
 import { cleanStaleRenderTemp, disposeRenderer, registerRenderScheme, renderHtml, renderPdf } from './offscreen'
 import appIcon from '../../resources/icon.ico?asset'
 
@@ -217,15 +218,16 @@ function registerWindowIpc(): void {
 // before the single-instance lock, which lives in userData. VELLUM_USER_DATA points the app at a
 // separate data folder (profiles.json, profiles/…) — used for testing without touching real data.
 app.setName('Vellum')
-const testUserData = process.env.VELLUM_USER_DATA
-if (testUserData) {
-  app.setPath('userData', testUserData)
-} else if (!app.commandLine.hasSwitch('user-data-dir')) {
-  // An installed build keeps its data in a folder named after its executable (Vellum.exe -> "Vellum" for the real product). The
-  // installer test product (VellumInstallTest.exe) therefore never shares it, even when the installer relaunches it without our
-  // environment (app.getName() is always "Vellum": see setName below).
-  app.setPath('userData', join(app.getPath('appData'), app.isPackaged ? parse(process.execPath).name : 'Vellum'))
-  migrateLegacyUserData()
+const dataDir = userDataDir({
+  env: process.env.VELLUM_USER_DATA,
+  hasUserDataSwitch: app.commandLine.hasSwitch('user-data-dir'),
+  isPackaged: app.isPackaged,
+  execPath: process.execPath,
+  appData: app.getPath('appData')
+})
+if (dataDir) {
+  app.setPath('userData', dataDir)
+  if (!process.env.VELLUM_USER_DATA) migrateLegacyUserData()
 }
 registerRenderScheme()
 

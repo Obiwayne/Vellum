@@ -73,7 +73,7 @@ describe('real update test (T49)', () => {
     expect(script).toContain('quitAndInstall') // the install() call is what it exercises
   })
   it('an installed build keeps its data in a folder named after its exe, so the test product never shares the real one', () => {
-    expect(read('src/main/index.ts')).toContain("app.isPackaged ? parse(process.execPath).name : 'Vellum'")
+    expect(read('src/main/index.ts')).toContain('const dataDir = userDataDir({') // the rules and their tests are in userDataDir.ts
     expect(yml).toMatch(/^productName: Vellum$/m)
   })
 })

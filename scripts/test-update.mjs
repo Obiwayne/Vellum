@@ -3,7 +3,7 @@
 //   npm run test:update        (runs this script)
 // What it does, in temp folders only (the test product has its own appId, product name, data folder and updater cache, so it never
 // meets a real Vellum install or its data):
-//   1. silent-installs the old version with /D=<temp>, starts it with a temp VELLUM_USER_DATA and VELLUM_UPDATE_URL = local server
+//   1. silent-installs the old version with /D=<temp>, starts it with VELLUM_UPDATE_URL = a local server (its data folder is the test product's own %APPDATA%VellumInstallTest, which must not exist yet)
 //   2. checks the update states over IPC: checking -> available -> downloading -> ready; nothing is installed before install()
 //   3. calls updates.install() (quitAndInstall): the installer runs, the new version replaces the old one in the same folder and is
 //      started again; the registry entry, shortcuts and the old instance's data folder are intact
@@ -12,10 +12,11 @@
 import { _electron as electron } from 'playwright'
 import { spawnSync } from 'node:child_process'
 import http from 'node:http'
+import { createHash } from 'node:crypto'
 import { createReadStream, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs'
 import { createServer } from 'node:net'
 import { tmpdir } from 'node:os'
-import { join, resolve } from 'node:path'
+import { join, parse, resolve } from 'node:path'
 
 const arg = (name, dflt) => {
   const i = process.argv.indexOf(`--${name}`)
@@ -67,10 +68,13 @@ if (!newSetupName || !newVersion || !oldVersion || newVersion === oldVersion) {
 
 const work = mkdtempSync(join(tmpdir(), 'vellum-update-test-'))
 const installDir = join(work, 'app')
-const dataDir = join(work, 'data')
-mkdirSync(dataDir, { recursive: true })
-writeFileSync(join(dataDir, 'marker.txt'), 'user data of the old instance')
 const exe = join(installDir, `${PRODUCT}.exe`)
+// The installer relaunches the new version through the shell, without our environment, so a temp VELLUM_USER_DATA cannot carry
+// over. The test product's own default data folder does: an installed build keeps its data in %APPDATA%\<exe name> (userDataDir.ts).
+const appData = ps(`[Environment]::GetFolderPath('ApplicationData')`)
+const testData = join(appData, PRODUCT)
+const realData = join(appData, 'Vellum')
+delete process.env.VELLUM_USER_DATA // the app under test must resolve its data folder by itself
 
 // ---- guards: never meet a real install
 const registered = ps(
@@ -78,6 +82,13 @@ const registered = ps(
 )
 const localPrograms = ps(`Test-Path (Join-Path ([Environment]::GetFolderPath('LocalApplicationData')) 'Programs\\${PRODUCT}')`)
 const running = ps(`(Get-Process -Name ${PRODUCT} -ErrorAction SilentlyContinue | Measure-Object).Count`)
+// the folder the installed app will resolve (userDataDir.ts: named after the exe) must be the test product's own, never the real one
+const resolvesTo = join(appData, parse(exe).name)
+if (resolvesTo.toLowerCase() === realData.toLowerCase() || existsSync(testData)) {
+  say(`FAILED: the app would use ${resolvesTo} (real data folder: ${realData}; the test data folder ${testData} must not exist yet); refusing to run`)
+  rmSync(work, { recursive: true, force: true })
+  finish(2)
+}
 if (registered !== '0' || localPrograms !== 'False' || running !== '0') {
   say(`FAILED: '${PRODUCT}' is already installed, registered or running (${registered} registry keys, folder ${localPrograms}, ${running} processes); refusing to run`)
   rmSync(work, { recursive: true, force: true })
@@ -146,13 +157,45 @@ try {
   app = await electron.launch({
     executablePath: exe,
     args: [],
-    env: { ...process.env, VELLUM_USER_DATA: dataDir, VELLUM_UPDATE_URL: feed, VELLUM_PORT: String(port), VELLUM_NO_UPDATE_CHECK: '1' }
+    env: { ...process.env, VELLUM_UPDATE_URL: feed, VELLUM_PORT: String(port), VELLUM_NO_UPDATE_CHECK: '1' }
   })
   const page = await app.firstWindow()
   page.setDefaultTimeout(20000)
   await page.waitForTimeout(3000)
-  const info = await app.evaluate(({ app: a }) => ({ version: a.getVersion(), packaged: a.isPackaged, name: a.getName() }))
+  const info = await app.evaluate(({ app: a }) => ({ version: a.getVersion(), packaged: a.isPackaged, userData: a.getPath('userData') }))
   check(info.packaged && info.version === oldVersion, `the installed app is a packaged build at version ${info.version}`)
+  check(info.userData.toLowerCase() === testData.toLowerCase() && info.userData.toLowerCase() !== realData.toLowerCase(), `the app resolved its data folder to ${info.userData}, not the real one`)
+  if (info.userData.toLowerCase() === realData.toLowerCase()) throw new Error('the app resolved the REAL data folder: aborting')
+
+  // a design file made in the old version (profile + frame on the Scratchpad), saved to the app's data folder
+  await page.locator('input:not([type=file])').first().fill('Updater')
+  await page.getByRole('button', { name: 'Create profile' }).click()
+  await page.waitForTimeout(2000)
+  await page.getByText('Scratchpad').first().dblclick()
+  await page.waitForTimeout(2500)
+  await page.keyboard.press('f')
+  await page.mouse.move(330, 150)
+  await page.mouse.down()
+  await page.mouse.move(600, 300, { steps: 6 })
+  await page.mouse.up()
+  await page.waitForTimeout(3000) // autosave
+  const designFiles = () => {
+    const base = join(testData, 'profiles')
+    const out = []
+    const walk = (d) => {
+      if (!existsSync(d)) return
+      for (const e of readdirSync(d, { withFileTypes: true })) {
+        const f = join(d, e.name)
+        if (e.isDirectory()) walk(f)
+        else if (/files[\\/][^\\/]+\.json$/.test(f)) out.push(f)
+      }
+    }
+    walk(base)
+    return out
+  }
+  const design = designFiles().find((f) => JSON.parse(readFileSync(f, 'utf8')).nodes && Object.keys(JSON.parse(readFileSync(f, 'utf8')).nodes).length >= 2)
+  const nodesBefore = design ? Object.keys(JSON.parse(readFileSync(design, 'utf8')).nodes).length : 0
+  check(Boolean(design), `the old version saved a design with a frame (${nodesBefore} nodes) in its data folder`)
 
   // ---- 2. the update states over IPC
   await page.evaluate(() => {
@@ -173,6 +216,11 @@ try {
   check(['checking', 'available', 'downloading', 'ready'].every((s) => seq.includes(s)) && seq.indexOf('checking') < seq.indexOf('available') && seq.indexOf('available') < seq.indexOf('ready'), 'checking -> available -> downloading -> ready')
   const ready = states.find((s) => s.state === 'ready')
   check(ready?.latest === newVersion, `the update offered is ${ready?.latest} (expected ${newVersion})`)
+  const setupSize = statSync(join(newDir, newSetupName)).size
+  const served = requests.filter((r) => r.includes(newSetupName) && !r.includes('blockmap'))
+  const cached = updaterCache && existsSync(updaterCache) ? readdirSync(updaterCache, { recursive: true }).filter((n) => String(n).endsWith('.exe')).map((n) => statSync(join(updaterCache, String(n))).size) : []
+  say(`download size: the installer is ${setupSize} bytes (${(setupSize / 1048576).toFixed(1)} MB); the feed served ${served.join(', ') || 'nothing'}; the updater cache holds ${cached.join(', ') || 'no installer'} bytes`)
+  check(cached.includes(setupSize), 'the downloaded installer in the updater cache has the size of the published one')
   check(requests.some((r) => r.includes(newSetupName) && r.includes('200')) && requests.some((r) => r.includes('latest.yml')), `the feed was asked for latest.yml and ${newSetupName}`)
   check(productVersion().startsWith(oldVersion) && Number(installerProcs()) === 0, 'nothing is installed before install() is called (exe still the old version, no installer running)')
   check((await app.evaluate(({ app: a }) => a.getVersion())) === oldVersion, 'the running app is still the old version')
@@ -191,7 +239,9 @@ try {
   const dn = entry?.v
   check(dn === newVersion, `the uninstall entry now says ${dn} and still points at the same folder`)
   check(ps(`Test-Path (Join-Path ([Environment]::GetFolderPath('LocalApplicationData')) 'Programs\\${PRODUCT}')`) === 'False', 'no second copy appeared in %LOCALAPPDATA%\\Programs')
-  check(readFileSync(join(dataDir, 'marker.txt'), 'utf8').includes('old instance'), "the old instance's data folder is intact")
+  const nodesAfter = design && existsSync(design) ? Object.keys(JSON.parse(readFileSync(design, 'utf8')).nodes).length : -1
+  check(nodesAfter === nodesBefore, `the design file made in the old version is still there with all its ${nodesAfter} nodes`)
+  check(existsSync(join(testData, 'lockfile')) || Number(installedProcs()) > 0, 'the relaunched version runs on that same data folder')
   check(realDataStamp() === realBefore, 'the real %APPDATA%/Vellum user data (profiles.json, profiles, bridge token) was not touched, not even by the relaunched app')
   check(ps(`Test-Path (Join-Path ([Environment]::GetFolderPath('ApplicationData')) '${PRODUCT}')`) === 'True', 'the relaunched app keeps its data in its own folder (named after its exe)')
 } catch (e) {
