@@ -60,6 +60,19 @@ const GROUPS: { title: string; items: [string, string][] }[] = [
     ]
   },
   {
+    title: 'Components',
+    items: [
+      ['Create component', 'Ctrl+Alt+K'],
+      ['Detach instance', 'Ctrl+Alt+B'],
+      ['Add variant', 'Right-click a component'],
+      ['Switch an instance\'s variant', 'Inspector → Variant'],
+      ['Add a boolean / text / swap property', 'Inspector of a component → Properties'],
+      ['Bind a layer to a property', 'Inspector of the layer → Bind to property'],
+      ['Place a component', 'Assets panel: click or drag'],
+      ['Go to main component', 'Right-click an instance']
+    ]
+  },
+  {
     title: 'Text',
     items: [
       ['Bold', 'Ctrl+B'],
