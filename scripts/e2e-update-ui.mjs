@@ -98,6 +98,7 @@ try {
   results.push(`FAILED: ${err.message}`)
 } finally {
   console.log(results.join('\n'))
-  await app.close()
+  // closing can hang with a window that has a pending dialog: give it 8 s, then leave anyway (the runner needs an exit)
+  await Promise.race([app.close().catch(() => undefined), new Promise((r) => setTimeout(r, 8000))])
 }
-if (results.some((r) => r.startsWith('FAILED'))) process.exit(1)
+process.exit(results.some((r) => r.startsWith('FAILED')) ? 1 : 0)
