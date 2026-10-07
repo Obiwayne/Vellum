@@ -7,6 +7,7 @@ import type { Tool } from '../../model/types'
 import { createImageFromFile, insertSvgMarkup } from '../canvas/actions'
 import { toolbarHooks } from '../shortcuts'
 import { IconPicker } from './IconPicker'
+import { PluginsButton } from '../../plugins/PluginsButton'
 
 interface ToolDef {
   tool: Tool
@@ -89,6 +90,8 @@ export function Toolbar({ docId }: { docId: string }): JSX.Element {
           ))}
         </div>
       ))}
+      <div style={{ width: 16, height: 1, background: 'var(--hairline)', margin: '6px 0' }} />
+      <PluginsButton docId={docId} />
       <SvgDialog docId={docId} open={svgOpen} onClose={() => setSvgOpen(false)} />
       <IconPicker docId={docId} open={iconsOpen} onClose={() => setIconsOpen(false)} />
     </div>

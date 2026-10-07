@@ -43,6 +43,8 @@ consistent menus and shortcuts. The product name is "Vellum".
     editor/inspector/        Inspector sections
     editor/comments/         Comment tool UI: pins + thread card (CommentsLayer), Comments tab (CommentsPanel)
     editor/shortcuts.ts      global keyboard shortcuts
+    plugins/                 puzzle button in the toolbar: registry.tsx lists built-in plugins (InvokeAI image
+                             generation); settings in prefs.plugins[id]; network calls run in src/main/plugins/
     bridge/                  handlers that execute MCP commands against the store (renderer side)
   mcp/                       MCP server package (own package.json, builds to mcp/dist/index.js)
   docs/                      this file, MCP.md

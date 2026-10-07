@@ -1,5 +1,6 @@
 // Shared between main, preload and renderer. Keep this file free of runtime imports.
 import type { DiffSummary } from './docDiff'
+import type { InvokeAIApi } from './invokeai'
 import type { McpEntry } from './mcpSnippets'
 
 /** Persisted JSON document. The renderer's `Doc` type (model/types.ts) is stored as-is. */
@@ -198,6 +199,8 @@ export interface CanvasApi {
   profiles: ProfilesApi
   updates: UpdatesApi
   history: HistoryApi
+  /** plugins: InvokeAI image generation (src/main/plugins/invokeai.ts) */
+  invokeai: InvokeAIApi
   /** how an agent starts the MCP server: the packaged bundle run by the app's own Electron, or `node mcp/dist/index.js` for a clone */
   mcpEntry: McpEntry
   /** set when an agent launched this window (Muster crew, or VELLUM_AGENT_DRIVEN): its name, else null */
@@ -281,5 +284,10 @@ export const IPC = {
   histLoad: 'history:load',
   histSave: 'history:save',
   histRename: 'history:rename',
-  histRemove: 'history:remove'
+  histRemove: 'history:remove',
+  invokeStatus: 'invokeai:status',
+  invokeModels: 'invokeai:models',
+  invokeGenerate: 'invokeai:generate',
+  invokeCancel: 'invokeai:cancel',
+  invokeProgress: 'invokeai:progress'
 } as const

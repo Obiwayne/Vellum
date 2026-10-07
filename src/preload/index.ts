@@ -1,5 +1,6 @@
 import { contextBridge, ipcRenderer, type IpcRendererEvent } from 'electron'
 import { IPC, type BridgeRequest, type CanvasApi, type UpdateStatus } from '@shared/api'
+import type { InvokeProgress } from '@shared/invokeai'
 import type { McpEntry } from '@shared/mcpSnippets'
 
 const api: CanvasApi = {
@@ -61,6 +62,17 @@ const api: CanvasApi = {
     save: (doc, opts) => ipcRenderer.invoke(IPC.histSave, doc, opts),
     rename: (docId, versionId, name) => ipcRenderer.invoke(IPC.histRename, docId, versionId, name),
     remove: (docId, versionId) => ipcRenderer.invoke(IPC.histRemove, docId, versionId)
+  },
+  invokeai: {
+    status: (url) => ipcRenderer.invoke(IPC.invokeStatus, url),
+    models: (url) => ipcRenderer.invoke(IPC.invokeModels, url),
+    generate: (args) => ipcRenderer.invoke(IPC.invokeGenerate, args),
+    cancel: (url, itemId) => ipcRenderer.invoke(IPC.invokeCancel, url, itemId),
+    onProgress: (cb) => {
+      const h = (_e: IpcRendererEvent, p: InvokeProgress): void => cb(p)
+      ipcRenderer.on(IPC.invokeProgress, h)
+      return () => ipcRenderer.removeListener(IPC.invokeProgress, h)
+    }
   },
   mcpEntry: ipcRenderer.sendSync(IPC.mcpEntry) as McpEntry,
   agentDriven: (ipcRenderer.sendSync(IPC.agentDriven) as string | null) ?? null,

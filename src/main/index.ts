@@ -7,6 +7,7 @@ import { IPC, type Rect } from '@shared/api'
 import { clearCachesIfProtected, migrateLegacyUserData, registerStorageIpc } from './storage'
 import { startBridge } from './bridge'
 import { startUpdater } from './updater'
+import { registerInvokeAIIpc } from './plugins/invokeai'
 import { mcpEntryFor } from '@shared/mcpSnippets'
 import { userDataDir } from './userDataDir'
 import { cleanStaleRenderTemp, disposeRenderer, registerRenderScheme, renderHtml, renderPdf } from './offscreen'
@@ -248,6 +249,7 @@ if (!gotLock) {
     hardenDefaultSession()
     registerWindowIpc()
     registerStorageIpc()
+    registerInvokeAIIpc(() => mainWindow, trustedSender)
     cleanStaleRenderTemp()
     void clearCachesIfProtected()
     startBridge(() => mainWindow)
