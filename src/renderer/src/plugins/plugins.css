@@ -1,0 +1,147 @@
+/* Manage plugins */
+.pl-list {
+  display: flex;
+  flex-direction: column;
+  padding: 4px 16px 12px;
+  gap: 4px;
+}
+.pl-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 0;
+}
+.pl-row + .pl-row {
+  border-top: 1px solid var(--hairline);
+}
+.pl-row__icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+  border-radius: var(--radius);
+  background: var(--control-bg);
+  color: var(--text);
+}
+.pl-row__text {
+  flex: 1;
+  min-width: 0;
+}
+.pl-row__name {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text);
+  font-weight: var(--weight-medium);
+}
+.pl-row__desc {
+  margin-top: 2px;
+  color: var(--text-2);
+}
+.pl-link {
+  display: inline-flex;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--text-2);
+  cursor: pointer;
+}
+.pl-link:hover {
+  color: var(--text);
+}
+
+/* InvokeAI */
+.ia {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 4px 16px 12px;
+}
+.ia-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.ia-label {
+  margin-top: 6px;
+  color: var(--text-2);
+}
+.ia-input,
+.ia-text {
+  box-sizing: border-box;
+  width: 100%;
+  border: 0;
+  border-radius: var(--radius);
+  background: var(--control-bg);
+  color: var(--text);
+  font: inherit;
+  outline: none;
+}
+.ia-input {
+  flex: 1;
+  height: var(--control-h);
+  padding: 0 8px;
+  font-family: var(--font-mono);
+}
+.ia-text {
+  padding: 8px;
+  resize: vertical;
+  line-height: var(--line-height);
+}
+.ia-input:focus,
+.ia-text:focus {
+  box-shadow: inset 0 0 0 1px var(--accent);
+}
+.ia-dot {
+  width: 8px;
+  height: 8px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: var(--text-disabled);
+}
+.ia-dot--ok {
+  background: #3dd68c;
+}
+.ia-dot--error {
+  background: var(--danger);
+}
+.ia-dot--checking {
+  background: var(--brand-amber);
+}
+.ia-status {
+  color: var(--text-2);
+}
+.ia-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0 12px;
+}
+.ia-grid > div {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.ia-footnote {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--text-2);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ia-error {
+  color: var(--danger);
+}
+.ia-link {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--accent);
+  font: inherit;
+  cursor: pointer;
+}
+.ia-link:hover {
+  text-decoration: underline;
+}
