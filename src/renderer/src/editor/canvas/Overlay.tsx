@@ -157,15 +157,17 @@ export function Overlay({
   const selWorld = union(selection.map((id) => rects.get(id)))
   const selScreen = selWorld ? toScreen(selWorld, cam) : null
   const editing = ed.editingTextId
+  // Dev Mode is read-only: no resize, padding/gap or gradient handles, which would also sit on top of the redline labels
+  const designing = ed.devMode !== true
   const showHandles =
-    selScreen && !editing && ed.tool === 'move' && !transient.gesturing && selNodes.every((n) => !n.locked)
+    designing && selScreen && !editing && ed.tool === 'move' && !transient.gesturing && selNodes.every((n) => !n.locked)
   const hoverScreen = hovered && !selection.includes(hovered) && !transient.gesturing ? sr(hovered) : null
 
   // padding/gap and gradient handles: one unlocked, untransformed node, Move tool, no other gesture
   const drag = transient.handleDrag
   const single = selNodes.length === 1 ? selNodes[0] : null
   const handleNode =
-    single && !editing && ed.tool === 'move' && !single.locked && untransformed(single) && (!transient.gesturing || drag) ? single : null
+    designing && single && !editing && ed.tool === 'move' && !single.locked && untransformed(single) && (!transient.gesturing || drag) ? single : null
   let grad: { fill: Grad; box: WorldRect; index: number } | null = null
   if (handleNode && gradTarget && gradTarget.docId === docId && gradTarget.nodeId === handleNode.id && drag?.kind !== 'spacing') {
     const f = handleNode.type === 'text' ? undefined : readFills(handleNode.style)[gradTarget.index]

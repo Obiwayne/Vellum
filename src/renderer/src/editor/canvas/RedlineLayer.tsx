@@ -5,6 +5,9 @@ import type { Camera } from '../../model/types'
 import type { RedlineScene } from './redlineScene'
 
 /** Redlines in screen space: 1px lines with end ticks and a label chip that keeps its size at any zoom. */
+/** Shortest on-screen line (px) that gets a label chip. */
+export const MIN_LABELLED = 20
+
 export function RedlineLayer({ scene, cam }: { scene: RedlineScene; cam: Camera }): JSX.Element {
   const sx = (x: number): number => x * cam.zoom + cam.x
   const sy = (y: number): number => y * cam.zoom + cam.y
@@ -27,9 +30,14 @@ export function RedlineLayer({ scene, cam }: { scene: RedlineScene; cam: Camera 
             <div className="cv-redline-body" style={body} />
             {tick(x1, y1, 'a')}
             {tick(x2, y2, 'b')}
-            <div className="cv-redline-label" style={{ left: (x1 + x2) / 2, top: (y1 + y2) / 2 }}>
-              {l.label}
-            </div>
+            {/* a line too short to hold its chip keeps the value in a tooltip instead of piling labels on each other */}
+            {Math.hypot(x2 - x1, y2 - y1) >= MIN_LABELLED ? (
+              <div className="cv-redline-label" style={{ left: (x1 + x2) / 2, top: (y1 + y2) / 2 }}>
+                {l.label}
+              </div>
+            ) : (
+              <div className="cv-redline-hit" style={{ left: (x1 + x2) / 2 - 6, top: (y1 + y2) / 2 - 6 }} title={l.label} />
+            )}
           </div>
         )
       })}
