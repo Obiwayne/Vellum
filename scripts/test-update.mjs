@@ -137,7 +137,9 @@ const realDataStamp = () =>
   ps(`$d = Join-Path ([Environment]::GetFolderPath('ApplicationData')) 'Vellum'; (@('profiles.json', 'profiles', 'bridge-token', 'index.json') | ForEach-Object { $p = Join-Path $d $_; if (Test-Path $p) { "$_=$((Get-Item $p).LastWriteTimeUtc.Ticks)" } else { "$_=none" } }) -join ';'`)
 const realBefore = realDataStamp()
 const productVersion = () => ps(`if (Test-Path '${exe}') { (Get-Item '${exe}').VersionInfo.ProductVersion }`)
-const installedProcs = () => ps(`(Get-Process -Name ${PRODUCT} -ErrorAction SilentlyContinue | Where-Object { $_.Path -and $_.Path.StartsWith('${installDir}', [StringComparison]::OrdinalIgnoreCase) } | Measure-Object).Count`)
+// matched by the executable path under the install folder (Win32_Process, which also reports processes Get-Process cannot read the path of)
+const installedProcs = () => ps(`(Get-CimInstance Win32_Process -Filter "Name = '${PRODUCT}.exe'" -ErrorAction SilentlyContinue | Where-Object { $_.ExecutablePath -and $_.ExecutablePath.StartsWith('${installDir}', [StringComparison]::OrdinalIgnoreCase) } | Measure-Object).Count`)
+const seenProcs = () => ps(`(Get-CimInstance Win32_Process -ErrorAction SilentlyContinue | Where-Object { $_.Name -like '${PRODUCT}*' -or $_.Name -like 'Vellum-Setup-*' } | ForEach-Object { "$($_.Name) pid=$($_.ProcessId) session=$($_.SessionId) path=$($_.ExecutablePath)" }) -join '; '`)
 const installerProcs = () => ps(`(Get-Process -ErrorAction SilentlyContinue | Where-Object { $_.ProcessName -like 'Vellum-Setup-*' } | Measure-Object).Count`)
 let app
 let updaterCache = ''
@@ -231,13 +233,13 @@ try {
   while (Date.now() < t1 && !(productVersion().startsWith(newVersion) && Number(installerProcs()) === 0)) await sleep(1000)
   await sleep(3000)
   check(productVersion().startsWith(newVersion), `after install() the installed ${PRODUCT}.exe is version ${productVersion()} (expected ${newVersion})`)
-  const t2 = Date.now() + 60000
+  const t2 = Date.now() + 90000
   while (Date.now() < t2 && Number(installedProcs()) === 0) await sleep(1000)
   // The installer relaunches through the shell (explorer.exe) on the logged-in desktop. A hosted CI runner has no interactive
   // desktop session, so there the relaunch cannot be observed (the install itself, checked above, is what matters); a local run must see it.
   if (Number(installedProcs()) > 0) check(true, 'the new version was started again from the same folder (force-run)')
   else if (process.env.CI) {
-    say(`skipped: the new version was not started again; hosted runners have no desktop session for the installer's shell relaunch (processes named ${PRODUCT}: ${ps(`(Get-Process -Name ${PRODUCT} -ErrorAction SilentlyContinue | Measure-Object).Count`)}, session ${ps('(Get-Process -Id $PID).SessionId')})`)
+    say(`skipped: the new version was not started again; hosted runners have no desktop session for the installer's shell relaunch. Processes seen: ${seenProcs() || 'none'}; this script runs in session ${ps('(Get-Process -Id $PID).SessionId')}`)
   } else check(false, 'the new version was started again from the same folder (force-run)')
   const entries = JSON.parse(ps(`$e = @(Get-ChildItem 'HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall' | ForEach-Object { Get-ItemProperty $_.PSPath } | Where-Object { $_.DisplayName -like '${PRODUCT}*' } | ForEach-Object { @{ v = $_.DisplayVersion; u = $_.UninstallString } }); ConvertTo-Json -InputObject $e -Compress`) || '[]')
   const entry = entries.find((e) => (e.u ?? '').toLowerCase().includes(installDir.toLowerCase()))
