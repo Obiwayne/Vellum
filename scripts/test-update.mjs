@@ -149,7 +149,6 @@ const productProcs = () => {
     return []
   }
 }
-const installedProcs = () => productProcs().filter((p) => (p.path ?? '').toLowerCase().startsWith(installDir.toLowerCase())).length
 const installerProcs = () => ps(`(Get-Process -ErrorAction SilentlyContinue | Where-Object { $_.ProcessName -like 'Vellum-Setup-*' } | Measure-Object).Count`)
 let app
 let updaterCache = ''
@@ -244,7 +243,7 @@ try {
   await sleep(3000)
   check(productVersion().startsWith(newVersion), `after install() the installed ${PRODUCT}.exe is version ${productVersion()} (expected ${newVersion})`)
   const t2 = Date.now() + 90000
-  while (Date.now() < t2 && Number(installedProcs()) === 0) await sleep(1000)
+  while (Date.now() < t2 && !relaunchVerdict({ processes: productProcs(), installDir }).ok) await sleep(1000)
   const relaunch = relaunchVerdict({ processes: productProcs(), installDir })
   if (!relaunch.ok) say(`${relaunch.detail}; this script runs in session ${ps('(Get-Process -Id $PID).SessionId')}`)
   check(relaunch.ok, relaunch.label)
@@ -255,7 +254,7 @@ try {
   check(ps(`Test-Path (Join-Path ([Environment]::GetFolderPath('LocalApplicationData')) 'Programs\\${PRODUCT}')`) === 'False', 'no second copy appeared in %LOCALAPPDATA%\\Programs')
   const nodesAfter = design && existsSync(design) ? Object.keys(JSON.parse(readFileSync(design, 'utf8')).nodes).length : -1
   check(nodesAfter === nodesBefore, `the design file made in the old version is still there with all its ${nodesAfter} nodes`)
-  check(existsSync(join(testData, 'lockfile')) || Number(installedProcs()) > 0, 'the relaunched version runs on that same data folder')
+  check(existsSync(join(testData, 'lockfile')) || relaunchVerdict({ processes: productProcs(), installDir }).ok, 'the relaunched version runs on that same data folder')
   check(realDataStamp() === realBefore, 'the real %APPDATA%/Vellum user data (profiles.json, profiles, bridge token) was not touched, not even by the relaunched app')
   check(ps(`Test-Path (Join-Path ([Environment]::GetFolderPath('ApplicationData')) '${PRODUCT}')`) === 'True', 'the relaunched app keeps its data in its own folder (named after its exe)')
 } catch (e) {
