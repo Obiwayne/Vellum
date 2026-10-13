@@ -1,0 +1,19 @@
+/* Screen section (breakpoint tagging), T71 */
+.insp-scr__block {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 0 12px 10px;
+}
+.insp-scr__field {
+  display: grid;
+  grid-template-columns: 76px 1fr;
+  align-items: center;
+  gap: 6px;
+}
+.insp-scr__flabel {
+  color: var(--text-2);
+}
+.insp-scr__hint {
+  color: var(--text-3);
+}

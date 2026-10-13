@@ -110,3 +110,30 @@ export function setReady(doc: Doc, ids: string[], at: number | null, hashes: Rec
   }
   return n
 }
+
+/** Typical widths of the named breakpoints (the frame's own width is what the handoff uses). */
+export const BREAKPOINT_WIDTHS = { Desktop: 1280, Tablet: 768, Mobile: 390 } as const
+export const BREAKPOINT_NAMES = Object.keys(BREAKPOINT_WIDTHS) as Array<keyof typeof BREAKPOINT_WIDTHS>
+
+/** The breakpoint name a frame of this width most likely is. */
+export function suggestBreakpoint(width: number): keyof typeof BREAKPOINT_WIDTHS {
+  if (width >= 1024) return 'Desktop'
+  if (width >= 600) return 'Tablet'
+  return 'Mobile'
+}
+
+/** Screens of the document (tag name -> frames tagged with it, with their breakpoint), in document order. */
+export function screensOf(doc: Doc): Array<{ name: string; frames: Array<{ id: string; bp: string }> }> {
+  const out = new Map<string, { name: string; frames: Array<{ id: string; bp: string }> }>()
+  for (const p of doc.pages) {
+    for (const id of doc.nodes[p.rootId]?.children ?? []) {
+      const tag = doc.nodes[id]?.dev?.screen
+      if (!tag) continue
+      const key = tag.name.trim().toLowerCase()
+      const g = out.get(key) ?? { name: tag.name.trim(), frames: [] }
+      g.frames.push({ id, bp: tag.bp })
+      out.set(key, g)
+    }
+  }
+  return [...out.values()]
+}

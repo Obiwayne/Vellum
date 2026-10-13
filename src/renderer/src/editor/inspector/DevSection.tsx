@@ -219,31 +219,35 @@ function AccessibilitySection({ docId, node }: { docId: string; node: CNode }): 
             onChange={(v) => setDev(docId, [node.id], { role: v || null })}
           />
         </div>
-        <Field
-          label="Label"
-          type="text"
-          value={label}
-          placeholder="Accessible name"
-          onChange={(v) => {
-            const t = String(v)
-            setLabel(t)
-            setDev(docId, [node.id], { label: t.trim() ? t : null })
-          }}
-        />
-        <Field
-          label="Focus order"
-          title="Position in the tab order; 0 goes back to reading order"
-          type="number"
-          min={0}
-          step={1}
-          precision={0}
-          value={node.dev?.tab ?? null}
-          placeholder="Reading order"
-          onChange={(v) => {
-            const n = typeof v === 'number' ? Math.round(v) : parseInt(String(v), 10)
-            setDev(docId, [node.id], { tab: Number.isFinite(n) && n > 0 ? n : null })
-          }}
-        />
+        <div className="insp-dev__field">
+          <span className="insp-dev__flabel">Label</span>
+          <Field
+            type="text"
+            value={label}
+            placeholder="Accessible name"
+            onChange={(v) => {
+              const t = String(v)
+              setLabel(t)
+              setDev(docId, [node.id], { label: t.trim() ? t : null })
+            }}
+          />
+        </div>
+        <div className="insp-dev__field">
+          <span className="insp-dev__flabel">Focus order</span>
+          <Field
+            title="Position in the tab order; 0 goes back to reading order"
+            type="number"
+            min={0}
+            step={1}
+            precision={0}
+            value={node.dev?.tab ?? null}
+            placeholder="Reading order"
+            onChange={(v) => {
+              const n = typeof v === 'number' ? Math.round(v) : parseInt(String(v), 10)
+              setDev(docId, [node.id], { tab: Number.isFinite(n) && n > 0 ? n : null })
+            }}
+          />
+        </div>
         {contrast &&
           (contrast.ok ? (
             contrast.results.map((r) => (
