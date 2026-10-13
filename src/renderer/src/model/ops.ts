@@ -107,7 +107,7 @@ export function makeDoc(id: string, name: string): Doc {
 }
 
 /** Current document format version (Doc.version). */
-export const DOC_VERSION = 5
+export const DOC_VERSION = 6
 
 /**
  * Upgrade a loaded document to DOC_VERSION without changing how it looks. Returns the same object
@@ -118,7 +118,7 @@ export const DOC_VERSION = 5
 export function migrateDoc(doc: Doc): Doc {
   const v = doc.version ?? 1
   if (v >= DOC_VERSION) return doc
-  // v2 → v3 (components), v3 → v4 (variants), v4 → v5 (text styles) only add optional fields: nothing to rewrite
+  // v2 → v3 (components), v3 → v4 (variants), v4 → v5 (text styles), v5 → v6 (dev info) only add optional fields: nothing to rewrite
   if (v >= 2) return { ...doc, version: DOC_VERSION }
   const nodes: Record<string, CNode> = { ...doc.nodes }
   const hasLineHeight = (id: string): boolean => {
@@ -539,6 +539,11 @@ export function cloneSubtree(doc: Doc, id: string, keepMain = false): string {
   const src = doc.nodes[id]
   if (!src) throw new Error(`Node ${id} not found`)
   const copy: CNode = JSON.parse(JSON.stringify(src))
+  // a copy is not "ready for dev" until someone marks it
+  if (copy.dev?.ready) {
+    delete copy.dev.ready
+    if (!Object.keys(copy.dev).length) delete copy.dev
+  }
   copy.id = newId(doc)
   copy.parent = null
   copy.children = []
