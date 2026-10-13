@@ -106,6 +106,7 @@ const GROUPS: { title: string; items: [string, string][] }[] = [
       ['Reopen closed tab', 'Ctrl+Shift+T'],
       ['Next / previous tab', 'Ctrl+Tab / Ctrl+Shift+Tab'],
       ['Go to dashboard', 'Ctrl+Shift+D'],
+      ['Dev Mode (Design | Dev)', 'D'],
       ['Toggle sidebar', 'Ctrl+\\'],
       ['Search files', 'Ctrl+F']
     ]
@@ -138,11 +139,11 @@ export function LearnPage(): JSX.Element {
       <div className="db-card-panel" data-learn="handoff">
         <p>
           <b>Dev Mode</b> is the <b>Dev</b> switch at the top of the inspector (or press <b>D</b>). The file becomes read-only: select a layer to see its layout rule
-          (Fixed, Fit or Fill), measured size, tokens and notes, and copy it as code. Nothing can be edited by accident. On the dashboard, a file&apos;s menu has
+          (Fixed, Fit or Fill), measured size, tokens and notes, hover to see the distances (redlines), and copy it as code. Nothing can be edited by accident. On the dashboard, a file&apos;s menu has
           <b> Open in Dev Mode</b> to open it straight into this view.
         </p>
         <p>
-          To hand a design to a developer, mark the finished frames with <b>Mark ready for dev</b> in the Layers menu, then use <b>Export handoff…</b> next to
+          To hand a design to a developer, mark the finished frames with <b>Mark ready for dev</b> in the Layers menu (a ready frame you edit later shows <b>Changed since ready</b>), then use <b>Export handoff…</b> next to
           <b> Share</b>. Choose <b>Export folder…</b> or <b>Save as zip…</b>: you get the rules, tokens, components, assets and a PNG per screen as plain files.
           Export again after edits and the new folder carries <b>CHANGES.md</b> with what to rebuild. Claude can do the same through the MCP tools{' '}
           <code>get_dev_spec</code> and <code>export_handoff</code>.

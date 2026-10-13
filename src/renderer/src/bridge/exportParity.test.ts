@@ -72,9 +72,12 @@ const await_pkg = pkg
 
 const withoutTime = (s: string): string => s.split(AT).join('<exportedAt>')
 
+type ToolBody = { files: Record<string, string>; version: number; changes: { previous: number; counts: Record<string, number>; rebuild: string[] } | null; skippedBinary: string[] }
+async function tool_(args: Record<string, unknown> = {}): Promise<ToolBody> {
+  return ((await handlers['export_handoff']({ fileId: id, ...args })) as { body: ToolBody }).body
+}
 async function mcp(args: Record<string, unknown> = {}): Promise<Record<string, string>> {
-  const r = (await handlers['export_handoff']({ fileId: id, ...args })) as { body: { files: Record<string, string> } }
-  return r.body.files
+  return (await tool_(args)).files
 }
 
 function sameText(dialog: Record<string, unknown>, tool: Record<string, string>): void {
@@ -118,6 +121,36 @@ describe('export_handoff and the Export dialog build the same files', () => {
     expect(tool['CHANGES.md']).toContain('Pay later')
     expect(JSON.parse(tool['spec.json']).handoff.version).toBe(2)
     sameText(written[1], tool)
+  })
+
+  it('devNotes off is the same in both, and the notes are gone', async () => {
+    const { screen } = build()
+    const tool = await mcp({ devNotes: false })
+    const written: Array<Record<string, unknown>> = []
+    await runExport(S().docs[id], { frames: [screen], retina: false, rem: false, devNotes: false, kind: 'folder' }, dialogDeps(written))
+    sameText(written[0], tool)
+    expect(JSON.stringify(tool)).not.toContain('Collapses under 640')
+    expect(JSON.stringify(await mcp())).toContain('Collapses under 640')
+  })
+
+  it('reports the number and the change counts; saves no version and leaves the document alone', async () => {
+    const { screen, title } = build()
+    const first = await tool_()
+    expect(first.version).toBe(1)
+    expect(first.changes).toBeNull()
+    expect(first.skippedBinary.some((p) => p.endsWith('.png'))).toBe(true)
+    const written: Array<Record<string, unknown>> = []
+    await runExport(S().docs[id], { frames: [screen], retina: false, rem: false, devNotes: true, kind: 'folder' }, dialogDeps(written))
+    S().setText(id, title, 'Pay later')
+    const before = JSON.stringify(S().docs[id])
+    const names = history.names.length
+    const second = await tool_()
+    expect(second.version).toBe(2)
+    expect(second.changes?.previous).toBe(1)
+    expect(second.changes?.rebuild).toEqual(['Checkout'])
+    expect((await tool_({ version: 7 })).version).toBe(7)
+    expect(history.names.length).toBe(names)
+    expect(JSON.stringify(S().docs[id])).toBe(before)
   })
 
   it('rem on is the same too', async () => {

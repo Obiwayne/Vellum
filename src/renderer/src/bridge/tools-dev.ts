@@ -56,7 +56,7 @@ registerHandler('export_handoff', async (args) => {
     vellum: APP_VERSION,
     fontSource: fontSourceFor({ google: GOOGLE_FONTS })
   }
-  const bundle = await buildExportBundle(doc, { ...(frames ? { frames } : {}), retina: false, rem: args.rem === true, devNotes: true, kind: 'folder', ...(str(args.projectLabel) !== undefined ? { projectLabel: str(args.projectLabel) } : {}), ...(typeof args.mode === 'string' ? { mode: args.mode } : {}) }, deps, version)
+  const bundle = await buildExportBundle(doc, { ...(frames ? { frames } : {}), retina: false, rem: args.rem === true, devNotes: args.devNotes !== false, kind: 'folder', ...(str(args.projectLabel) !== undefined ? { projectLabel: str(args.projectLabel) } : {}), ...(typeof args.mode === 'string' ? { mode: args.mode } : {}) }, deps, version)
   const built: HandoffResult = { ...bundle.built, warnings: [...new Set([...bundle.selectionWarnings, ...bundle.built.warnings])] }
 
   // inline up to the cap, most useful files first; the identical CLAUDE.md copy goes last
@@ -96,6 +96,9 @@ registerHandler('export_handoff', async (args) => {
     warnings,
     inlineBytes: used,
     omitted,
-    skippedBinary: skipped
+    skippedBinary: skipped,
+    version: bundle.version,
+    // what changed since the previous Handoff vN, as the dialog's review shows it; null for a first export
+    changes: bundle.changes ? { previous: bundle.changes.previous, counts: bundle.changes.counts, rebuild: bundle.changes.rebuild } : null
   })
 })

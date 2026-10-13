@@ -56,9 +56,11 @@ describe('Learn page', () => {
     expect([...host.querySelectorAll('h2')].map((h) => h.textContent)).toContain('Developer handoff and Dev Mode')
     const section = host.querySelector('[data-learn="handoff"]')
     const text = section?.textContent ?? ''
-    for (const x of ['Open in Dev Mode', 'Mark ready for dev', 'Export handoff…', 'Export folder…', 'Save as zip…', 'CHANGES.md', 'get_dev_spec', 'export_handoff', 'docs/HANDOFF.md']) {
+    for (const x of ['Open in Dev Mode', 'Mark ready for dev', 'Export handoff…', 'Export folder…', 'Save as zip…', 'Changed since ready', 'CHANGES.md', 'get_dev_spec', 'export_handoff', 'docs/HANDOFF.md']) {
       expect(text, x).toContain(x)
     }
+    // the shortcut list carries the Dev Mode key
+    expect(host.textContent).toContain('Dev Mode (Design | Dev)')
     const opened: string[] = []
     ;(window as unknown as { canvasApi: unknown }).canvasApi = { openExternal: (u: string) => opened.push(u) }
     const link = [...(section?.querySelectorAll('button') ?? [])].find((b) => /HANDOFF\.md/.test(b.textContent ?? ''))
