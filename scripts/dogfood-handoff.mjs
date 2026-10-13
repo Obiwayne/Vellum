@@ -79,6 +79,8 @@ writeFileSync(
   mainFile,
   `const { app, BrowserWindow, nativeImage } = require('electron')
 const fs = require('fs')
+// never the default user-data folder: this process only renders and compares
+app.setPath('userData', ${JSON.stringify(join(work, 'render-user-data'))})
 app.disableHardwareAcceleration()
 app.on('window-all-closed', () => {}) // keep the process alive between renders
 app.whenReady().then(() => {

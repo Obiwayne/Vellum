@@ -93,7 +93,8 @@ its design system, component sheets and every screen and dialog (85 artboards), 
 - **Developer handoff** — tag top-level frames as **screens with breakpoints**, mark them **ready for dev**, add
   notes, state rules and accessibility info, then **Export handoff…** (next to Share) writes a folder or zip a
   developer's own Claude Code can build from: layout rules first, tokens per mode, components with states, assets,
-  fonts, a PNG reference per breakpoint and a delta table between breakpoints. **Dev Mode** (`D`) is a read-only
+  fonts, a PNG reference per breakpoint, a delta table between breakpoints and, from the second export on, a
+  `CHANGES.md` that says what to rebuild. **Dev Mode** (`D`) is a read-only
   inspector with a Spec panel, copy-as-code and **redlines**. Nothing hidden leaks and nothing is uploaded. See
   `docs/HANDOFF.md` (a sample bundle is in `docs/handoff-sample/`).
 - **MCP server** — 49 tools (`write_html`, `update_styles`, `get_screenshot`, `get_jsx` (instances export as

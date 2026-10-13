@@ -36,6 +36,9 @@ export const MOBILE_HTML = `<div style="width:360px;display:flex;flex-direction:
 
 export const UNREADY_HTML = `<div style="width:320px;padding:20px;background:#FFFFFF;color:#0F172A;${FONT}"><div style="font-size:16px">${CANARY.unready}</div></div>`
 
+/** A second, small screen that stays untouched when the first is edited (the "unchanged" side of CHANGES.md). */
+export const RECEIPT_HTML = `<div style="width:320px;display:flex;flex-direction:column;gap:8px;padding:24px;background:#FFFFFF;color:#0F172A;${FONT}"><div style="font-size:20px;font-weight:700">Receipt</div><div style="font-size:14px;color:#475569">Order 1042 is confirmed</div></div>`
+
 /** Launch the built app on a temporary profile and open the Scratchpad. */
 export async function launchApp(outDir) {
   mkdirSync(outDir, { recursive: true })

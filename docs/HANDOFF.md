@@ -20,6 +20,9 @@ A small real export is checked in at [`docs/handoff-sample/`](handoff-sample/) (
    (ready ones are ticked), options (PNG references at 1x and 2x, rem next to px, dev notes) and **Export folder…** or
    **Save as zip…**. The bundle is built in a temporary folder and moved into place, so a failed export leaves
    nothing behind. Each export is saved as a named version `Handoff vN` in the file's history.
+6. **Edit and export again.** The next export is compared with the last `Handoff vN`: it carries a `CHANGES.md` that
+   lists what to rebuild (see below). The export dialog previews the same counts (*Since v3: 1 changed, 4 unchanged.
+   Rebuild: Checkout.*). The first export has no `CHANGES.md`.
 
 Agents can do the same through MCP: `get_dev_spec` (one layer's spec) and `export_handoff` (the whole bundle as an
 inline file map, nothing written to disk). See [MCP.md](MCP.md).
@@ -29,6 +32,7 @@ inline file map, nothing written to disk). See [MCP.md](MCP.md).
 ```
 checkout-handoff-v1/
   HANDOFF.md        how to build from this folder; the quick start. CLAUDE.md is the same file.
+  CHANGES.md        only from the second export on: what changed since the last Handoff vN (see below)
   spec.json         everything, machine readable (schema "vellum.handoff/1"); spec.schema.json next to it
   screens/
     checkout.md             one spec per screen: rules first, then sizes; a table of what changes per breakpoint
@@ -38,7 +42,7 @@ checkout-handoff-v1/
   components/       one file per component the screens use: props, variants, a state table
   assets/           images (original bytes, @2x / @3x only when the pixels exist) and optimised SVG icons
   fonts.md          families, weights, where each comes from, the licence note
-  .handoff.json     per-screen hashes the next export compares against
+  .handoff.json     per-frame content hashes of this export (for a tool that compares two bundles)
 ```
 
 Rules the files follow:
@@ -52,6 +56,31 @@ Rules the files follow:
   state is dropped). Image bytes are never inlined in `spec.json` or the markdown.
 - **Safe text.** Layer names and notes cannot start a heading, an image or a code fence in the markdown.
 - **Same input, same bytes** (apart from the export time and version you supply).
+
+## Updating a build: CHANGES.md
+
+From the second export on, the bundle has `CHANGES.md` and `spec.json` has `changes`. It is made by comparing this
+export with the previous `Handoff vN` from the file's version history (both from the saved documents, so layout
+rounding cannot show up as an edit):
+
+```
+# Changes since handoff v1
+**Rebuild only these:** Checkout.
+**Unchanged:** Receipt.
+## Screens
+### Checkout: changed
+- Tablet › Frame › Total
+  - text: "$89.00" → "$95.00"
+```
+
+- Per screen and component: *added*, *removed*, *changed* or *unchanged*; a changed one lists the layers that differ
+  as `layer path`, `property: old → new`, rule first (layout, size rule), then look, text, notes and state rules.
+  Layers are matched by id, so a rename is a change and not a remove plus an add.
+- Tokens (`--brand: #2563EB → #1D4ED8`, added, no longer used) and assets (added, removed, changed; the same bytes
+  under a new name is no change) are listed after the screens.
+- Only screens this export is about are compared: leaving a screen out of an export does not remove it.
+- If the earlier version cannot be read, the export still works and says so in the warnings instead of writing a
+  `CHANGES.md`.
 
 ## What the developer does
 
@@ -71,7 +100,7 @@ app, copies the bundle to a throwaway folder outside the repo, runs `claude -p` 
 Write, Edit, Glob, Grep), and renders what it wrote at each breakpoint's design size next to the bundle's PNG. The
 prompt, Claude's output, the page it wrote, both PNGs, the diff image and the numbers are saved in `<out-dir>`.
 `scripts/e2e-handoff.mjs` is the unattended check of the export itself (tag, mark ready, export, file tree, nothing
-hidden leaks); both use a temporary profile.
+hidden leaks, then edit a layer, export again and check `CHANGES.md`); both use a temporary profile.
 
 First result (a pixel counts as different when a channel is off by more than 24/255):
 
