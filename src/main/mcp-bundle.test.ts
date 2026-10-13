@@ -68,7 +68,7 @@ describe.skipIf(!haveMcpDeps)('MCP server bundle', () => {
       // an assertion above may have failed before the kill: stop the server (it holds the temp folder as its cwd) before removing it
       if (child && child.exitCode === null && child.signalCode === null) {
         child.kill()
-        await Promise.race([exited, new Promise((r) => setTimeout(r, 5000))])
+        await Promise.race([exited, new Promise((r) => setTimeout(r, 3000))])
       }
       try {
         rmSync(ud, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 })
