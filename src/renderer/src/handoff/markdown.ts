@@ -14,7 +14,7 @@ export interface MarkdownContext {
 
 // Layer names, notes and text come from the document and may hold anything. Before they are printed they are
 // folded to one line (no line breaks, control, line-separator or bidi characters), and anything that could start
-// a block or embed something is escaped: a leading #, fence, quote or list marker, `![`, `<`, and `|` in cells.
+// a block or embed something is escaped: a leading #, fence, quote or list marker, `[`, a backtick, `<`, and `|` in cells.
 const BS = String.fromCharCode(92)
 const CONTROL = new RegExp(
   '[' + [[0, 31], [127, 159], [173, 173], [0x200b, 0x200f], [0x2028, 0x202e], [0x2060, 0x2069], [0xfeff, 0xfeff]].map(([a, b]) => String.fromCharCode(a) + (a === b ? '' : '-' + String.fromCharCode(b))).join('') + ']+',
@@ -24,7 +24,8 @@ const CONTROL = new RegExp(
 /** One printable line of markdown-safe text. */
 export function inline(value: unknown): string {
   let t = String(value ?? '').replace(CONTROL, ' ').replace(/\s+/g, ' ').trim()
-  t = t.split('![').join('!' + BS + '[').split('<').join('&lt;')
+  // `[` covers images (`![`) and links alike; a backtick would open a code span that swallows the rest of the line
+  t = t.split('[').join(BS + '[').split('`').join(BS + '`').split('<').join('&lt;')
   if (/^(#|```|~~~|>|[-+*] |[0-9]+[.)] )/.test(t)) t = BS + t
   return t
 }

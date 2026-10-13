@@ -112,6 +112,13 @@ describe('hostile text', () => {
     }
     expect(md).toContain('Hero # Injected heading !\\[x](http://evil)')
     expect(r.files['HANDOFF.md']).toContain('x y')
+    // links and code spans are neutralised too
+    const g = small()
+    const h = g.add({ type: 'frame', name: 'a [click](http://evil) `code` | pipe', style: { width: 10, height: 10 } }, g.root)
+    setDev(g.doc, h.id, { ready: { at: 1 } })
+    const out = build(g.doc)
+    const page = out.files[Object.keys(out.files).find((p) => p.startsWith('screens/')) as string]
+    expect(page).toContain('a \\[click](http://evil) \\`code\\` | pipe')
     for (const text of Object.values(r.files)) {
       expect(text).not.toMatch(/\u0000|\r/)
     }
