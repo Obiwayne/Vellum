@@ -1,0 +1,17 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`fixture bundle, file by file > has the expected set of files 1`] = `
+[
+  ".handoff.json",
+  "CLAUDE.md",
+  "HANDOFF.md",
+  "components/button.md",
+  "fonts.md",
+  "screens/checkout.md",
+  "spec.json",
+  "spec.schema.json",
+  "tokens/tailwind.css",
+  "tokens/tokens.css",
+  "tokens/tokens.json",
+]
+`;

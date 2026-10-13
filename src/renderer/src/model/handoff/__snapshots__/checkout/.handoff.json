@@ -1,0 +1,27 @@
+{
+  "schema": "vellum.handoff.state/1",
+  "version": 3,
+  "screens": [
+    {
+      "id": "13-0",
+      "slug": "checkout",
+      "breakpoints": [
+        {
+          "frameId": "13-0",
+          "hash": "e05c1f6961b5497fa4835f6da24665ce057eb0199cd5d85dc12a3626f49eef47"
+        },
+        {
+          "frameId": "25-0",
+          "hash": "3239d0167564381c98e783beccc841c7aa1dda17609295afe49518e0417963f5"
+        }
+      ]
+    }
+  ],
+  "components": [
+    {
+      "id": "8-0",
+      "hash": "ca89d4e87e6d13121261adfc0e64a9ae2f77895b972df6aaa5cf99d756129a44"
+    }
+  ],
+  "tokens": "57edad905363b6570962c62e3c2b4eb43e3f7b9ae0c8beae316f3649e1590ffa"
+}

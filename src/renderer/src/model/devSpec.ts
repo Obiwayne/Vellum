@@ -911,7 +911,7 @@ function build(doc: Doc, id: string, opts: SpecOptions, depth: number, index: nu
   const names = new Set<string>()
   for (const v of Object.values(n.style)) for (const t of varsIn(v as string | number)) names.add(t)
   for (const t of varsIn(n.attrs?.fill)) names.add(t)
-  for (const name of names) {
+  for (const name of [...names].sort()) {
     const u = tokenUse(doc, name, precision)
     if (u) spec.tokens.push(u)
   }

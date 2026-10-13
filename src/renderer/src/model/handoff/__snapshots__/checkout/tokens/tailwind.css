@@ -1,0 +1,9 @@
+/* Tailwind CSS v4. Paste into your stylesheet after @import "tailwindcss"; */
+/* Base mode "Light". Other modes (Dark) are in tokens.css under [data-mode="…"]. */
+@theme {
+  --color-bg: #FFFFFF;
+  --color-ink: #111827;
+  --color-primary: oklch(0.55 0.2 260);
+  --color-text: var(--color-ink);
+  --space-4: 16px;
+}

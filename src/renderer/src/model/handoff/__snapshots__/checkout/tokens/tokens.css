@@ -1,0 +1,24 @@
+/* Generated from a Vellum design. Values here are the source of truth; names are suggestions. */
+:root {
+  --color-bg: #FFFFFF;
+  --color-ink: #111827;
+  --color-primary: oklch(0.55 0.2 260);
+  --color-text: var(--color-ink);
+  --space-4: 16px;
+}
+
+[data-mode="Light"] {
+  --color-bg: #FFFFFF;
+  --color-ink: #111827;
+  --color-primary: oklch(0.55 0.2 260);
+  --color-text: var(--color-ink);
+  --space-4: 16px;
+}
+
+[data-mode="Dark"] {
+  --color-bg: #0B0F19;
+  --color-ink: #111827;
+  --color-primary: oklch(0.7 0.15 260);
+  --color-text: #F9FAFB;
+  --space-4: 16px;
+}
