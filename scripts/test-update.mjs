@@ -13,7 +13,7 @@ import { _electron as electron } from 'playwright'
 import { spawnSync } from 'node:child_process'
 import http from 'node:http'
 import { createHash } from 'node:crypto'
-import { createReadStream, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs'
+import { createReadStream, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, realpathSync, rmSync, statSync, writeFileSync } from 'node:fs'
 import { createServer } from 'node:net'
 import { tmpdir } from 'node:os'
 import { join, parse, resolve } from 'node:path'
@@ -67,7 +67,9 @@ if (!newSetupName || !newVersion || !oldVersion || newVersion === oldVersion) {
   finish(2)
 }
 
-const work = mkdtempSync(join(tmpdir(), 'vellum-update-test-'))
+// The runner's %TEMP% is an 8.3 short path (C:\Users\RUNNER~1\...) but Windows reports process and uninstall paths in the long form:
+// resolve it once so the install folder compares equal to both.
+const work = realpathSync.native(mkdtempSync(join(tmpdir(), 'vellum-update-test-')))
 const installDir = join(work, 'app')
 const exe = join(installDir, `${PRODUCT}.exe`)
 // The installer relaunches the new version through the shell, without our environment, so a temp VELLUM_USER_DATA cannot carry
@@ -138,9 +140,15 @@ const realDataStamp = () =>
   ps(`$d = Join-Path ([Environment]::GetFolderPath('ApplicationData')) 'Vellum'; (@('profiles.json', 'profiles', 'bridge-token', 'index.json') | ForEach-Object { $p = Join-Path $d $_; if (Test-Path $p) { "$_=$((Get-Item $p).LastWriteTimeUtc.Ticks)" } else { "$_=none" } }) -join ';'`)
 const realBefore = realDataStamp()
 const productVersion = () => ps(`if (Test-Path '${exe}') { (Get-Item '${exe}').VersionInfo.ProductVersion }`)
-// matched by the executable path under the install folder (Win32_Process, which also reports processes Get-Process cannot read the path of)
-const installedProcs = () => ps(`(Get-CimInstance Win32_Process -Filter "Name = '${PRODUCT}.exe'" -ErrorAction SilentlyContinue | Where-Object { $_.ExecutablePath -and $_.ExecutablePath.StartsWith('${installDir}', [StringComparison]::OrdinalIgnoreCase) } | Measure-Object).Count`)
-const seenProcs = () => ps(`(Get-CimInstance Win32_Process -ErrorAction SilentlyContinue | Where-Object { $_.Name -like '${PRODUCT}*' -or $_.Name -like 'Vellum-Setup-*' } | ForEach-Object { "$($_.Name) pid=$($_.ProcessId) session=$($_.SessionId) path=$($_.ExecutablePath)" }) -join '; '`)
+// the product's processes by executable path (Win32_Process also reports the path of processes Get-Process cannot read)
+const productProcs = () => {
+  const json = ps(`ConvertTo-Json -InputObject @(Get-CimInstance Win32_Process -Filter "Name = '${PRODUCT}.exe'" -ErrorAction SilentlyContinue | ForEach-Object { @{ pid = $_.ProcessId; path = $_.ExecutablePath; session = $_.SessionId } }) -Compress`)
+  try {
+    return [].concat(JSON.parse(json || '[]'))
+  } catch {
+    return []
+  }
+}
 const installerProcs = () => ps(`(Get-Process -ErrorAction SilentlyContinue | Where-Object { $_.ProcessName -like 'Vellum-Setup-*' } | Measure-Object).Count`)
 let app
 let updaterCache = ''
@@ -235,8 +243,8 @@ try {
   await sleep(3000)
   check(productVersion().startsWith(newVersion), `after install() the installed ${PRODUCT}.exe is version ${productVersion()} (expected ${newVersion})`)
   const t2 = Date.now() + 90000
-  while (Date.now() < t2 && Number(installedProcs()) === 0) await sleep(1000)
-  const relaunch = relaunchVerdict({ started: installedProcs(), seen: seenProcs() })
+  while (Date.now() < t2 && !relaunchVerdict({ processes: productProcs(), installDir }).ok) await sleep(1000)
+  const relaunch = relaunchVerdict({ processes: productProcs(), installDir })
   if (!relaunch.ok) say(`${relaunch.detail}; this script runs in session ${ps('(Get-Process -Id $PID).SessionId')}`)
   check(relaunch.ok, relaunch.label)
   const entries = JSON.parse(ps(`$e = @(Get-ChildItem 'HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall' | ForEach-Object { Get-ItemProperty $_.PSPath } | Where-Object { $_.DisplayName -like '${PRODUCT}*' } | ForEach-Object { @{ v = $_.DisplayVersion; u = $_.UninstallString } }); ConvertTo-Json -InputObject $e -Compress`) || '[]')
@@ -246,7 +254,7 @@ try {
   check(ps(`Test-Path (Join-Path ([Environment]::GetFolderPath('LocalApplicationData')) 'Programs\\${PRODUCT}')`) === 'False', 'no second copy appeared in %LOCALAPPDATA%\\Programs')
   const nodesAfter = design && existsSync(design) ? Object.keys(JSON.parse(readFileSync(design, 'utf8')).nodes).length : -1
   check(nodesAfter === nodesBefore, `the design file made in the old version is still there with all its ${nodesAfter} nodes`)
-  check(existsSync(join(testData, 'lockfile')) || Number(installedProcs()) > 0, 'the relaunched version runs on that same data folder')
+  check(existsSync(join(testData, 'lockfile')) || relaunchVerdict({ processes: productProcs(), installDir }).ok, 'the relaunched version runs on that same data folder')
   check(realDataStamp() === realBefore, 'the real %APPDATA%/Vellum user data (profiles.json, profiles, bridge token) was not touched, not even by the relaunched app')
   check(ps(`Test-Path (Join-Path ([Environment]::GetFolderPath('ApplicationData')) '${PRODUCT}')`) === 'True', 'the relaunched app keeps its data in its own folder (named after its exe)')
 } catch (e) {

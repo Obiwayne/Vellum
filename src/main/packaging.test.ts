@@ -1,6 +1,8 @@
 // Packaging config sanity (electron-builder.yml, package.json): one version source, the installer is per user and keeps data,
 // only what the packaged main process needs is a production dependency.
-import { existsSync, readFileSync, readdirSync } from 'node:fs'
+import { execFileSync } from 'node:child_process'
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, realpathSync, rmSync } from 'node:fs'
+import { tmpdir } from 'node:os'
 import { createRequire } from 'node:module'
 import { join } from 'node:path'
 import { pathToFileURL } from 'node:url'
@@ -285,28 +287,63 @@ describe('release workflow (.github/workflows/release.yml)', () => {
 })
 
 describe('relaunch check decision (update test)', () => {
-  const load = async (): Promise<{ relaunchVerdict: (o: { started: unknown; seen: string }) => { ok: boolean; label: string; detail: string } }> =>
+  type Verdict = { ok: boolean; label: string; detail: string }
+  const load = async (): Promise<{ relaunchVerdict: (o: { processes: unknown; installDir: string }) => Verdict }> =>
     import(pathToFileURL(join(process.cwd(), 'scripts', 'relaunch-verdict.mjs')).href)
-  it('passes when the new version runs from the install folder', async () => {
+  const B = String.fromCharCode(92)
+  const win = (...parts: string[]): string => parts.join(B)
+  const dir = win('C:', 'Users', 'x', 'Temp', 'vellum-update-test-1', 'app')
+  const exe = win(dir, 'VellumInstallTest.exe')
+  it('passes when the new version runs from the install folder, ignoring case and slash style', async () => {
     const { relaunchVerdict } = await load()
-    expect(relaunchVerdict({ started: '1', seen: 'VellumInstallTest.exe pid=4 session=1' })).toMatchObject({ ok: true, detail: '' })
+    expect(relaunchVerdict({ processes: [{ pid: 4, path: exe, session: 1 }], installDir: dir }).ok).toBe(true)
+    expect(relaunchVerdict({ processes: [{ pid: 4, path: exe.toUpperCase().split(B).join('/'), session: 1 }], installDir: dir }).ok).toBe(true)
+    expect(relaunchVerdict({ processes: [{ pid: 4, path: exe }], installDir: dir + B }).ok).toBe(true)
   })
-  it('fails, and says what it saw, when nothing was relaunched; there is no CI exemption', async () => {
+  it('fails, and says what it saw, when nothing runs from the folder; there is no CI exemption', async () => {
     const { relaunchVerdict } = await load()
     const prev = process.env.CI
     process.env.CI = 'true'
     try {
-      const v = relaunchVerdict({ started: '0', seen: 'Vellum-Setup-0.1.1.exe pid=9 session=0' })
-      expect(v.ok).toBe(false)
-      expect(v.detail).toContain('Vellum-Setup-0.1.1.exe pid=9 session=0')
-      expect(relaunchVerdict({ started: '', seen: '' }).ok).toBe(false)
+      const none = relaunchVerdict({ processes: [], installDir: dir })
+      expect(none.ok).toBe(false)
+      expect(none.detail).toContain('processes seen: none')
+      const elsewhere = win('C:', 'elsewhere', 'VellumInstallTest.exe')
+      const other = relaunchVerdict({ processes: [{ pid: 9, path: elsewhere, session: 0 }, { pid: 10, path: null, session: 0 }], installDir: dir })
+      expect(other.ok).toBe(false)
+      expect(other.detail).toContain('pid=9 session=0 path=' + elsewhere)
+      expect(other.detail).toContain('(unreadable)')
+      expect(relaunchVerdict({ processes: [{ pid: 1, path: win(dir + '-other', 'VellumInstallTest.exe') }], installDir: dir }).ok).toBe(false) // a sibling folder with the same prefix
+      expect(relaunchVerdict({ processes: undefined, installDir: dir }).ok).toBe(false)
     } finally {
       if (prev === undefined) delete process.env.CI
       else process.env.CI = prev
     }
   })
+  it('matches a long-path process when the expected install folder is given as an 8.3 short path; a wrong folder fails', async () => {
+    const { relaunchVerdict } = await load()
+    const base = mkdtempSync(join(tmpdir(), 'vellum-verdict-longname-'))
+    try {
+      const installDir = join(base, 'app')
+      mkdirSync(installDir)
+      const long = realpathSync.native(installDir)
+      const ps = `(New-Object -ComObject Scripting.FileSystemObject).GetFolder('${installDir}').ShortPath`
+      const short = execFileSync('powershell', ['-NoProfile', '-Command', ps], { encoding: 'utf8', windowsHide: true }).trim()
+      const proc = [{ pid: 7, path: win(long, 'VellumInstallTest.exe'), session: 1 }]
+      expect(relaunchVerdict({ processes: proc, installDir: long }).ok).toBe(true)
+      expect(relaunchVerdict({ processes: proc, installDir: short }).ok).toBe(true) // short is RUNNER~1-style on a runner, the same path where 8.3 names are off
+      const wrong = join(base, 'other')
+      mkdirSync(wrong)
+      expect(relaunchVerdict({ processes: proc, installDir: wrong }).ok).toBe(false)
+    } finally {
+      rmSync(base, { recursive: true, force: true })
+    }
+  })
   it('is what test-update.mjs uses', () => {
-    expect(read('scripts/test-update.mjs')).toContain('relaunchVerdict({ started: installedProcs()')
+    expect(read('scripts/test-update.mjs')).toContain('relaunchVerdict({ processes: productProcs(), installDir })')
+  })
+  it('compares against the long form of the temp install folder (the runner TEMP is an 8.3 path)', () => {
+    expect(read('scripts/test-update.mjs')).toContain("const work = realpathSync.native(mkdtempSync(join(tmpdir(), 'vellum-update-test-')))")
   })
 })
 

@@ -2,7 +2,7 @@
 // stdio and offers the same tools as the source. (The packaged app runs it with its own Electron as Node: scripts/smoke-packaged-mcp.mjs.)
 // Needs the mcp dependencies (`cd mcp && npm ci`). Without them the suite is skipped locally, but fails when CI is set, so a CI
 // run can never go green without building and running the bundle.
-import { spawn, spawnSync } from 'node:child_process'
+import { spawn, spawnSync, type ChildProcessWithoutNullStreams } from 'node:child_process'
 import { existsSync, mkdtempSync, readFileSync, rmSync, statSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -31,11 +31,15 @@ describe.skipIf(!haveMcpDeps)('MCP server bundle', () => {
     const expected = [...src.matchAll(/registerTool\(\s*'([^']+)'/g)].map((m) => m[1]).sort()
     expect(expected.length).toBeGreaterThan(40)
     const ud = mkdtempSync(join(tmpdir(), 'vellum-bundle-test-'))
+    let child: ChildProcessWithoutNullStreams | undefined
+    let exited: Promise<unknown> = Promise.resolve()
     try {
-      const child = spawn(process.execPath, [join(process.cwd(), bundle)], { cwd: ud, env: { ...process.env, VELLUM_USER_DATA: ud }, stdio: ['pipe', 'pipe', 'pipe'] })
+      child = spawn(process.execPath, [join(process.cwd(), bundle)], { cwd: ud, env: { ...process.env, VELLUM_USER_DATA: ud }, stdio: ['pipe', 'pipe', 'pipe'] })
+      const proc = child
+      exited = new Promise((r) => proc.once('exit', r)) // created right after spawn, so an early exit still resolves it
       let buf = ''
       const replies = new Map<number, { result?: { tools?: { name: string }[] }; error?: unknown }>()
-      child.stdout.on('data', (d) => {
+      proc.stdout.on('data', (d) => {
         buf += d
         let i
         while ((i = buf.indexOf('\n')) >= 0) {
@@ -47,7 +51,7 @@ describe.skipIf(!haveMcpDeps)('MCP server bundle', () => {
           }
         }
       })
-      const send = (o: unknown): void => void child.stdin.write(JSON.stringify(o) + '\n')
+      const send = (o: unknown): void => void proc.stdin.write(JSON.stringify(o) + '\n')
       const waitFor = async (id: number): Promise<{ result?: { tools?: { name: string }[] } }> => {
         for (let i = 0; i < 200 && !replies.has(id); i++) await new Promise((r) => setTimeout(r, 50))
         return replies.get(id) ?? {}
@@ -57,12 +61,21 @@ describe.skipIf(!haveMcpDeps)('MCP server bundle', () => {
       send({ jsonrpc: '2.0', method: 'notifications/initialized' })
       send({ jsonrpc: '2.0', id: 2, method: 'tools/list', params: {} })
       const tools = ((await waitFor(2)).result?.tools ?? []).map((t) => t.name).sort()
-      const exited = new Promise((r) => child.once('exit', r))
-      child.kill()
+      proc.kill()
       await exited // the child runs with the temp folder as cwd: release it before deleting
       expect(tools).toEqual(expected)
     } finally {
-      rmSync(ud, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 })
+      // an assertion above may have failed before the kill: stop the server (it holds the temp folder as its cwd) before removing it
+      if (child && child.exitCode === null && child.signalCode === null) {
+        child.kill()
+        await Promise.race([exited, new Promise((r) => setTimeout(r, 3000))])
+      }
+      try {
+        rmSync(ud, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 })
+      } catch (e) {
+        console.warn(`could not remove ${ud}: ${String(e)}`)
+        // a runner's scanner can hold the temp folder for a moment (EBUSY); a leftover temp folder is not a test failure
+      }
     }
   }, 60_000)
 })
