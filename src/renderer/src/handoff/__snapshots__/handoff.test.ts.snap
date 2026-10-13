@@ -203,6 +203,8 @@ exports[`snapshots of every file for the fixture > screens/checkout.md 1`] = `
 
 Screen \`9-0\`, 2 breakpoints. Build to the layout rules first; the numbers describe the design size.
 
+Breakpoints, widest first: Desktop 1280px, Mobile 390px. Suggestion: write the narrowest layout first and add \`min-width\` media queries for the wider ones (container queries if the parent is a component). Widths in between follow the layout rules.
+
 ## Desktop · 1280px wide
 
 Frame \`9-0\` · ready in handoff v1 · reference \`screens/checkout.desktop.png\`
@@ -251,6 +253,14 @@ Frame \`9-0\` · ready in handoff v1 · reference \`screens/checkout.desktop.png
 ## Mobile · 390px wide
 
 Frame \`19-0\` · ready in handoff v1 · reference \`screens/checkout.mobile.png\`
+
+Compared with Desktop (the base): 1 layer change, 3 not shown. Build the base, then apply these.
+
+| Layer | What changes |
+|---|---|
+| (the frame) | layout: Column, gap 16, padding 24 → Column, gap 12, padding 16 |
+
+Not at Mobile (present at Desktop): Card; Variant=Default; Locked divider
 
 - **Checkout mobile — Column, gap 12, padding 16, width 390, height 844** \`19-0\`
   - size 390px × 844px; at 0, 0 in artboard (not measured: from the authored style)
@@ -1076,6 +1086,29 @@ exports[`snapshots of every file for the fixture > spec.json 1`] = `
           },
           "ready": {
             "at": 1
+          },
+          "delta": {
+            "base": "Desktop",
+            "changes": [
+              {
+                "path": "",
+                "changes": [
+                  {
+                    "property": "layout",
+                    "from": "Column, gap 16, padding 24",
+                    "to": "Column, gap 12, padding 16"
+                  }
+                ]
+              }
+            ],
+            "onlyHere": [],
+            "notHere": [
+              "Card",
+              "Variant=Default",
+              "Locked divider"
+            ],
+            "hiddenHere": [],
+            "ambiguous": []
           }
         }
       ]
@@ -1754,6 +1787,86 @@ exports[`snapshots of every file for the fixture > spec.schema.json 1`] = `
       ],
       "additionalProperties": false
     },
+    "Delta": {
+      "type": "object",
+      "properties": {
+        "base": {
+          "type": "string"
+        },
+        "changes": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "path": {
+                "type": "string"
+              },
+              "changes": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "property": {
+                      "type": "string"
+                    },
+                    "from": {
+                      "type": "string"
+                    },
+                    "to": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "property",
+                    "from",
+                    "to"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            },
+            "required": [
+              "path",
+              "changes"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "onlyHere": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "notHere": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "hiddenHere": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "ambiguous": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "base",
+        "changes",
+        "onlyHere",
+        "notHere",
+        "hiddenHere",
+        "ambiguous"
+      ],
+      "additionalProperties": false
+    },
     "Breakpoint": {
       "type": "object",
       "properties": {
@@ -1783,6 +1896,9 @@ exports[`snapshots of every file for the fixture > spec.schema.json 1`] = `
         },
         "png": {
           "type": "string"
+        },
+        "delta": {
+          "$ref": "#/$defs/Delta"
         },
         "root": {
           "$ref": "#/$defs/Node"
@@ -2858,6 +2974,8 @@ exports[`snapshots of every file for the fixture > with measured rects and rem o
 
 Screen \`9-0\`, 2 breakpoints. Build to the layout rules first; the numbers describe the design size.
 
+Breakpoints, widest first: Desktop 100.25px, Mobile 100.25px. Suggestion: write the narrowest layout first and add \`min-width\` media queries for the wider ones (container queries if the parent is a component). Widths in between follow the layout rules.
+
 ## Desktop · 100.25px (6.2656rem) wide
 
 Frame \`9-0\` · ready in handoff v1 · reference \`screens/checkout.desktop.png\`
@@ -2908,6 +3026,14 @@ Frame \`9-0\` · ready in handoff v1 · reference \`screens/checkout.desktop.png
 Frame \`19-0\` · ready in handoff v1 · reference \`screens/checkout.mobile.png\`
 
 > 2 nodes have fractional sizes (e.g. 100.25 × 40 for "Checkout mobile"); build with the rule, not the number.
+
+Compared with Desktop (the base): 1 layer change, 3 not shown. Build the base, then apply these.
+
+| Layer | What changes |
+|---|---|
+| (the frame) | layout: Column, gap 16, padding 24 → Column, gap 12, padding 16 |
+
+Not at Mobile (present at Desktop): Card; Variant=Default; Locked divider
 
 - **Checkout mobile — Column, gap 12, padding 16, width 390, height 844** \`19-0\`
   - size 100.25px (6.2656rem) × 40px (2.5rem); at 0, 0 in artboard

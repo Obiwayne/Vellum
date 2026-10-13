@@ -1,5 +1,6 @@
 // Types of the handoff bundle writer (T62 / H3). The writer is one pure function: Doc + options -> file map.
 // See docs/factory/T58-plan.md sections 3, 5, 8 to 11 and docs/factory/T62-plan.md.
+import type { BreakpointDelta } from './deltas'
 import type { PropDef, StylePatch } from '../model/types'
 import type { Measure, NodeSpec, TokenUse } from '../model/devSpec'
 
@@ -133,6 +134,8 @@ export interface BreakpointSpec {
   ready?: { at: number }
   /** reserved path of the PNG reference (H4 renders it) */
   png: string
+  /** what differs from the base (the widest breakpoint); absent on the base itself */
+  delta?: BreakpointDelta
   root: DevNodeSpec
 }
 

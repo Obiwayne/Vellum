@@ -1,6 +1,8 @@
 // Markdown specs: screens/<slug>.md and components/<slug>.md. Per node the layout intent comes first (the rule),
 // the measured numbers second, as docs/factory/T58-plan.md sections 4 and 10 ask.
 import { formatNumber, isFractional, sizingText, toRem, type ColorSpec, type EffectSpec, type PaintSpec } from '../model/devSpec'
+import type { BreakpointDelta } from './deltas'
+import { isEmptyDelta } from './deltas'
 import type { AssetRecord, ComponentSpec, DevNodeSpec, ScreenSpec } from './types'
 
 export interface MarkdownContext {
@@ -170,9 +172,39 @@ const idsOf = (root: DevNodeSpec): Set<string> => {
   return s
 }
 
+/** What differs at a narrower breakpoint, against the widest. Empty when nothing does. */
+export function deltaLines(name: string, d: BreakpointDelta): string[] {
+  const out: string[] = []
+  const label = (p: string): string => (p ? p : '(the frame)')
+  if (isEmptyDelta(d)) return [`Same layers and rules as ${inline(d.base)}: nothing changes at ${inline(name)}.`, '']
+  const counts = [
+    d.changes.length ? `${d.changes.length} layer${d.changes.length === 1 ? '' : 's'} change` : '',
+    d.onlyHere.length ? `${d.onlyHere.length} only here` : '',
+    d.notHere.length + d.hiddenHere.length ? `${d.notHere.length + d.hiddenHere.length} not shown` : ''
+  ].filter(Boolean)
+  out.push(`Compared with ${inline(d.base)} (the base): ${counts.join(', ')}. Build the base, then apply these.`, '')
+  if (d.changes.length) {
+    out.push('| Layer | What changes |', '|---|---|')
+    for (const c of d.changes) out.push(`| ${cell(label(c.path))} | ${cell(c.changes.map((x) => `${x.property}: ${x.from} → ${x.to}`).join('; '))} |`)
+    out.push('')
+  }
+  const list = (title: string, items: string[]): void => {
+    if (items.length) out.push(`${title}: ${items.map((p) => inline(p)).join('; ')}`, '')
+  }
+  list(`Only at ${inline(name)}`, d.onlyHere)
+  list(`Not at ${inline(name)} (present at ${inline(d.base)})`, d.notHere)
+  list(`Hidden at ${inline(name)}`, d.hiddenHere)
+  if (d.ambiguous.length) out.push(`> Layers with the same name were matched in order (${d.ambiguous.map((p) => inline(p)).join(', ')}); check them by eye.`, '')
+  return out
+}
+
 export function screenMarkdown(screen: ScreenSpec, ctx: MarkdownContext): string {
   const out: string[] = [`# ${inline(screen.name)}`, '']
   out.push(`Screen \`${idText(screen.id)}\`, ${screen.breakpoints.length} breakpoint${screen.breakpoints.length === 1 ? '' : 's'}. Build to the layout rules first; the numbers describe the design size.`, '')
+  if (screen.breakpoints.length > 1) {
+    const widths = screen.breakpoints.filter((b) => b.width !== undefined).map((b) => `${inline(b.bp)} ${formatNumber(b.width as number)}px`)
+    out.push(`Breakpoints, widest first: ${widths.join(', ')}. Suggestion: write the narrowest layout first and add \`min-width\` media queries for the wider ones (container queries if the parent is a component). Widths in between follow the layout rules.`, '')
+  }
   for (const bp of screen.breakpoints) {
     const heading = bp.bp === 'default' ? 'Layout' : inline(bp.bp)
     out.push(bp.width !== undefined ? `## ${heading} · ${px(bp.width, ctx.rem)} wide` : `## ${heading} · width fits its content (not measured)`, '')
@@ -182,6 +214,7 @@ export function screenMarkdown(screen: ScreenSpec, ctx: MarkdownContext): string
       const e = frac[0]
       out.push(`> ${frac.length} node${frac.length === 1 ? ' has' : 's have'} fractional sizes (e.g. ${formatNumber(e.width)} × ${formatNumber(e.height)} for "${inline(e.name)}"); build with the rule, not the number.`, '')
     }
+    if (bp.delta) out.push(...deltaLines(bp.bp, bp.delta))
     nodeLines(bp.root, 0, ctx, out)
     out.push(...assetLines(idsOf(bp.root), ctx))
     out.push('')
