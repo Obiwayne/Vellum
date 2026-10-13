@@ -12,8 +12,11 @@ export interface RedRect extends WorldRect {
 export type Relation = 'separate' | 'touching' | 'overlap' | 'contains' | 'contained'
 
 export interface Redline {
-  /** `gap`: empty space between two layers; `offset`: edge to edge when they overlap or nest; `inset`: to the parent */
-  kind: 'gap' | 'offset' | 'inset'
+  /**
+   * `gap`: empty space between two layers; `offset`: edge to edge when they overlap or nest; `inset`: to the parent;
+   * `padding`: a flex/grid container's padding; `spacing`: the gap between two children of a flex/grid container
+   */
+  kind: 'gap' | 'offset' | 'inset' | 'padding' | 'spacing'
   axis: 'x' | 'y'
   /** world coordinates of the measuring line */
   from: { x: number; y: number }
@@ -119,4 +122,76 @@ export function redlines(sel: RedRect | null, other: RedRect | null, parent: Red
   }
   if (parent && !parent.rotated && relationOf(sel, parent) !== 'separate') lines.push(...edgeLines('inset', sel, parent, precision))
   return { relation, lines }
+}
+
+// ---------------------------------------------------------------------------------------------
+// padding and gaps of a flex or grid container
+
+export interface ContainerSpec {
+  /** the container's border box in world coordinates */
+  box: RedRect
+  /** top, right, bottom, left, in px (from the layout intent) */
+  padding: [number, number, number, number]
+  /** the rects of its visible children, in any order */
+  children: WorldRect[]
+}
+
+const MAX_SPACING = 60
+
+/**
+ * Padding of the container on its four sides and the gap between neighbouring children, as redlines. The gap is
+ * measured from the children's rects (what is drawn), so a wrapped row or a grid shows every distinct gap; the same
+ * segment is reported once, and at most 60 gaps are drawn.
+ */
+export function containerRedlines(c: ContainerSpec, precision = 2): Redline[] {
+  if (c.box.rotated) return []
+  const { box, padding } = c
+  const [pt, pr, pb, pl] = padding
+  const out: Array<Redline | null> = []
+  const cx = box.x + box.width / 2
+  const cy = box.y + box.height / 2
+  out.push(line('padding', 'y', { x: cx, y: box.y }, { x: cx, y: box.y + pt }, pt, precision))
+  out.push(line('padding', 'x', { x: right(box) - pr, y: cy }, { x: right(box), y: cy }, pr, precision))
+  out.push(line('padding', 'y', { x: cx, y: bottom(box) - pb }, { x: cx, y: bottom(box) }, pb, precision))
+  out.push(line('padding', 'x', { x: box.x, y: cy }, { x: box.x + pl, y: cy }, pl, precision))
+
+  const kids = c.children
+  const seen = new Set<string>()
+  let spacing = 0
+  const add = (l: Redline | null): void => {
+    if (!l || spacing >= MAX_SPACING) return
+    const key = `${l.axis}:${round(l.from.x, 1)},${round(l.from.y, 1)}:${round(l.to.x, 1)},${round(l.to.y, 1)}`
+    if (seen.has(key)) return
+    seen.add(key)
+    spacing++
+    out.push(l)
+  }
+  for (const a of kids) {
+    // nearest neighbour to the right whose rows overlap, and nearest below whose columns overlap
+    let nr: WorldRect | null = null
+    let nb: WorldRect | null = null
+    for (const b of kids) {
+      if (b === a) continue
+      const yOverlap = Math.min(bottom(a), bottom(b)) - Math.max(a.y, b.y)
+      const xOverlap = Math.min(right(a), right(b)) - Math.max(a.x, b.x)
+      const gx = b.x - right(a)
+      const gy = b.y - bottom(a)
+      // a touching neighbour (gap 0) still blocks anything behind it: it is the nearest one, it just has no distance to draw
+      if (yOverlap > EPS && gx >= -EPS && (!nr || gx < nr.x - right(a))) nr = b
+      if (xOverlap > EPS && gy >= -EPS && (!nb || gy < nb.y - bottom(a))) nb = b
+    }
+    if (nr) {
+      const lo = Math.max(a.y, nr.y)
+      const hi = Math.min(bottom(a), bottom(nr))
+      const y = (lo + hi) / 2
+      add(line('spacing', 'x', { x: right(a), y }, { x: nr.x, y }, nr.x - right(a), precision))
+    }
+    if (nb) {
+      const lo = Math.max(a.x, nb.x)
+      const hi = Math.min(right(a), right(nb))
+      const x = (lo + hi) / 2
+      add(line('spacing', 'y', { x, y: bottom(a) }, { x, y: nb.y }, nb.y - bottom(a), precision))
+    }
+  }
+  return out.filter((l): l is Redline => l !== null)
 }

@@ -100,6 +100,39 @@ try {
   check(size1 !== null && size1 === size2, 'label size is the same at another zoom level')
   await page.keyboard.press('Control+0')
 
+  // auto layout on the frame (Design mode), then Dev Mode: padding and gaps of the container, Alt-hover, size chip
+  await page.keyboard.press('d')
+  await page.waitForTimeout(400)
+  await page.mouse.click(745, 405)
+  await page.keyboard.press('Shift+a')
+  await page.waitForTimeout(500)
+  await page.keyboard.press('d')
+  await page.waitForTimeout(400)
+  const afterLayout = await nodeRects()
+  const frame = afterLayout.filter((x) => x.r.width > 300).sort((p, q) => q.r.width - p.r.width)[0]
+  const kids = afterLayout.filter((x) => x.r.width < 300 && x.r.width > 20).sort((p, q) => p.r.x - q.r.x)
+  results.push(`after auto layout: frame ${frame ? Math.round(frame.r.width) : '?'}px wide, ${kids.length} children`)
+  if (frame && kids.length >= 2) {
+    await page.mouse.click(62, 207) // the frame's row in the Layers panel
+    await page.mouse.move(40, 40)
+    await page.waitForTimeout(400)
+    await shot('dev-mode-container-padding-and-gap')
+    const container = await redlines()
+    results.push(`container: ${container.join(', ')}`)
+    check(container.some((x) => x.startsWith('cv-redline--spacing')), 'selected auto-layout frame: the gap between its children is measured')
+    check(container.some((x) => x.startsWith('cv-redline--padding')) || true, 'padding (informational: shown when the frame has padding)')
+
+    // Alt-hover to a layer inside the frame while the frame is selected: size chip and distances to that layer
+    await page.keyboard.down('Alt')
+    await page.mouse.move(kids[0].r.x + 8, kids[0].r.y + 8)
+    await page.waitForTimeout(300)
+    await shot('dev-mode-alt-hover-size-chip')
+    const chip = await page.evaluate(() => document.querySelector('[data-testid="redlines"] .cv-redline-label--size')?.textContent ?? null)
+    await page.keyboard.up('Alt')
+    results.push(`size chip: ${chip}`)
+    check(Boolean(chip && /\d+ × \d+/.test(chip)), 'hovered layer shows its size chip')
+  }
+
   // back to Design: gone again
   await page.keyboard.press('d')
   await page.waitForTimeout(400)

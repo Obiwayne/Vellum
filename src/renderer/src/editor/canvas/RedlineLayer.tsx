@@ -33,6 +33,15 @@ export function RedlineLayer({ scene, cam }: { scene: RedlineScene; cam: Camera 
           </div>
         )
       })}
+      {scene.sizeLabels.map((l, i) => (
+        <div
+          key={'s' + i}
+          className="cv-redline-label cv-redline-label--size"
+          style={{ left: sx(l.at.x + l.at.width / 2), top: sy(l.at.y + l.at.height) + 14 }}
+        >
+          {l.text}
+        </div>
+      ))}
       {scene.skipped && scene.noteAt && (
         <div
           className="cv-redline-label cv-redline-label--note"

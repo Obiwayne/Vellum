@@ -337,3 +337,19 @@ body.cv-hide-ui .ed-canvas {
 .cv-redline-label--note {
   background: var(--color-dev);
 }
+
+/* the hovered layer's size chip: same colour family, quieter than a distance */
+.cv-redline-label--size {
+  background: rgb(255 77 109 / 0.16);
+  color: var(--color-redline);
+  border: 1px solid var(--color-redline);
+  line-height: 13px;
+}
+
+/* the hovered layer's size chip: same colour family, quieter than a distance */
+.cv-redline-label--size {
+  background: rgb(255 77 109 / 0.16);
+  color: var(--color-redline);
+  border: 1px solid var(--color-redline);
+  line-height: 13px;
+}
