@@ -1,7 +1,7 @@
 // Editor keyboard shortcuts (tools, selection, arrange, clipboard, zoom, text formatting). Installed by CanvasView
 // for the mounted doc. Runs in the capture phase so editor keys (e.g. Ctrl+Shift+R = Paste to
 // replace) win over app shortcuts; it skips text inputs, open menus/popovers and modals.
-import { getStore } from '../model/store'
+import { getStore, notifyEditRefused } from '../model/store'
 import { isEyedropperActive, isPopoverOpen } from '../ui'
 import type { Tool } from '../model/types'
 import * as A from './canvas/actions'
@@ -149,11 +149,42 @@ export function installCanvasShortcuts(docId: string): () => void {
   return () => window.removeEventListener('keydown', onKey, true)
 }
 
+type DevKeyEvent = Pick<KeyboardEvent, 'ctrlKey' | 'metaKey' | 'shiftKey' | 'altKey' | 'code' | 'key'>
+
+const TOOL_EDIT_CODES = new Set(['KeyF', 'KeyR', 'KeyP', 'KeyT', 'KeyS'])
+
+/**
+ * Keys that would change the document in Design mode (delete, nudge, group, paste, text formatting, layer order,
+ * drawing tools, opacity digits). Dev Mode ignores them; this is what decides to show the read-only toast.
+ * Keys that need a selection to do anything only count when something is selected.
+ */
+export function isEditKey(e: DevKeyEvent, hasSelection: boolean): boolean {
+  const ctrl = e.ctrlKey || e.metaKey
+  const { shiftKey: shift, altKey: alt, code, key } = e
+  const needsSel = key === 'Delete' || key === 'Backspace' || key.startsWith('Arrow') || /^(Digit|Numpad)\d$/.test(code)
+  if (ctrl && alt) return ['KeyV', 'KeyK', 'KeyB', 'KeyG'].includes(code)
+  if (ctrl) {
+    if (['KeyD', 'KeyX', 'KeyV', 'KeyG', 'KeyB', 'KeyI', 'KeyU', 'BracketRight', 'BracketLeft'].includes(code)) return true
+    return shift && ['KeyR', 'KeyL', 'KeyH', 'KeyI', 'KeyJ'].includes(code)
+  }
+  if (alt) return code === 'KeyC'
+  if (shift) return ['KeyF', 'KeyA', 'KeyI'].includes(code) || ((key === 'Backspace' || key.startsWith('Arrow')) && hasSelection)
+  if (TOOL_EDIT_CODES.has(code) || code === 'BracketRight' || code === 'BracketLeft') return true
+  return needsSel && hasSelection
+}
+
 /**
  * Keys that still work in Dev Mode: selection, zoom, tools that do not draw, comments and copy as code.
  * Everything else is left alone, so no edit shortcut (delete, nudge, group, paste, text formatting) runs.
  */
-export function devModeKey(docId: string, e: Pick<KeyboardEvent, 'ctrlKey' | 'metaKey' | 'shiftKey' | 'altKey' | 'code' | 'key'>): boolean {
+export function devModeKey(docId: string, e: DevKeyEvent): boolean {
+  const handled = devModeNavKey(docId, e)
+  // a key that would edit in Design mode says so instead of doing nothing
+  if (!handled && isEditKey(e, (getStore().editors[docId]?.selection.length ?? 0) > 0)) notifyEditRefused(docId)
+  return handled
+}
+
+function devModeNavKey(docId: string, e: DevKeyEvent): boolean {
   const s = getStore()
   const ctrl = e.ctrlKey || e.metaKey
   const { shiftKey: shift, altKey: alt, code, key } = e

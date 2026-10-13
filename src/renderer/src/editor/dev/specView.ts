@@ -1,5 +1,8 @@
 // What the Dev Mode Spec panel shows for one layer: NodeSpec (model/devSpec.ts) turned into labelled rows.
 // Pure, no React and no DOM, so the panel is a thin renderer and the rows are unit-tested.
+import type { Doc } from '../../model/types'
+import { propDefsOf } from '../../model/components'
+import { variantValues } from '../../model/variants'
 import { formatNumber, intentLine, type ColorSpec, type EffectSpec, type NodeSpec, type PaintSpec, type SizeRule } from '../../model/devSpec'
 
 export interface SpecRow {
@@ -85,8 +88,35 @@ function effectRow(e: EffectSpec): SpecRow {
   return { label: e.kind === 'inner-shadow' ? 'Inner shadow' : 'Shadow', value: `${parts.join(' ')} ${c}`.trim(), swatch: e.color?.hex8 ?? undefined }
 }
 
-/** The sections of the Spec panel for a layer; empty sections are left out. */
-export function specSections(spec: NodeSpec): SpecSection[] {
+/** What a main component (or one variant of a set) defines, for its Component section. */
+export interface MainInfo {
+  name: string
+  /** the set it belongs to, when it is a variant */
+  setName?: string
+  /** variant property -> this main's value and the options of the set */
+  variants: Array<{ prop: string; value: string; options: string[] }>
+  /** boolean / text / swap properties with their defaults */
+  props: Array<{ name: string; type: string; default: string }>
+}
+
+/** Main-component facts of a node, or null when it is not a main. */
+export function mainInfo(doc: Doc, id: string): MainInfo | null {
+  const n = doc.nodes[id]
+  if (!n?.component) return null
+  const defs = propDefsOf(doc, id)
+  const values = variantValues(doc, id)
+  const set = n.component.set ? doc.nodes[n.component.set] : undefined
+  const info: MainInfo = { name: n.component.name, variants: [], props: [] }
+  if (set?.componentSet) info.setName = set.componentSet.name
+  for (const d of defs) {
+    if (d.type === 'variant') info.variants.push({ prop: d.name, value: values[d.id] ?? String(d.default), options: d.options ?? [] })
+    else info.props.push({ name: d.name, type: d.type, default: String(d.default) })
+  }
+  return info
+}
+
+/** The sections of the Spec panel for a layer; empty sections are left out. `main` adds the main-component facts. */
+export function specSections(spec: NodeSpec, main?: MainInfo | null): SpecSection[] {
   const out: SpecSection[] = []
   const box: SpecRow[] = [
     { label: 'Width', value: px(spec.box.width) },
@@ -154,6 +184,16 @@ export function specSections(spec: NodeSpec): SpecSection[] {
     for (const [k, v] of Object.entries(c.variant ?? {})) rows.push({ label: k, value: v })
     for (const [k, v] of Object.entries(c.props ?? {})) rows.push({ label: k, value: String(v) })
     if (c.overrides?.length) rows.push({ label: 'Overrides', value: `${c.overrides.length} layer${c.overrides.length === 1 ? '' : 's'}` })
+    out.push({ id: 'component', title: 'Component', rows })
+  }
+
+  if (main && !spec.component) {
+    const rows: SpecRow[] = [
+      { label: 'Component', value: main.name },
+      { label: 'Kind', value: main.setName ? `Main component (variant of ${main.setName})` : 'Main component' }
+    ]
+    for (const v of main.variants) rows.push({ label: v.prop, value: v.options.length > 1 ? `${v.value} (of ${v.options.join(', ')})` : v.value, copy: v.value })
+    for (const p of main.props) rows.push({ label: p.name, value: `${p.default} (${p.type} property)`, copy: p.default })
     out.push({ id: 'component', title: 'Component', rows })
   }
 
