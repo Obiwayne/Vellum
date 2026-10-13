@@ -27,7 +27,7 @@ describe.skipIf(!haveMcpDeps)('MCP server bundle', () => {
   }, 60_000)
 
   it('runs from a folder without node_modules and lists every tool the source registers', async () => {
-    const src = readFileSync('mcp/src/index.ts', 'utf8')
+    const src = readFileSync('mcp/src/server.ts', 'utf8')
     const expected = [...src.matchAll(/registerTool\(\s*'([^']+)'/g)].map((m) => m[1]).sort()
     expect(expected.length).toBeGreaterThan(40)
     const ud = mkdtempSync(join(tmpdir(), 'vellum-bundle-test-'))
