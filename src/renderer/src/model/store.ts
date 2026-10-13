@@ -147,7 +147,7 @@ export interface Store {
   /** tag a top-level frame as a screen at a breakpoint (null clears); false when the node cannot be a screen */
   setScreen(docId: string, id: string, screen: { name: string; bp: string } | null): boolean
   /** mark frames ready for dev in handoff version `at` (null clears) */
-  setReady(docId: string, ids: string[], at: number | null): void
+  setReady(docId: string, ids: string[], at: number | null, hashes?: Record<string, string>): void
   /** select the main component of an instance (or of a node inside one) and switch to its page; false when there is none */
   goToMain(docId: string, id: string): boolean
   /** generic escape hatch: run an arbitrary recipe on the doc draft as one undoable step */
@@ -807,8 +807,8 @@ export const useStore = create<Store>()((set, get) => {
       return true
     },
 
-    setReady(docId, ids, at) {
-      mutate(docId, at === null ? 'Clear ready for dev' : 'Mark ready for dev', (d) => void dev.setReady(d, ids, at), { derived: true })
+    setReady(docId, ids, at, hashes) {
+      mutate(docId, at === null ? 'Clear ready for dev' : 'Mark ready for dev', (d) => void dev.setReady(d, ids, at, hashes), { derived: true })
     },
 
     deleteTextStyle(docId, styleId) {

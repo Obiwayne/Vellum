@@ -1,0 +1,199 @@
+/* Export handoff dialog (T65): layout and states of D02 / D05 in the app's own tokens. */
+.eh-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  min-height: 360px;
+}
+
+.eh-col {
+  padding: 16px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+}
+
+.eh-col--review {
+  border-left: 1px solid var(--border, rgb(255 255 255 / 0.08));
+}
+
+.eh-label {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-muted, #9a9a9a);
+  margin-top: 6px;
+}
+
+.eh-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 240px;
+  overflow: auto;
+}
+
+.eh-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.eh-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.eh-badge {
+  flex-shrink: 0;
+  font-size: 11px;
+  padding: 1px 8px;
+  border-radius: 999px;
+  color: var(--text-muted, #9a9a9a);
+}
+
+.eh-badge--ready {
+  color: var(--color-ready);
+  background: rgb(63 185 80 / 0.14);
+}
+
+.eh-badge--changed {
+  color: var(--color-changed);
+  background: rgb(227 160 8 / 0.16);
+}
+
+.eh-banner,
+.eh-notice {
+  font-size: 12px;
+  padding: 8px 10px;
+  border-radius: 6px;
+  background: rgb(227 160 8 / 0.14);
+  color: var(--color-changed);
+}
+
+.eh-counts {
+  display: flex;
+  gap: 20px;
+}
+
+.eh-counts > div {
+  display: flex;
+  flex-direction: column;
+}
+
+.eh-counts b {
+  font-size: 18px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.eh-counts span {
+  font-size: 11px;
+  color: var(--text-muted, #9a9a9a);
+}
+
+.eh-tree {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 6px;
+  background: rgb(0 0 0 / 0.28);
+  font: 12px/1.5 'DM Mono', ui-monospace, monospace;
+  overflow: auto;
+  max-height: 220px;
+  white-space: pre;
+}
+
+.eh-warn {
+  margin: 0;
+  padding-left: 16px;
+  font-size: 12px;
+  color: var(--color-changed);
+}
+
+.eh-state {
+  padding: 16px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.eh-h {
+  margin: 0;
+  font-size: 14px;
+}
+
+.eh-muted {
+  margin: 0;
+  font-size: 12px;
+  color: var(--text-muted, #9a9a9a);
+}
+
+.eh-ok {
+  margin: 0;
+  color: var(--color-ready);
+  font-size: 13px;
+}
+
+.eh-error {
+  margin: 0;
+  color: #ff5a5f;
+  font-size: 13px;
+}
+
+.eh-path {
+  margin: 0;
+  font: 12px/1.4 'DM Mono', ui-monospace, monospace;
+  word-break: break-all;
+}
+
+.eh-foot {
+  margin-right: auto;
+  font-size: 12px;
+  color: var(--text-muted, #9a9a9a);
+  align-self: center;
+}
+
+.eh-progress {
+  height: 6px;
+  border-radius: 3px;
+  background: rgb(255 255 255 / 0.08);
+  overflow: hidden;
+}
+
+.eh-progress__bar {
+  height: 100%;
+  background: var(--color-dev);
+  transition: width 0.15s ease-out;
+}
+
+/* Layers: ready / changed dot on a top-level frame row, and the inspector row */
+.lp-layer__ready {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  margin-left: 4px;
+  background: var(--color-ready);
+}
+
+.lp-layer__ready--changed {
+  background: var(--color-changed);
+}
+
+.insp-ready {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border, rgb(255 255 255 / 0.08));
+  font-size: 12px;
+}
+
+.insp-ready__changed {
+  color: var(--color-changed);
+  font-size: 11px;
+}

@@ -8,6 +8,7 @@ import { ProfilePicker } from './profile/ProfilePicker'
 import { useProfiles } from './profile/profile'
 import { HistoryView } from './history/HistoryView'
 import { SaveVersionModal } from './history/SaveVersionModal'
+import { ExportHandoffDialog } from './editor/handoff/ExportHandoffDialog'
 import { RecoveryPrompt } from './shell/RecoveryPrompt'
 
 export default function App(): JSX.Element {
@@ -34,6 +35,7 @@ export default function App(): JSX.Element {
         )}
       </main>
       <SaveVersionModal />
+      <ExportHandoffDialog />
       <RecoveryPrompt />
       <UpdateReminder />
       <UpdateDialog />
