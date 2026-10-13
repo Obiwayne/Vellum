@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react'
 import { ChevronDown, Code, FileDown, PackageOpen } from 'lucide-react'
-import { Button, Menu, Popover, Segmented, type MenuEntry } from '../../ui'
+import { Button, IconButton, Menu, Popover, Segmented, type MenuEntry } from '../../ui'
 import { activePage, getStore, useStore } from '../../model/store'
 import { nodeToHtml } from '../../model/html'
 import { Avatar } from '../../profile/parts'
@@ -114,6 +114,12 @@ export function TopBar({ docId }: { docId: string }): JSX.Element {
       >
         {Math.round(zoom * 100)}% <ChevronDown size={12} />
       </button>
+      <IconButton
+        icon={<PackageOpen size={15} />}
+        label="Export handoff…"
+        tooltipSide="bottom"
+        onClick={() => openExportHandoff(docId)}
+      />
       <Button ref={shareRef} size="sm" onClick={() => setShareOpen((o) => !o)}>
         Share
       </Button>

@@ -23,9 +23,9 @@ const shot = async (name) => {
 }
 const check = (ok, label) => results.push(`${ok ? 'passed' : 'FAILED'}: ${label}`)
 const text = () => page.evaluate(() => document.body.innerText)
+// the top bar's own button (next to Share); the Share popover keeps an item too
 const openDialog = async () => {
-  await page.getByRole('button', { name: 'Share' }).click()
-  await page.getByRole('button', { name: 'Export handoff…' }).click()
+  await page.locator('.insp-top').getByRole('button', { name: 'Export handoff…' }).click()
   await page.waitForTimeout(500)
 }
 const dots = () => page.evaluate(() => [...document.querySelectorAll('.lp-layer__ready')].map((e) => e.getAttribute('data-ready')))
@@ -56,6 +56,23 @@ try {
   await page.keyboard.press('Escape')
   await page.waitForTimeout(300)
 
+  // top bar: the button sits next to Share and both fit in the panel
+  const bar = await page.evaluate(() => {
+    const top = document.querySelector('.insp-top')
+    const btn = top?.querySelector('button[aria-label="Export handoff…"]')?.getBoundingClientRect()
+    const share = [...(top?.querySelectorAll('button') ?? [])].find((b) => b.textContent?.trim() === 'Share')?.getBoundingClientRect()
+    const panel = top?.getBoundingClientRect()
+    return btn && share && panel ? { btnRight: btn.right, shareLeft: share.left, shareRight: share.right, panelRight: panel.right, panelLeft: panel.left, btnLeft: btn.left } : null
+  })
+  results.push(`top bar: ${JSON.stringify(bar)}`)
+  check(Boolean(bar && bar.btnLeft >= bar.panelLeft && bar.shareRight <= bar.panelRight + 1 && bar.btnRight <= bar.shareLeft), 'top bar: Export handoff button next to Share, both inside the panel')
+  await page.screenshot({ path: join(out, `${String(++n).padStart(2, '0')}-top-bar.png`), clip: { x: 1160, y: 40, width: 280, height: 60 } })
+  // the Share popover keeps its item
+  await page.getByRole('button', { name: 'Share' }).click()
+  check(await page.getByRole('button', { name: 'Export handoff…' }).count() >= 2, 'Share popover still has Export handoff…')
+  await page.keyboard.press('Escape')
+  await page.waitForTimeout(200)
+
   // empty state: nothing is ready
   await openDialog()
   await shot('dialog-empty-nothing-ready')
@@ -82,7 +99,7 @@ try {
   check(/Export handoff · v1/.test(body) && /Ready/.test(body) && /Writes a decrypted copy/.test(body), 'dialog: title with the number, Ready badge, decrypted-copy line')
   check(/HANDOFF\.md/.test(body) && /screens\//.test(body), 'dialog: file tree preview')
   await page.getByRole('button', { name: 'Export folder…' }).click()
-  await page.waitForFunction(() => /exported|Could not export/.test(document.body.innerText), null, { timeout: 60000 })
+  await page.waitForFunction(() => /Handoff v\d+ exported|Could not export/.test(document.body.innerText), null, { timeout: 60000 })
   await shot('dialog-done')
   const done = await text()
   check(/Handoff v1 exported/.test(done), 'dialog: done state')
