@@ -4,6 +4,7 @@ import { DASHBOARD, activeDocId, getStore } from '../model/store'
 import { exportPagePdf } from '../editor/canvas/actions'
 import { openUpdates } from './updates'
 import { useSaveVersionDialog } from '../history/versions'
+import { openExportHandoff } from '../editor/handoff/exportDialog'
 
 const api = (): Window['canvasApi'] | undefined => window.canvasApi
 
@@ -74,6 +75,7 @@ export const commands = {
     const id = s.historyDocId ?? activeDocId(s)
     if (id) useSaveVersionDialog.getState().open(id)
   },
+  exportHandoff: (): void => openExportHandoff(activeDocId(getStore())),
   exportPagePdf: (): void => {
     const id = activeDocId(getStore())
     if (id) void exportPagePdf(id)
@@ -100,6 +102,7 @@ export function appMenu(): MenuEntry[] {
         { label: 'Show Version History', shortcut: 'Ctrl+Alt+H', onSelect: commands.showHistory, disabled: !docId },
         { type: 'separator' },
         { label: 'Export PDF of All Artboards…', onSelect: commands.exportPagePdf, disabled: !docId },
+        { label: 'Export Handoff…', onSelect: commands.exportHandoff, disabled: !docId },
         { type: 'separator' },
         { label: 'Exit', onSelect: commands.exit }
       ]

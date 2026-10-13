@@ -28,6 +28,7 @@ import { StrokeSection, TextSection, UnderlineSection } from './TextSection'
 import { SelectionColorsSection } from './SelectionColorsSection'
 import { OtherStylesSection } from './OtherStylesSection'
 import { SpecPanel } from '../dev/SpecPanel'
+import { ReadyRow } from '../handoff/ReadyRow'
 import './inspector.css'
 
 const EMPTY: string[] = []
@@ -84,6 +85,7 @@ function SelectionInspector({ docId, ids }: { docId: string; ids: string[] }): J
     )
   return (
     <div key={key}>
+      {ids.length === 1 && <ReadyRow docId={docId} id={ids[0]} />}
       <ComponentSection docId={docId} ids={ids} />
       <LayoutSection ctx={ctx} />
       {constrainable && <ConstraintsSection ctx={ctx} />}
