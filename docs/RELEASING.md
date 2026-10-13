@@ -14,7 +14,7 @@ A release is a tag. Pushing a tag like `v1.0.0` runs `.github/workflows/release.
    The tag must equal the `package.json` version with a `v` in front. If it does not, the workflow fails at its first step and builds nothing.
 4. Watch the **Release** run under the repository's Actions tab. It runs `npm ci`, typecheck and `npm test`, builds the installer and uploads it to the draft.
 5. Open the draft under Releases. It holds three files: `Vellum-Setup-1.0.0.exe`, `Vellum-Setup-1.0.0.exe.blockmap` and `latest.yml`.
-6. Write the release notes in the draft's body. The update card shows this text as the release notes.
+6. Write the release notes in the draft's body. The update card shows this text as the release notes. For 1.0.0 paste `docs/RELEASE_NOTES_1.0.0.md`; for later versions write a new file the same way.
 7. Install the `.exe` from the draft on a clean Windows user and check it opens. The installer is unsigned for now, so Windows shows "Windows protected your PC": More info, Run anyway.
 8. Click **Publish release**. Installed copies find it on their next check (15 seconds after start, then every 4 hours).
 
