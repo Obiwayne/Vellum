@@ -683,6 +683,28 @@ function inheritedStyle(doc: Doc, id: string, key: string): string | number | un
   return undefined
 }
 
+/** Own vertical padding and border of a layer (px), which a measured box includes but its text lines do not. */
+function verticalInsets(doc: Doc, n: CNode): number {
+  const pad = layoutIntent(doc, n.id).padding
+  const border = (side: string): number => {
+    const style = n.style[`border${side}Style`] ?? n.style.borderStyle
+    if (style === 'none' || style === 'hidden') return 0
+    for (const key of [`border${side}Width`, 'borderWidth']) {
+      const w = numericSize(n.style[key] as string | number | undefined)
+      if (w !== null) return w
+    }
+    // shorthands: `1px solid #E2E8F0`
+    for (const key of [`border${side}`, 'border']) {
+      const v = n.style[key]
+      if (typeof v !== 'string' || /^\s*(none|hidden|0)/.test(v)) continue
+      const m = /(?:^|\s)(\d*\.?\d+)px(?:\s|$)/.exec(v)
+      if (m) return parseFloat(m[1])
+    }
+    return 0
+  }
+  return (pad[0] || 0) + (pad[2] || 0) + border('Top') + border('Bottom')
+}
+
 function textSpecOf(doc: Doc, n: CNode, mode: string | null, rect: WorldRect | null, opts: SpecOptions, precision: number): TextSpec {
   const get = (k: string): string | number | undefined => {
     const v = inheritedStyle(doc, n.id, k)
@@ -710,7 +732,8 @@ function textSpecOf(doc: Doc, n: CNode, mode: string | null, rect: WorldRect | n
   } else if (rect && rect.height > 0 && n.visible) {
     const counted = opts.lineCount?.(n.id)
     const lines = counted && counted > 0 ? counted : content.split('\n').length
-    lineHeightPx = rect.height / lines
+    // the measured box includes the layer's own vertical padding and border: the line box is what is left
+    lineHeightPx = Math.max(0, rect.height - verticalInsets(doc, n)) / lines
     lineHeightSource = counted ? 'measured' : 'estimated'
   }
 

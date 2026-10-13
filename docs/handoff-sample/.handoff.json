@@ -1,0 +1,14 @@
+{
+  "schema": "vellum.handoff.state/1",
+  "version": 1,
+  "screens": {
+    "checkout": {
+      "2-0": "be114c4b16782e75",
+      "23-0": "ccd12a332bf47b4c"
+    }
+  },
+  "components": {},
+  "tokens": "741638a58d84769d",
+  "textStyles": "741638a58d84769d",
+  "assets": "741638a58d84769d"
+}
