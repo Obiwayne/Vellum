@@ -220,7 +220,9 @@ describe('nodeSpec: box and precision', () => {
     expect(ca.box.width).toBe(347.5)
     expect(ca.flowIndex).toBe(0)
     expect(cb.flowIndex).toBe(1)
-    expect(ca.artboardBox).toEqual({ x: 18, y: 28 })
+    // flow children carry no offsets at all
+    expect(ca.artboardBox).toBeUndefined()
+    expect(cb.artboardBox).toBeUndefined()
   })
 
   it('lists fractional sizes', () => {
@@ -440,6 +442,13 @@ describe('text, effects and gradients', () => {
     const { doc, root, add } = setup()
     const r = add({ type: 'rect', style: { width: 1, height: 1, backgroundImage: 'url(data:image/png;base64,AAAA)' } }, root)
     expect(nodeSpec(doc, r.id)!.paints[0]).toEqual({ kind: 'fill', type: 'image', value: 'data-url' })
+    const rs = nodeSpec(doc, r.id)!
+    expect(JSON.stringify(rs)).not.toContain('AAAA')
+    expect(rs.style.authored.backgroundImage).toBe('url(data-url)')
+    expect(rs.style.resolved.backgroundImage).toBe('url(data-url)')
+    expect(doc.nodes[r.id].style.backgroundImage).toBe('url(data:image/png;base64,AAAA)')
+    const q = add({ type: 'rect', style: { width: 1, height: 1, background: 'url("data:image/svg+xml;utf8,<svg/>") center / cover' } }, root)
+    expect(JSON.stringify(nodeSpec(doc, q.id))).not.toContain('svg+xml')
     const img = add({ type: 'image', attrs: { src: 'data:image/png;base64,AAAA', alt: 'Logo' }, style: { width: 1, height: 1, objectFit: 'cover' } }, root)
     const s = nodeSpec(doc, img.id)!
     expect(s.image).toEqual({ alt: 'Logo', objectFit: 'cover' })

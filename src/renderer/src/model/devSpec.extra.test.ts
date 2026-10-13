@@ -60,7 +60,11 @@ describe('instances', () => {
     expect(twinSub.id).toBeTruthy()
     expect(spec.children.map((c) => c.text?.content)).toEqual(['Hello'])
     expect(spec.component?.ref).toBe(card.id)
-    expect(JSON.stringify(spec.component)).toContain('overrides')
+    // override keys are main-side ids; the spec reports the twin ids that exist in its own tree
+    expect(spec.component?.overrides).toEqual([twinSub.id, doc.nodes[inst].children.map((c) => doc.nodes[c]).find((n) => n.srcId === title.id)!.id])
+    expect(spec.component?.overrides).not.toContain('')
+    comp.setOverride(doc, inst, card.id, { style: { opacity: 0.5 } })
+    expect(nodeSpec(doc, inst)!.component?.overrides).toContain(inst)
   })
 
   it('a variant instance names its variant values', () => {

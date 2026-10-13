@@ -766,13 +766,24 @@ function radiusOf(s: Style): NodeSpec['radius'] | undefined {
   return a === b && b === c && c === d ? (a === 0 ? undefined : a) : [a, b, c, d]
 }
 
+const DATA_URL_RE = /url\(\s*(?:(['"])data:[\s\S]*?\1|data:[^)]*)\s*\)/gi
+
+/** Image bytes are exported as assets, never inlined in the spec: `url(data:...)` becomes `url(data-url)`. */
+const stripDataUrls = (v: string): string => (v.length > 5 && /data:/i.test(v) ? v.replace(DATA_URL_RE, 'url(data-url)') : v)
+
+function authoredStyle(style: Style): Style {
+  const out: Style = {}
+  for (const [k, v] of Object.entries(style)) out[k] = typeof v === 'string' ? stripDataUrls(v) : v
+  return out
+}
+
 /** Resolved style: every key as CSS text, tokens substituted for the mode. */
 function resolveStyle(doc: Doc, style: Style, mode: string | null, precision: number): Record<string, string> {
   const out: Record<string, string> = {}
   for (const [k, v] of Object.entries(style)) {
     if (v === undefined || v === null || v === '') continue
     const text = typeof v === 'number' ? cssValue(k, round(v, precision)) : cssValue(k, v)
-    out[k] = typeof v === 'string' ? substituteVars(doc, text, mode) : text
+    out[k] = typeof v === 'string' ? stripDataUrls(substituteVars(doc, text, mode)) : text
   }
   return out
 }
@@ -818,7 +829,9 @@ function build(doc: Doc, id: string, opts: SpecOptions, depth: number, index: nu
     const parentRect = n.parent ? opts.measure?.(n.parent) ?? null : null
     const top = topLevelOf(doc, id)
     const abRect = top ? opts.measure?.(top) ?? null : null
-    if (rect && abRect) artboardBox = { x: round(rect.x - abRect.x, precision), y: round(rect.y - abRect.y, precision) }
+    // flow children carry an order index only: an offset they do not own would be copied as stale CSS
+    if (flow) artboardBox = undefined
+    else if (rect && abRect) artboardBox = { x: round(rect.x - abRect.x, precision), y: round(rect.y - abRect.y, precision) }
     else if (!rect) {
       const wp = modelWorldPosition(doc, id)
       const tp = top ? modelWorldPosition(doc, top) ?? { x: 0, y: 0 } : null
@@ -843,7 +856,7 @@ function build(doc: Doc, id: string, opts: SpecOptions, depth: number, index: nu
     box,
     sizing: { w: sizeRule(doc, id, 'w', resolved), h: sizeRule(doc, id, 'h', resolved) },
     layout: layoutIntent(doc, id, resolved),
-    style: { authored: { ...n.style }, resolved },
+    style: { authored: authoredStyle(n.style), resolved },
     paints: [],
     effects: [],
     tokens: [],
@@ -911,7 +924,20 @@ function build(doc: Doc, id: string, opts: SpecOptions, depth: number, index: nu
     else if (main?.name) comp.name = main.name
     if (main?.component?.variant) comp.variant = { ...main.component.variant }
     if (n.instance.props && Object.keys(n.instance.props).length) comp.props = { ...n.instance.props }
-    if (n.instance.overrides && Object.keys(n.instance.overrides).length) comp.overrides = Object.keys(n.instance.overrides)
+    if (n.instance.overrides && Object.keys(n.instance.overrides).length) {
+      // override keys are main-side ids ('' = the instance itself): report the ids that exist in this spec's tree
+      const twins = new Map<string, string>()
+      const walk = (cid: string): void => {
+        for (const k of doc.nodes[cid]?.children ?? []) {
+          const c = doc.nodes[k]
+          if (c?.srcId !== undefined && !twins.has(c.srcId)) twins.set(c.srcId, k)
+          walk(k)
+        }
+      }
+      walk(id)
+      const ids = Object.keys(n.instance.overrides).map((key) => (key === '' ? id : twins.get(key))).filter((v): v is string => v !== undefined)
+      if (ids.length) comp.overrides = ids
+    }
     spec.component = comp
   }
 
