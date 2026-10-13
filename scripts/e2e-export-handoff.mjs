@@ -32,9 +32,11 @@ const dots = () => page.evaluate(() => [...document.querySelectorAll('.lp-layer_
 
 try {
   // the native save dialog answers with a fixed path
-  await app.evaluate(({ dialog }, filePath) => {
-    dialog.showSaveDialog = async () => ({ canceled: false, filePath })
-  }, target)
+  // (each export gets the next folder name, like a user picking acme-handoff-v1, v2...)
+  await app.evaluate(({ dialog }, root) => {
+    let k = 0
+    dialog.showSaveDialog = async () => ({ canceled: false, filePath: `${root}${process.platform === 'win32' ? String.fromCharCode(92) : '/'}acme-handoff-v${++k}` })
+  }, exportRoot)
 
   await page.waitForTimeout(2500)
   await page.locator('input:not([type=file])').first().fill('Tester')
@@ -130,6 +132,18 @@ try {
   await shot('dialog-changed-badge-v2')
   const b2 = await text()
   check(/Export handoff · v2/.test(b2) && /Changed since ready/.test(b2), 'dialog: next number is v2 and the frame shows Changed since ready')
+  check(/Since v1: 1 changed/.test(b2), 'dialog: the diff preview says what changed since v1')
+  await page.getByRole('button', { name: 'Export folder…' }).click()
+  await page.waitForFunction(() => /Handoff v2 exported|Could not export/.test(document.body.innerText), null, { timeout: 60000 })
+  await shot('dialog-done-v2-with-changes')
+  const target2 = join(exportRoot, 'acme-handoff-v2')
+  check(existsSync(join(target2, 'CHANGES.md')), 'second export: CHANGES.md is in the bundle')
+  if (existsSync(join(target2, 'CHANGES.md'))) {
+    const md = readFileSync(join(target2, 'CHANGES.md'), 'utf8')
+    results.push(`CHANGES.md: ${md.split(/\r?\n/).filter(Boolean).slice(0, 8).join(' | ')}`)
+    check(/Since handoff v1|Changes since handoff v1/.test(md) && /Rebuild only these/.test(md) && /later/.test(md), 'CHANGES.md names the changed screen and the new text')
+  }
+  check(!existsSync(join(target, 'CHANGES.md')), 'first export has no CHANGES.md')
 } catch (e) {
   results.push(`FAILED: script error: ${String(e.message).slice(0, 300)}`)
 } finally {

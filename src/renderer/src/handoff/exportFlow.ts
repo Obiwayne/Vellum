@@ -9,9 +9,10 @@ import { topLevelOf } from '../model/ops'
 import { buildHandoff } from './index'
 import { planAssets, planScreenPngs, runAssetJobs, type AssetEngine } from './assets'
 import { selectFrames } from './collect'
-import { handoffVersionName, nextHandoffNumber, previousHandoff } from './ready'
+import { handoffVersionName, nextHandoffNumber, previousHandoff, previousHandoffBefore } from './ready'
+import { diffSpecs, type ChangeSet } from './diff'
 import { slug } from './paths'
-import type { BundleFiles, FontSource, HandoffResult } from './types'
+import type { BundleFiles, FontSource, HandoffResult, HandoffSpec } from './types'
 
 export interface ExportRequest {
   /** top-level frame ids to export */
@@ -30,7 +31,9 @@ export interface ExportDeps {
   engine: AssetEngine
   write: (args: HandoffExportArgs) => Promise<HandoffExportResult>
   saveVersion: (name: string) => Promise<unknown>
-  listVersions: () => Promise<ReadonlyArray<{ name?: string | null; createdAt?: number }>>
+  listVersions: () => Promise<ReadonlyArray<{ id?: string; name?: string | null; createdAt?: number }>>
+  /** the document as it was in a history version, for the diff against the previous hand-off */
+  loadVersion?: (versionId: string) => Promise<Doc | null>
   now: () => string
   vellum: string
   fontSource?: (family: string) => FontSource
@@ -54,6 +57,8 @@ export interface Preview {
   files: string[]
   /** the newest earlier export recorded in version history */
   previous?: { version: number; at: number }
+  /** what changed since it: the same numbers CHANGES.md carries (absent on a first export) */
+  changes?: { previous: number; counts: ChangeSet['counts']; rebuild: string[]; tokens: number; assets: number }
 }
 
 export type ExportOutcome =
@@ -95,10 +100,32 @@ const pageOf = (doc: Doc, id: string): string | null => {
 
 export const folderNameFor = (doc: Doc, version: number): string => `${slug(doc.name, 'handoff')}-handoff-v${version}`
 
-async function assemble(doc: Doc, req: ExportRequest, deps: ExportDeps, version: number) {
+/**
+ * What changed since the previous "Handoff vN" in version history. Both sides are built from documents (the earlier one
+ * from its saved version, with the frames that were ready then) without measurement, so rounding in a layout pass can
+ * never look like an edit. Null on a first export, or when the earlier version cannot be read.
+ */
+async function changesSince(source: Doc, req: ExportRequest, deps: ExportDeps, versions: Awaited<ReturnType<ExportDeps['listVersions']>>, version: number, frames: string[]): Promise<ChangeSet | null> {
+  const prev = previousHandoffBefore(versions, version)
+  if (!prev || !deps.loadVersion) return null
+  const loaded = await deps.loadVersion(prev.id).catch(() => null)
+  if (!loaded) return null
+  const prevDoc = req.devNotes ? loaded : withoutNotes(loaded)
+  const prevFrames = selectFrames(prevDoc).ids
+  const spec = async (d: Doc, f: string[], v: number): Promise<HandoffSpec> => {
+    const assets = (await planAssets(d, { frames: f })).records
+    const out = buildHandoff(d, { frames: f, version: v, exportedAt: 'diff', vellum: deps.vellum, assets, ...(deps.fontSource ? { fontSource: deps.fontSource } : {}) })
+    return JSON.parse(out.files['spec.json']) as HandoffSpec
+  }
+  return diffSpecs(await spec(prevDoc, prevFrames, prev.version), await spec(source, frames, version), prev.version)
+}
+
+async function assemble(doc: Doc, req: ExportRequest, deps: ExportDeps, version: number, versions: Awaited<ReturnType<ExportDeps['listVersions']>>) {
   const source = req.devNotes ? doc : withoutNotes(doc)
   const plan = await planAssets(source, { frames: req.frames, ...(deps.measure ? { measure: deps.measure } : {}) })
+  const changes = await changesSince(source, req, deps, versions, version, req.frames).catch(() => null)
   const built = buildHandoff(source, {
+    ...(changes ? { changes } : {}),
     frames: req.frames,
     version,
     exportedAt: deps.now(),
@@ -109,14 +136,14 @@ async function assemble(doc: Doc, req: ExportRequest, deps: ExportDeps, version:
     assets: plan.records,
     warnings: plan.warnings
   })
-  return { source, plan, built }
+  return { source, plan, built, changes }
 }
 
 /** Everything the dialog shows before anything is written. Cheap enough to run on every change of the options. */
 export async function previewExport(doc: Doc, req: ExportRequest, deps: ExportDeps): Promise<Preview> {
   const versions = await deps.listVersions()
   const version = nextHandoffNumber(versions)
-  const { plan, built } = await assemble(doc, req, deps, version)
+  const { plan, built, changes } = await assemble(doc, req, deps, version, versions)
   const spec = JSON.parse(built.files['spec.json'] ?? '{}') as {
     screens?: Array<{ breakpoints?: Array<{ png?: string; frameId: string }> }>
     components?: Array<{ ref: string; name: string; variants: Array<{ ref: string }> }>
@@ -144,7 +171,8 @@ export async function previewExport(doc: Doc, req: ExportRequest, deps: ExportDe
     pulls: [...byPage.entries()].map(([page, names]) => ({ page, names: [...new Set(names)].sort() })),
     warnings: built.warnings,
     files,
-    ...(previousHandoff(versions) ? { previous: previousHandoff(versions) } : {})
+    ...(previousHandoff(versions) ? { previous: previousHandoff(versions) } : {}),
+    ...(changes ? { changes: { previous: changes.previous, counts: changes.counts, rebuild: changes.rebuild, tokens: changes.tokens.length, assets: changes.assets.length } } : {})
   }
 }
 
@@ -158,8 +186,9 @@ export async function runExport(doc: Doc, req: ExportRequest, deps: ExportDeps, 
   try {
     const frames = selectFrames(doc, req.frames).ids
     if (!frames.length) return { ok: false, error: 'No screens are chosen.' }
-    const version = nextHandoffNumber(await deps.listVersions())
-    const { source, plan, built } = await assemble(doc, { ...req, frames }, deps, version)
+    const versions = await deps.listVersions()
+    const version = nextHandoffNumber(versions)
+    const { source, plan, built } = await assemble(doc, { ...req, frames }, deps, version, versions)
     if (options.signal?.aborted) return { ok: false, canceled: true, stage: 'building' }
 
     const pngs = planScreenPngs(built.files['spec.json'], req.retina)

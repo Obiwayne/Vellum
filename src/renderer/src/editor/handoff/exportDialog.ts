@@ -9,7 +9,7 @@ import { fontSourceFor } from '../../handoff/assets/fonts'
 import type { ExportDeps } from '../../handoff/exportFlow'
 import { renderNodePng } from '../inspector/exporting'
 import { GOOGLE_FONTS } from '../inspector/fonts'
-import { listVersions, saveNamedVersion } from '../../history/versions'
+import { listVersions, loadVersionDoc, saveNamedVersion } from '../../history/versions'
 import { version as APP_VERSION } from '../../../../../package.json'
 
 interface ExportDialogState {
@@ -42,6 +42,7 @@ export function appExportDeps(docId: string, localFonts?: string[]): ExportDeps 
     },
     saveVersion: (name) => saveNamedVersion(docId, name),
     listVersions: () => listVersions(docId),
+    loadVersion: (versionId) => loadVersionDoc(docId, versionId),
     now: () => new Date().toISOString(),
     vellum: APP_VERSION,
     fontSource: fontSourceFor({ google: GOOGLE_FONTS, local: localFonts })
