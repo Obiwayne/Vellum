@@ -48,6 +48,9 @@ configuration is needed. See `docs/SECURITY.md`.
 
 To use a non-default port: `claude mcp add vellum -e VELLUM_PORT=29174 -- node <path-to-Vellum>/mcp/dist/index.js`
 
+**From claude.ai (remote).** To use Vellum from claude.ai on the web or your phone, run the remote connector
+(`VellumRemote.cmd`) behind a tunnel; see `docs/REMOTE.md`.
+
 ## Response format
 
 Every file-scoped tool returns two text blocks:
