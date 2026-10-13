@@ -192,6 +192,12 @@ export async function startConnector(opts: ConnectorOptions): Promise<Connector>
     })
   })
   server.on('request', (req: IncomingMessage, res: ServerResponse) => {
+    // every tunnel request except successful MCP calls (those are logged per tool), so a client that can't connect shows up
+    if (viaTunnel(req))
+      res.on('finish', () => {
+        const path = (req.url ?? '').split('?')[0]
+        if (!(path === '/mcp' && res.statusCode < 400)) audit({ request: `${req.method} ${path}`, status: res.statusCode, ua: String(req.headers['user-agent'] ?? '').slice(0, 80), ...ipOf(req) })
+      })
     handle(req, res, port).catch((e) => {
       const status = e instanceof HttpError || e instanceof OAuthError ? e.status : 500
       if (status === 500) log(`error on ${req.method} ${req.url}: ${e instanceof Error ? e.stack : e}`)

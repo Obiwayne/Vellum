@@ -1,6 +1,7 @@
 // Settings → Connect to Claude: agents on this PC (the Connect your agent commands) and the remote connector that lets
 // claude.ai use Vellum through a tunnel (src/main/remote.ts, docs/REMOTE.md).
 import { useCallback, useEffect, useState } from 'react'
+import { Check, Copy } from 'lucide-react'
 import { Button, Checkbox, Select } from '../ui'
 import type { RemoteAction, RemoteState, RemoteTunnel } from '@shared/remote'
 import { ConnectAgentModal, CopyLine } from './ConnectAgentModal'
@@ -23,6 +24,7 @@ export function ConnectClaudeSection(): JSX.Element {
   const [host, setHost] = useState('')
   const [tunnel, setTunnel] = useState<RemoteTunnel>('tailscale')
   const [hostDirty, setHostDirty] = useState(false)
+  const [copied, setCopied] = useState(false)
 
   const refresh = useCallback(async () => {
     if (!api) return
@@ -131,6 +133,17 @@ export function ConnectClaudeSection(): JSX.Element {
                 {code && (
                   <div className="db-remote__code">
                     <span className="db-remote__codetext">{code.display}</span>
+                    <Button
+                      size="sm"
+                      icon={copied ? <Check size={14} /> : <Copy size={14} />}
+                      onClick={() => {
+                        void navigator.clipboard.writeText(code.display)
+                        setCopied(true)
+                        window.setTimeout(() => setCopied(false), 1200)
+                      }}
+                    >
+                      {copied ? 'Copied' : 'Copy'}
+                    </Button>
                     <span className="db-settings__hint">until {clock(code.expiresAt)}</span>
                     <Button variant="ghost" size="sm" onClick={() => void act({ kind: 'cancelCode' }).then(() => setCode(null))}>
                       Cancel
