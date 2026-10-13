@@ -103,7 +103,12 @@ try {
   Check (Test-Path (Join-Path $installDir 'resources\app.asar')) 'resources\app.asar is installed'
   Check (Test-Path (Join-Path $installDir "Uninstall $ProductName.exe")) 'an uninstaller is installed'
   $isAdmin = ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
-  Check (-not $isAdmin) 'the test itself runs without admin rights, so the install was per user'
+  # Per-user is proven by where the install registered itself (HKCU entry, nothing in HKLM, no all-users shortcuts), which holds
+  # whether or not this shell is elevated. A hosted CI runner is an admin, so only the "not elevated" precondition is skipped there.
+  if ($isAdmin) { Write-Host 'skipped: the test runs elevated (GitHub runners are admins), so the not-elevated precondition does not apply; per-user is checked from the registry and shortcut locations' }
+  else { Check $true 'the test itself runs without admin rights' }
+  $common = @([Environment]::GetFolderPath('CommonDesktopDirectory'), [Environment]::GetFolderPath('CommonPrograms')) | Where-Object { $_ }
+  Check (-not (@($common | ForEach-Object { Get-ChildItem $_ -Filter "$ProductName*.lnk" -Recurse -ErrorAction SilentlyContinue }).Count)) 'no all-users shortcuts were made (per user)'
 
   # ---- 2. registry entry
   $key = Find-Uninstall | Select-Object -First 1
