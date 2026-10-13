@@ -32,6 +32,8 @@ const canvas = () =>
   )
 const panel = () => page.evaluate(() => document.querySelector('[data-testid="dev-spec"]')?.innerText ?? '')
 const bodyText = () => page.evaluate(() => document.body.innerText)
+/** text of the toast while it is showing (the element stays in the DOM after it fades) */
+const toastShown = () => page.evaluate(() => { const t = document.querySelector('.cv-toast'); return t && t.classList.contains('cv-toast--show') ? t.textContent : '' })
 const modeIsDev = () => page.evaluate(() => !!document.querySelector('.insp-top--dev'))
 
 try {
@@ -90,7 +92,8 @@ try {
   await shot('dev-mode-frame-selected')
   let p = await panel()
   check(/Layout/.test(p) && /Box/.test(p) && /Width/.test(p), 'frame: Spec panel shows Box and Layout')
-  results.push(`note: a main component frame ${/Component/.test(p) ? 'shows' : 'shows no'} Component section (instances do)`)
+  check(/Main component/.test(p) && /Kind/.test(p), 'main component: header badge and Component section say Main component')
+  await shot('dev-mode-main-component-selected-detail')
   // text inside the main
   await sel(texts[0].r, 6, 6)
   await shot('dev-mode-text-selected')
@@ -113,7 +116,14 @@ try {
   await page.mouse.up()
   await page.waitForTimeout(300)
   check((await canvas()) === before, 'drag in Dev Mode does not move anything')
+  check((await toastShown()).includes('Dev Mode is read-only'), 'drag in Dev Mode shows the read-only toast')
+  await shot('dev-mode-drag-toast')
+  await page.waitForTimeout(4000)
+  check(!(await toastShown()), 'toast fades away')
   await page.keyboard.press('Delete')
+  await page.waitForTimeout(250)
+  check((await toastShown()).includes('Dev Mode is read-only'), 'Delete in Dev Mode shows the read-only toast')
+  await shot('dev-mode-delete-toast')
   await page.keyboard.press('ArrowRight')
   await page.keyboard.press('Shift+ArrowDown')
   await page.keyboard.press('Control+g')
@@ -129,8 +139,7 @@ try {
   await page.keyboard.press('Control+z')
   await page.waitForTimeout(300)
   check((await canvas()) === before, 'undo in Dev Mode changes nothing')
-  check((await bodyText()).includes('Dev Mode is read-only') || true, 'toast (informational; see screenshots)')
-
+  
   // ---- back to Design with D: editing works as before
   await page.keyboard.press('Escape')
   await page.keyboard.press('d')
@@ -154,6 +163,8 @@ try {
   console.log(results.join('\n'))
   await Promise.race([app.close().catch(() => {}), new Promise((r) => setTimeout(r, 8000))])
   app.process().kill()
-  rmSync(ud, { recursive: true, force: true })
+  try {
+    rmSync(ud, { recursive: true, force: true })
+  } catch {}
   process.exit(results.some((r) => r.startsWith('FAILED')) ? 1 : 0)
 }
