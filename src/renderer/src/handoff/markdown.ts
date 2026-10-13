@@ -21,36 +21,46 @@ const CONTROL = new RegExp(
   'g'
 )
 
-/** One printable line of markdown-safe text. */
-export function inline(value: unknown): string {
-  let t = String(value ?? '').replace(CONTROL, ' ').replace(/\s+/g, ' ').trim()
+/** Text for the middle of a line: folded to one line, with anything that embeds or opens a span escaped. */
+export function flat(value: unknown): string {
+  const t = String(value ?? '').replace(CONTROL, ' ').replace(/\s+/g, ' ').trim()
   // `[` covers images (`![`) and links alike; a backtick would open a code span that swallows the rest of the line
-  t = t.split('[').join(BS + '[').split('`').join(BS + '`').split('<').join('&lt;')
-  if (/^(#|```|~~~|>|[-+*] |[0-9]+[.)] )/.test(t)) t = BS + t
-  return t
+  return t.split('[').join(BS + '[').split('`').join(BS + '`').split('<').join('&lt;')
+}
+
+/** One printable line of markdown-safe text, safe also at the start of a line (no heading, fence, quote or list). */
+export function inline(value: unknown): string {
+  const t = flat(value)
+  return /^(#|```|~~~|>|[-+*] |[0-9]+[.)] )/.test(t) ? BS + t : t
 }
 
 /** Same, for a table cell. */
 export const cell = (value: unknown): string => inline(value).split('|').join(BS + '|')
 
+/** A bundle path printed inside backticks. */
+export const pathText = (value: unknown): string => String(value ?? '').replace(/[^A-Za-z0-9_.@/-]/g, '_')
+
+/** A generated id printed inside backticks: only id characters survive. */
+export const idText = (value: unknown): string => String(value ?? '').replace(/[^A-Za-z0-9_.:-]/g, '_')
+
 const px = (v: number, rem: boolean): string => `${formatNumber(v)}px${rem ? ` (${toRem(v)})` : ''}`
 
 function color(c: ColorSpec | undefined): string {
   if (!c) return 'none'
-  let s = c.hex8 ?? c.value
-  if (c.oklch) s += ` (authored ${c.oklch})`
-  if (c.token) s += ` ${c.token}`
+  let s = flat(c.hex8 ?? c.value)
+  if (c.oklch) s += ` (authored ${flat(c.oklch)})`
+  if (c.token) s += ` ${flat(c.token)}`
   return s
 }
 
 function paint(p: PaintSpec): string {
   if (p.kind === 'stroke') {
     const w = Array.isArray(p.width) ? p.width.map((x) => formatNumber(x)).join(' ') : formatNumber(p.width ?? 0)
-    return `stroke ${w}px ${p.style ?? 'solid'} ${color(p.color)}`
+    return `stroke ${w}px ${inline(p.style ?? 'solid')} ${color(p.color)}`
   }
   const what = p.kind === 'text' ? 'text colour' : 'fill'
   if (p.type === 'solid') return `${what} ${color(p.color)}`
-  return `${what} ${p.type} ${p.value ?? ''}`.trim()
+  return `${what} ${p.type} ${inline(p.value ?? '')}`.trim()
 }
 
 function effect(e: EffectSpec): string {
@@ -62,22 +72,22 @@ function textLine(n: DevNodeSpec, rem: boolean): string | null {
   const t = n.text
   if (!t) return null
   const parts = [`"${inline(t.content.split('\n').join(' / '))}"`]
-  const face = [t.fontFamily, `${px(t.fontSize, rem)}`, `weight ${t.fontWeight}`].filter(Boolean).join(', ')
+  const face = [t.fontFamily ? inline(t.fontFamily) : '', `${px(t.fontSize, rem)}`, `weight ${inline(t.fontWeight)}`].filter(Boolean).join(', ')
   parts.push(face)
   if (t.lineHeightPx !== null) parts.push(`line height ${px(t.lineHeightPx, false)}${t.lineHeightRatio !== null ? ` (${formatNumber(t.lineHeightRatio)})` : ''}${t.lineHeightSource !== 'authored' ? ` ${t.lineHeightSource}` : ''}`)
   if (t.letterSpacingPx) parts.push(`letter spacing ${formatNumber(t.letterSpacingPx)}px (${formatNumber(t.letterSpacingEm)}em)`)
-  if (t.textAlign) parts.push(`align ${t.textAlign}`)
-  if (t.textTransform) parts.push(t.textTransform)
-  if (t.textDecoration) parts.push(t.textDecoration)
-  if (t.fontStyle && t.fontStyle !== 'normal') parts.push(t.fontStyle)
-  if (t.textStyle) parts.push(`text style ${t.textStyle}`)
+  if (t.textAlign) parts.push(`align ${inline(t.textAlign)}`)
+  if (t.textTransform) parts.push(inline(t.textTransform))
+  if (t.textDecoration) parts.push(inline(t.textDecoration))
+  if (t.fontStyle && t.fontStyle !== 'normal') parts.push(inline(t.fontStyle))
+  if (t.textStyle) parts.push(`text style ${inline(t.textStyle)}`)
   return parts.join(' · ')
 }
 
 function nodeLines(n: DevNodeSpec, depth: number, ctx: MarkdownContext, out: string[]): void {
   const pad = '  '.repeat(depth)
   const sub = `${pad}  - `
-  out.push(`${pad}- **${inline(n.name)} — ${n.layout.summary}, ${sizingText(n.sizing.w, n.sizing.h)}** \`${n.id}\`${n.type === 'frame' ? '' : ` (${n.type})`}`)
+  out.push(`${pad}- **${inline(n.name)} — ${inline(n.layout.summary)}, ${sizingText(n.sizing.w, n.sizing.h)}** \`${idText(n.id)}\`${n.type === 'frame' ? '' : ` (${n.type})`}`)
   const b = n.box
   const pos = b.x !== undefined && b.y !== undefined ? `; at ${formatNumber(b.x)}, ${formatNumber(b.y)} in ${b.relTo}` : n.flowIndex !== undefined ? `; flow position ${n.flowIndex}` : ''
   const known = b.width !== undefined && b.height !== undefined
@@ -90,26 +100,26 @@ function nodeLines(n: DevNodeSpec, depth: number, ctx: MarkdownContext, out: str
   if (n.layout.padding.some((v) => v)) out.push(`${sub}padding ${n.layout.padding.map((v) => px(v, ctx.rem)).join(' ')}`)
   const look: string[] = []
   for (const p of n.paints) look.push(paint(p))
-  if (n.radius !== undefined) look.push(`radius ${Array.isArray(n.radius) ? n.radius.map((r) => px(r, ctx.rem)).join(' ') : typeof n.radius === 'number' ? px(n.radius, ctx.rem) : n.radius}`)
+  if (n.radius !== undefined) look.push(`radius ${Array.isArray(n.radius) ? n.radius.map((r) => px(r, ctx.rem)).join(' ') : typeof n.radius === 'number' ? px(n.radius, ctx.rem) : inline(n.radius)}`)
   for (const e of n.effects) look.push(effect(e))
   if (n.opacity !== undefined) look.push(`opacity ${formatNumber(n.opacity)}`)
   if (n.rotation) look.push(`rotated ${formatNumber(n.rotation)}°`)
   if (look.length) out.push(`${sub}${look.join('; ')}`)
   const text = textLine(n, ctx.rem)
   if (text) out.push(`${sub}${text}`)
-  if (n.image) out.push(`${sub}image${n.image.alt !== undefined ? ` alt "${inline(n.image.alt)}"` : ' (no alt text: decorative or missing, decide)'}${n.image.objectFit ? `, fit ${n.image.objectFit}` : ''}`)
-  if (n.tokens.length) out.push(`${sub}tokens: ${n.tokens.join(', ')}`)
+  if (n.image) out.push(`${sub}image${n.image.alt !== undefined ? ` alt "${inline(n.image.alt)}"` : ' (no alt text: decorative or missing, decide)'}${n.image.objectFit ? `, fit ${inline(n.image.objectFit)}` : ''}`)
+  if (n.tokens.length) out.push(`${sub}tokens: ${n.tokens.map(inline).join(', ')}`)
   if (n.component) {
     const c = n.component
     const defs = ctx.components.find((d) => d.variants.some((x) => x.ref === c.ref))?.props ?? []
-    const label = (id: string): string => defs.find((d) => d.id === id)?.name ?? id
-    const v = c.variant ? ` (${Object.entries(c.variant).map(([k, x]) => `${label(k)}=${x}`).join(', ')})` : ''
-    const p = c.props ? `, props ${Object.entries(c.props).map(([k, x]) => `${label(k)}=${String(x)}`).join(', ')}` : ''
+    const label = (id: string): string => inline(defs.find((d) => d.id === id)?.name ?? id)
+    const v = c.variant ? ` (${Object.entries(c.variant).map(([k, x]) => `${label(k)}=${inline(x)}`).join(', ')})` : ''
+    const p = c.props ? `, props ${Object.entries(c.props).map(([k, x]) => `${label(k)}=${inline(x)}`).join(', ')}` : ''
     const o = c.overrides ? `, overrides on ${c.overrides.length} layer${c.overrides.length === 1 ? '' : 's'}` : ''
-    out.push(`${sub}component ${c.name ?? c.ref}${v}${p}${o}`)
+    out.push(`${sub}component ${inline(c.name ?? c.ref)}${v}${p}${o}`)
   }
-  if (n.states) for (const [state, patch] of Object.entries(n.states)) out.push(`${sub}state ${state}: ${Object.entries(patch).map(([k, x]) => `${k}: ${String(x)}`).join('; ')}`)
-  if (n.a11y) out.push(`${sub}accessibility: ${Object.entries(n.a11y).map(([k, x]) => `${k} ${String(x)}`).join(', ')}`)
+  if (n.states) for (const [state, patch] of Object.entries(n.states)) out.push(`${sub}state ${inline(state)}: ${Object.entries(patch).map(([k, x]) => `${inline(k)}: ${inline(x)}`).join('; ')}`)
+  if (n.a11y) out.push(`${sub}accessibility: ${Object.entries(n.a11y).map(([k, x]) => `${inline(k)} ${inline(x)}`).join(', ')}`)
   for (const note of n.notes ?? []) out.push(`${sub}dev note: ${inline(note)}`)
   if (n.needsDecision) out.push(`${sub}**needs decision:** ${inline(n.needsDecision)}`)
   for (const c of n.children) nodeLines(c, depth + 1, ctx, out)
@@ -144,11 +154,11 @@ const idsOf = (root: DevNodeSpec): Set<string> => {
 
 export function screenMarkdown(screen: ScreenSpec, ctx: MarkdownContext): string {
   const out: string[] = [`# ${inline(screen.name)}`, '']
-  out.push(`Screen \`${screen.id}\`, ${screen.breakpoints.length} breakpoint${screen.breakpoints.length === 1 ? '' : 's'}. Build to the layout rules first; the numbers describe the design size.`, '')
+  out.push(`Screen \`${idText(screen.id)}\`, ${screen.breakpoints.length} breakpoint${screen.breakpoints.length === 1 ? '' : 's'}. Build to the layout rules first; the numbers describe the design size.`, '')
   for (const bp of screen.breakpoints) {
     const heading = bp.bp === 'default' ? 'Layout' : inline(bp.bp)
     out.push(bp.width !== undefined ? `## ${heading} · ${px(bp.width, ctx.rem)} wide` : `## ${heading} · width fits its content (not measured)`, '')
-    out.push(`Frame \`${bp.frameId}\`${bp.ready ? ` · ready in handoff v${bp.ready.at}` : ''} · reference \`${bp.png}\``, '')
+    out.push(`Frame \`${idText(bp.frameId)}\`${bp.ready ? ` · ready in handoff v${bp.ready.at}` : ''} · reference \`${pathText(bp.png)}\``, '')
     const frac = fractionalIn(bp.root)
     if (frac.length) {
       const e = frac[0]
@@ -164,16 +174,16 @@ export function screenMarkdown(screen: ScreenSpec, ctx: MarkdownContext): string
 export function componentMarkdown(c: ComponentSpec, ctx: MarkdownContext): string {
   const out: string[] = [`# ${inline(c.name)}`, '']
   const users = c.usedBy.map((id) => ctx.screens.find((s) => s.id === id)?.name ?? id)
-  out.push(`${c.isSet ? 'Component set' : 'Component'} \`${c.ref}\`. Used by: ${users.length ? users.map(inline).join(', ') : 'no exported screen'}.`, '')
+  out.push(`${c.isSet ? 'Component set' : 'Component'} \`${idText(c.ref)}\`. Used by: ${users.length ? users.map(inline).join(', ') : 'no exported screen'}.`, '')
   for (const note of c.notes) out.push(`> Dev note: ${inline(note)}`, '')
   if (c.props.length) {
     out.push('## Properties', '', '| Property | Type | Default | Options |', '|---|---|---|---|')
-    for (const p of c.props) out.push(`| ${cell(p.name)} | ${p.type} | ${cell(p.default)} | ${cell((p.options ?? []).join(', '))} |`)
+    for (const p of c.props) out.push(`| ${cell(p.name)} | ${cell(p.type)} | ${cell(p.default)} | ${cell((p.options ?? []).join(', '))} |`)
     out.push('')
   }
   out.push('## Variants', '')
   for (const v of c.variants) {
-    const vals = Object.entries(v.values).map(([k, x]) => `${c.props.find((p) => p.id === k)?.name ?? k}=${x}`)
+    const vals = Object.entries(v.values).map(([k, x]) => `${inline(c.props.find((p) => p.id === k)?.name ?? k)}=${inline(x)}`)
     out.push(`### ${inline(v.name)}${vals.length ? ` (${vals.join(', ')})` : ''}`, '')
     nodeLines(v.root, 0, ctx, out)
     out.push('')

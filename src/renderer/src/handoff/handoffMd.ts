@@ -14,12 +14,12 @@ export function handoffMd(spec: HandoffSpec, c: Collected, s: HandoffSummary, op
   o.push('> 1. Drop this folder next to your repo (outside it is fine; nothing here runs).')
   o.push(`> 2. Tell Claude Code: "build ${first ? `screens/${first.slug}.md` : 'the screens in screens/'} from this handoff".`)
   o.push(`> 3. Verify the result against the PNGs in screens/. Handoff v${spec.handoff.version}, ${s.screens} screen${s.screens === 1 ? '' : 's'}.`, '')
-  o.push(`Exported ${spec.handoff.exportedAt} from Vellum ${spec.handoff.vellum}. Schema \`${spec.schema}\`.`, '')
+  o.push(`Exported ${inline(spec.handoff.exportedAt)} from Vellum ${inline(spec.handoff.vellum)}. Schema \`${spec.schema}\`.`, '')
 
   o.push('## What is in here', '')
   o.push(`- ${s.screens} screen${s.screens === 1 ? '' : 's'} (${s.breakpoints} breakpoint${s.breakpoints === 1 ? '' : 's'}), ${s.nodes} layers, ${s.components} component${s.components === 1 ? '' : 's'}, ${s.tokens} token${s.tokens === 1 ? '' : 's'}, ${s.textStyles} text style${s.textStyles === 1 ? '' : 's'}, ${s.fonts} font famil${s.fonts === 1 ? 'y' : 'ies'}, ${s.assets} asset${s.assets === 1 ? '' : 's'}.`)
   o.push(`- Dev notes: ${s.notes}. Open decisions: ${s.needsDecision}.`)
-  if (spec.modes.length) o.push(`- Theme modes: ${spec.modes.join(', ')} (the first is the base).`)
+  if (spec.modes.length) o.push(`- Theme modes: ${spec.modes.map(inline).join(', ')} (the first is the base).`)
   o.push('')
 
   o.push('## Read order', '')
@@ -58,7 +58,7 @@ export function handoffMd(spec: HandoffSpec, c: Collected, s: HandoffSummary, op
   if (unspecified.length) {
     o.push('## States not specified', '')
     o.push('These interactive components have no drawn or described hover, pressed, focus or disabled state. Use the project defaults and say so; do not invent a look.', '')
-    for (const u of unspecified) o.push(`- ${inline(u.name)}: ${u.states.filter((st) => st.badge === 'missing').map((st) => st.state).join(', ')}`)
+    for (const u of unspecified) o.push(`- ${inline(u.name)}: ${u.states.filter((st) => st.badge === 'missing').map((st) => inline(st.state)).join(', ')}`)
     o.push('')
   }
 
@@ -78,7 +78,7 @@ export function fontsMd(c: Collected): string {
   }
   o.push('Font files are not part of this bundle. Install or load the families below, or substitute a licensed equivalent and say so.', '')
   o.push('| Family | Weights | Italic | Source | Used by | CSS stack |', '|---|---|---|---|---|---|')
-  for (const f of c.fonts) o.push(`| ${cell(f.family)} | ${f.weights.join(', ')} | ${f.italic ? 'yes' : 'no'} | ${f.source} | ${f.usedBy} layer${f.usedBy === 1 ? '' : 's'} | \`${inline(f.stack).split('`').join('')}\` |`)
+  for (const f of c.fonts) o.push(`| ${cell(f.family)} | ${cell(f.weights.join(', '))} | ${f.italic ? 'yes' : 'no'} | ${f.source} | ${f.usedBy} layer${f.usedBy === 1 ? '' : 's'} | \`${inline(f.stack).split('`').join('')}\` |`)
   o.push('')
   for (const f of c.fonts) {
     if (f.source === 'google') o.push(`- **${inline(f.family)}**: Google Fonts (SIL OFL or Apache 2.0 depending on the family). Check https://fonts.google.com/specimen/${encodeURIComponent(f.family).replace(/%20/g, '+')}`)

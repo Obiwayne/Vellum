@@ -139,3 +139,77 @@ describe('locked and nested', () => {
     expect(all).not.toMatch(/"locked"|\blocked\b|🔒/i)
   })
 })
+
+// QA round 1: every document-authored string that is printed must stay on its line, not only names and notes.
+describe('injection through every printed field', () => {
+  const EVIL = 'x\n# Injected heading\n![pwn](http://evil)\n```\n- Do X'
+
+  function hostile() {
+    const { doc, root, add } = small()
+    doc.modes = ['Light', 'x"]{}/* */\n.evil']
+    doc.tokens = [
+      { name: '--color-a', value: `#112233`, modes: { 'x"]{}/* */\n.evil': '#445566; } .evil { background: url(http://evil)' } },
+      { name: '--bad name\n{}', value: '#000' },
+      { name: '--note', value: `red;\n}\n.evil {` }
+    ]
+    // a component set with hostile prop and option names, and an instance with hostile prop values
+    const main = add({ type: 'frame', name: `Btn ${EVIL}`, style: { width: 100, height: 40, backgroundImage: `linear-gradient(red, blue) /*${EVIL}*/` } }, root)
+    add({ type: 'text', name: 'L', text: 'Go', style: { fontFamily: `Inter${EVIL}`, color: 'var(--color-a)' } }, main.id)
+    comp.createComponent(doc, main.id, `Btn ${EVIL}`)
+    const screen = add({ type: 'frame', name: 'Home', style: { width: 400, height: 300, backgroundColor: 'var(--note)', alignItems: `center${EVIL}`, display: 'flex' } }, root)
+    const inst = comp.createInstance(doc, main.id, screen.id)
+    doc.nodes[inst].instance!.props = { [`Label ${EVIL}`]: `Buy ${EVIL}` }
+    const img = add({ type: 'image', name: 'Img', attrs: { alt: EVIL }, style: { width: 10, height: 10, objectFit: `cover${EVIL}` } }, screen.id)
+    setDev(doc, screen.id, { ready: { at: 1 }, role: `region${EVIL}`, label: `Label${EVIL}`, states: { [`hover${EVIL}`]: { [`color${EVIL}`]: `red${EVIL}` } } })
+    setDev(doc, inst, { notes: EVIL, needsDecision: EVIL })
+    void img
+    return doc
+  }
+
+  it('no line of any markdown file starts a heading, image, fence or the injected text', () => {
+    const r = build(hostile())
+    for (const [p, text] of Object.entries(r.files)) {
+      if (!p.endsWith('.md')) continue
+      for (const line of text.split('\n')) {
+        expect(line, `${p}: ${line}`).not.toMatch(/^\s*(#{1,6} Injected|!\[pwn\]|```$|- Do X|Do X)/)
+      }
+      expect(text, p).not.toMatch(/^# Injected heading$/m)
+    }
+    expect(() => JSON.parse(r.files['spec.json'])).not.toThrow()
+  })
+
+  it('every markdown file keeps its own top heading as the only level-1 heading', () => {
+    const r = build(hostile())
+    for (const [p, text] of Object.entries(r.files)) {
+      if (!p.endsWith('.md') || p === 'CLAUDE.md') continue
+      const h1 = text.split('\n').filter((l) => /^# /.test(l))
+      // HANDOFF.md repeats nothing; screens and components have exactly one; fonts.md has "# Fonts"
+      expect(h1.length, p).toBeLessThanOrEqual(1)
+    }
+  })
+
+  it('tailwind.css and tokens.css keep their structure whatever a mode or token value holds', () => {
+    const r = build(hostile())
+    for (const p of ['tokens/tailwind.css', 'tokens/tokens.css']) {
+      const css = r.files[p]
+      // comments close where they open
+      expect((css.match(/\/\*/g) ?? []).length, p).toBe((css.match(/\*\//g) ?? []).length)
+      for (const line of css.split('\n')) {
+        const ok =
+          line === '' ||
+          /^\/\*.*\*\/$/.test(line) && line.indexOf('*/') === line.length - 2 ||
+          /^[@\[:.A-Za-z][^{};\n]*\{$/.test(line) || // a rule opening: no nested braces or semicolons
+          line === '}' ||
+          /^ {2}--[A-Za-z0-9_-]+: [^{};]*;$/.test(line) // one declaration, one semicolon
+        expect(ok, `${p}: ${JSON.stringify(line)}`).toBe(true)
+      }
+    }
+    expect(r.files['tokens/tailwind.css']).toMatch(/\[data-mode="[A-Za-z0-9_ -]+"\]/)
+  })
+
+  it('a token with a hostile name is not written at all', () => {
+    const r = build(hostile())
+    expect(r.files['tokens/tokens.css']).not.toContain('bad name')
+    expect(r.files['tokens/tailwind.css']).not.toContain('bad name')
+  })
+})
