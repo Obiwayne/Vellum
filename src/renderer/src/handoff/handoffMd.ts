@@ -2,13 +2,14 @@
 // docs/factory/T58-plan.md section 3.2 is the template; only files that exist in this bundle are mentioned.
 import type { Collected } from './collect'
 import { walkSpec } from './collect'
+import { cell, inline } from './markdown'
 import { STATE_SCHEMA_ID, type HandoffOptions, type HandoffSpec, type HandoffSummary } from './types'
 
 export function handoffMd(spec: HandoffSpec, c: Collected, s: HandoffSummary, options: HandoffOptions, files: string[]): string {
   const has = (p: string): boolean => files.includes(p)
   const first = c.screens[0]
   const o: string[] = []
-  o.push(`# ${spec.handoff.fileName} — handoff v${spec.handoff.version}`, '')
+  o.push(`# ${inline(spec.handoff.fileName)} — handoff v${spec.handoff.version}`, '')
   o.push("> ## Andy's quick start")
   o.push('> 1. Drop this folder next to your repo (outside it is fine; nothing here runs).')
   o.push(`> 2. Tell Claude Code: "build ${first ? `screens/${first.slug}.md` : 'the screens in screens/'} from this handoff".`)
@@ -39,14 +40,14 @@ export function handoffMd(spec: HandoffSpec, c: Collected, s: HandoffSummary, op
     for (const sc of c.screens) {
       for (const b of sc.breakpoints) {
         walkSpec(b.root, (n) => {
-          if (n.needsDecision) o.push(`- ${sc.name}${b.bp === 'default' ? '' : ` (${b.bp})`} › ${n.name}: ${n.needsDecision}`)
+          if (n.needsDecision) o.push(`- ${inline(sc.name)}${b.bp === 'default' ? '' : ` (${inline(b.bp)})`} › ${inline(n.name)}: ${inline(n.needsDecision)}`)
         })
       }
     }
     for (const comp of c.components) {
       for (const v of comp.variants) {
         walkSpec(v.root, (n) => {
-          if (n.needsDecision) o.push(`- Component ${comp.name} › ${n.name}: ${n.needsDecision}`)
+          if (n.needsDecision) o.push(`- Component ${inline(comp.name)} › ${inline(n.name)}: ${inline(n.needsDecision)}`)
         })
       }
     }
@@ -57,12 +58,12 @@ export function handoffMd(spec: HandoffSpec, c: Collected, s: HandoffSummary, op
   if (unspecified.length) {
     o.push('## States not specified', '')
     o.push('These interactive components have no drawn or described hover, pressed, focus or disabled state. Use the project defaults and say so; do not invent a look.', '')
-    for (const u of unspecified) o.push(`- ${u.name}: ${u.states.filter((st) => st.badge === 'missing').map((st) => st.state).join(', ')}`)
+    for (const u of unspecified) o.push(`- ${inline(u.name)}: ${u.states.filter((st) => st.badge === 'missing').map((st) => st.state).join(', ')}`)
     o.push('')
   }
 
   if (c.warnings.length) {
-    o.push('## Warnings', '', ...c.warnings.map((w) => `- ${w}`), '')
+    o.push('## Warnings', '', ...c.warnings.map((w) => `- ${inline(w)}`), '')
   }
   if (s.unmeasured) o.push(`> ${s.unmeasured} layer${s.unmeasured === 1 ? ' was' : 's were'} not measured: their sizes come from the authored style. Treat them as intent.`, '')
   if (options.rem) o.push('> Markdown values print rem beside px (base 16).', '')
@@ -77,13 +78,13 @@ export function fontsMd(c: Collected): string {
   }
   o.push('Font files are not part of this bundle. Install or load the families below, or substitute a licensed equivalent and say so.', '')
   o.push('| Family | Weights | Italic | Source | Used by | CSS stack |', '|---|---|---|---|---|---|')
-  for (const f of c.fonts) o.push(`| ${f.family} | ${f.weights.join(', ')} | ${f.italic ? 'yes' : 'no'} | ${f.source} | ${f.usedBy} layer${f.usedBy === 1 ? '' : 's'} | \`${f.stack}\` |`)
+  for (const f of c.fonts) o.push(`| ${cell(f.family)} | ${f.weights.join(', ')} | ${f.italic ? 'yes' : 'no'} | ${f.source} | ${f.usedBy} layer${f.usedBy === 1 ? '' : 's'} | \`${inline(f.stack).split('`').join('')}\` |`)
   o.push('')
   for (const f of c.fonts) {
-    if (f.source === 'google') o.push(`- **${f.family}**: Google Fonts (SIL OFL or Apache 2.0 depending on the family). Check https://fonts.google.com/specimen/${encodeURIComponent(f.family).replace(/%20/g, '+')}`)
-    else if (f.source === 'system') o.push(`- **${f.family}**: a system or generic family; the build environment decides the face.`)
-    else if (f.source === 'local') o.push(`- **${f.family}**: installed on the designer's PC. It is not bundled and not redistributable: license it or substitute.`)
-    else o.push(`- **${f.family}**: source unknown. Check its licence before shipping it.`)
+    if (f.source === 'google') o.push(`- **${inline(f.family)}**: Google Fonts (SIL OFL or Apache 2.0 depending on the family). Check https://fonts.google.com/specimen/${encodeURIComponent(f.family).replace(/%20/g, '+')}`)
+    else if (f.source === 'system') o.push(`- **${inline(f.family)}**: a system or generic family; the build environment decides the face.`)
+    else if (f.source === 'local') o.push(`- **${inline(f.family)}**: installed on the designer's PC. It is not bundled and not redistributable: license it or substitute.`)
+    else o.push(`- **${inline(f.family)}**: source unknown. Check its licence before shipping it.`)
   }
   return o.join('\n') + '\n'
 }

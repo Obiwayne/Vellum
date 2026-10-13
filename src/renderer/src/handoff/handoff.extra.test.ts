@@ -94,8 +94,7 @@ describe('stack neutrality and metadata', () => {
 describe('hostile text', () => {
   // FINDING (T62 test station): a layer name or needs-decision text with a newline is written raw into the
   // markdown, so "# Injected heading" and "![x](http://evil)" become real lines of the screen file.
-  // `it.fails` keeps the suite green while the builder fixes it; flip to `it` when it passes.
-  it.fails('layer names and needs-decision stay on one line and cannot start a heading or an image', () => {
+  it('layer names and needs-decision stay on one line and cannot start a heading or an image', () => {
     const { doc, root, add } = small()
     const f = add({ type: 'frame', name: 'Hero\n# Injected heading\n![x](http://evil)', style: { width: 100, height: 100 } }, root)
     add({ type: 'text', name: '<script>alert(1)</script>', text: 'a\u0000b‮c', style: {} }, f.id)
@@ -105,6 +104,14 @@ describe('hostile text', () => {
     const md = r.files[Object.keys(r.files).find((p) => p.startsWith('screens/')) as string]
     // the layer name must not become a heading of its own
     expect(md.split('\n').filter((l) => l.startsWith('# Injected'))).toHaveLength(0)
+    // no image or raw HTML survives as markup, and the line break did not split the bullet
+    for (const [p, text] of Object.entries(r.files)) {
+      if (!p.endsWith('.md')) continue
+      expect(text, p).not.toMatch(/(^|[^\\])!\[x\]/m)
+      expect(text, p).not.toContain('<script>')
+    }
+    expect(md).toContain('Hero # Injected heading !\\[x](http://evil)')
+    expect(r.files['HANDOFF.md']).toContain('x y')
     for (const text of Object.values(r.files)) {
       expect(text).not.toMatch(/\u0000|\r/)
     }
