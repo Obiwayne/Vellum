@@ -8,7 +8,7 @@ import type { Measure } from '../model/devSpec'
 import { topLevelOf } from '../model/ops'
 import { buildHandoff } from './index'
 import { planAssets, planScreenPngs, runAssetJobs, type AssetEngine } from './assets'
-import { selectFrames } from './collect'
+import { selectFrames, topLevelFrames } from './collect'
 import { handoffVersionName, nextHandoffNumber, previousHandoff, previousHandoffBefore } from './ready'
 import { diffSpecs, type ChangeSet } from './diff'
 import { slug } from './paths'
@@ -30,7 +30,8 @@ export interface ExportDeps {
   measure?: Measure
   engine: AssetEngine
   write: (args: HandoffExportArgs) => Promise<HandoffExportResult>
-  saveVersion: (name: string) => Promise<unknown>
+  /** record the named version; `record` is what this export carried, to be stored in the document first */
+  saveVersion: (name: string, record: { version: number; frames: string[] }) => Promise<unknown>
   listVersions: () => Promise<ReadonlyArray<{ id?: string; name?: string | null; createdAt?: number }>>
   /** the document as it was in a history version, for the diff against the previous hand-off */
   loadVersion?: (versionId: string) => Promise<Doc | null>
@@ -100,30 +101,58 @@ const pageOf = (doc: Doc, id: string): string | null => {
 
 export const folderNameFor = (doc: Doc, version: number): string => `${slug(doc.name, 'handoff')}-handoff-v${version}`
 
+/** The comparison with the previous export: the change set, or why there is none (a first export has neither). */
+interface Compared {
+  changes: ChangeSet | null
+  warning?: string
+}
+
+// The earlier side is the expensive one (a whole document planned and built); the dialog asks again on every option
+// change, so the last few earlier specs are kept by what they depend on.
+const earlier = new Map<string, HandoffSpec>()
+const EARLIER_KEPT = 4
+
 /**
  * What changed since the previous "Handoff vN" in version history. Both sides are built from documents (the earlier one
- * from its saved version, with the frames that were ready then) without measurement, so rounding in a layout pass can
- * never look like an edit. Null on a first export, or when the earlier version cannot be read.
+ * from its saved version) without measurement, so rounding in a layout pass can never look like an edit. Only frames
+ * this export is about are compared: frames the earlier export carried that are chosen now, plus frames it carried that
+ * are gone now (removed). A frame it did not carry is new now (added); a frame it carried that is not chosen this time is
+ * left alone: leaving a screen out of an export is not removing it.
  */
-async function changesSince(source: Doc, req: ExportRequest, deps: ExportDeps, versions: Awaited<ReturnType<ExportDeps['listVersions']>>, version: number, frames: string[]): Promise<ChangeSet | null> {
+async function changesSince(source: Doc, req: ExportRequest, deps: ExportDeps, versions: Awaited<ReturnType<ExportDeps['listVersions']>>, version: number, frames: string[]): Promise<Compared> {
   const prev = previousHandoffBefore(versions, version)
-  if (!prev || !deps.loadVersion) return null
-  const loaded = await deps.loadVersion(prev.id).catch(() => null)
-  if (!loaded) return null
-  const prevDoc = req.devNotes ? loaded : withoutNotes(loaded)
-  const prevFrames = selectFrames(prevDoc).ids
-  const spec = async (d: Doc, f: string[], v: number): Promise<HandoffSpec> => {
-    const assets = (await planAssets(d, { frames: f })).records
-    const out = buildHandoff(d, { frames: f, version: v, exportedAt: 'diff', vellum: deps.vellum, assets, ...(deps.fontSource ? { fontSource: deps.fontSource } : {}) })
-    return JSON.parse(out.files['spec.json']) as HandoffSpec
+  if (!prev || !deps.loadVersion) return { changes: null }
+  const label = handoffVersionName(prev.version)
+  try {
+    const loaded = await deps.loadVersion(prev.id)
+    if (!loaded) return { changes: null, warning: `CHANGES.md was not written: ${label} could not be read from version history.` }
+    const prevDoc = req.devNotes ? loaded : withoutNotes(loaded)
+    const then = new Set(topLevelFrames(prevDoc))
+    // what that export carried: recorded with the version; older versions have no record, their ready frames are the guess
+    const carried = prevDoc.handoff?.frames ?? selectFrames(prevDoc).ids
+    const prevFrames = carried.filter((f) => (frames.includes(f) && then.has(f)) || !source.nodes[f])
+    const spec = async (d: Doc, f: string[], v: number): Promise<HandoffSpec> => {
+      const assets = (await planAssets(d, { frames: f })).records
+      const out = buildHandoff(d, { frames: f, version: v, exportedAt: 'diff', vellum: deps.vellum, assets, ...(deps.fontSource ? { fontSource: deps.fontSource } : {}) })
+      return JSON.parse(out.files['spec.json']) as HandoffSpec
+    }
+    const key = `${source.id}|${prev.id}|${req.devNotes}|${prevFrames.join(',')}`
+    let before = earlier.get(key)
+    if (!before) {
+      before = await spec(prevDoc, prevFrames, prev.version)
+      earlier.set(key, before)
+      while (earlier.size > EARLIER_KEPT) earlier.delete(earlier.keys().next().value as string)
+    }
+    return { changes: diffSpecs(before, await spec(source, frames, version), prev.version) }
+  } catch (e) {
+    return { changes: null, warning: `CHANGES.md was not written: could not compare with ${label} (${e instanceof Error ? e.message : String(e)}).` }
   }
-  return diffSpecs(await spec(prevDoc, prevFrames, prev.version), await spec(source, frames, version), prev.version)
 }
 
 async function assemble(doc: Doc, req: ExportRequest, deps: ExportDeps, version: number, versions: Awaited<ReturnType<ExportDeps['listVersions']>>) {
   const source = req.devNotes ? doc : withoutNotes(doc)
   const plan = await planAssets(source, { frames: req.frames, ...(deps.measure ? { measure: deps.measure } : {}) })
-  const changes = await changesSince(source, req, deps, versions, version, req.frames).catch(() => null)
+  const { changes, warning } = await changesSince(source, req, deps, versions, version, req.frames)
   const built = buildHandoff(source, {
     ...(changes ? { changes } : {}),
     frames: req.frames,
@@ -134,7 +163,7 @@ async function assemble(doc: Doc, req: ExportRequest, deps: ExportDeps, version:
     ...(deps.measure ? { measure: deps.measure } : {}),
     ...(deps.fontSource ? { fontSource: deps.fontSource } : {}),
     assets: plan.records,
-    warnings: plan.warnings
+    warnings: [...plan.warnings, ...(warning ? [warning] : [])]
   })
   return { source, plan, built, changes }
 }
@@ -205,7 +234,7 @@ export async function runExport(doc: Doc, req: ExportRequest, deps: ExportDeps, 
     // only a bundle that is on disk becomes a version; when that fails the files stay and the user is told
     let versionSaved = true
     try {
-      await deps.saveVersion(handoffVersionName(version))
+      await deps.saveVersion(handoffVersionName(version), { version, frames })
     } catch (e) {
       versionSaved = false
       warnings.unshift(`The files were written, but "${handoffVersionName(version)}" could not be saved in version history (${e instanceof Error ? e.message : String(e)}). The next export may reuse this number.`)

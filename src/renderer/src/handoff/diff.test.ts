@@ -197,6 +197,16 @@ describe('screens, components, tokens, assets', () => {
     ])
   })
 
+  it('the same bytes under a new path (a renamed layer) is not an asset change', () => {
+    const base = (assets: HandoffSpec['assets']): HandoffSpec => ({ ...specOf(doc(), []), assets })
+    const rec = (path: string, sha256: string) => ({ id: path, path, kind: 'image' as const, nodeIds: [], sha256 })
+    const c = diffSpecs(base([rec('assets/images/hero.png', 'aa'), rec('assets/images/x.png', 'xx')]), base([rec('assets/images/banner.png', 'aa'), rec('assets/images/y.png', 'yy')]), 1)
+    expect(c.assets).toEqual([
+      { path: 'assets/images/x.png', status: 'removed' },
+      { path: 'assets/images/y.png', status: 'added' }
+    ])
+  })
+
   it('a component: changed layer inside a variant, added and removed components', () => {
     const s = screens(1)
     const main = S().createComponent(id, [s[0].card])

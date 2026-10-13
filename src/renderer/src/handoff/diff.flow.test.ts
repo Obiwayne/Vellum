@@ -17,6 +17,7 @@ interface Rig {
   deps: ExportDeps
   files: Array<Record<string, unknown>>
   names: string[]
+  snaps: Map<string, Doc>
 }
 
 function rig(): Rig {
@@ -29,7 +30,9 @@ function rig(): Rig {
       files.push(args.files)
       return { ok: true, path: `C:/out/${args.name}`, files: Object.keys(args.files).length, bytes: 1, kind: args.kind }
     },
-    saveVersion: async (name) => {
+    saveVersion: async (name, record) => {
+      // like the app: the frames this export carried are recorded in the document before the snapshot is taken
+      S().recordHandoff(id, record.version, record.frames)
       names.push(name)
       snaps.set(name, JSON.parse(JSON.stringify(S().docs[id])))
     },
@@ -38,7 +41,7 @@ function rig(): Rig {
     now: () => '2026-10-13T12:00:00.000Z',
     vellum: '1.0.0'
   }
-  return { deps, files, names }
+  return { deps, files, names, snaps }
 }
 
 const req = (frames: string[], over: Partial<ExportRequest> = {}): ExportRequest => ({ frames, retina: false, rem: false, devNotes: true, kind: 'folder', ...over })
@@ -167,5 +170,74 @@ describe('what a second export compares with', () => {
     await runExport(S().docs[id], req(f), r.deps)
     expect(r.files[0]['CHANGES.md']).toBeUndefined()
     expect(JSON.parse(String(r.files[0]['spec.json'])).changes).toBeUndefined()
+  })
+})
+
+describe('when there is no comparison, it says why', () => {
+  it('an unreadable earlier version is a warning on the export, not silence', async () => {
+    const f = screens(1)
+    const r = rig()
+    await runExport(S().docs[id], req(f), r.deps)
+    const out = await runExport(S().docs[id], req(f), { ...r.deps, loadVersion: async () => null })
+    expect(out.ok && out.warnings.join('\n')).toMatch(/CHANGES\.md was not written: Handoff v1 could not be read/)
+    const thrown = await runExport(S().docs[id], req(f), {
+      ...r.deps,
+      loadVersion: async () => {
+        throw new Error('disk gone')
+      }
+    })
+    expect(thrown.ok && thrown.warnings.join('\n')).toMatch(/could not compare with Handoff v2 \(disk gone\)/)
+  })
+
+  it('a first export has no such warning', async () => {
+    const f = screens(1)
+    const r = rig()
+    const out = await runExport(S().docs[id], req(f), r.deps)
+    expect(out.ok && out.warnings.join('\n')).not.toMatch(/CHANGES\.md was not written/)
+  })
+})
+
+describe('the export records what it carried', () => {
+  it('doc.handoff holds the number and the frames, outside undo history', async () => {
+    const f = screens(2)
+    const r = rig()
+    const before = S().canUndo(id)
+    await runExport(S().docs[id], req([f[1]]), r.deps)
+    expect(S().docs[id].handoff).toEqual({ version: 1, frames: [f[1]] })
+    expect(S().canUndo(id)).toBe(before)
+  })
+
+  it('an older version without a record falls back to the frames that were ready then', async () => {
+    const f = screens(2)
+    const r = rig()
+    // a snapshot taken by something that does not record (an older build)
+    r.deps.saveVersion = async (name) => {
+      r.names.push(name)
+      const copy = JSON.parse(JSON.stringify(S().docs[id])) as Doc
+      delete copy.handoff
+      r.snaps.set(name, copy)
+    }
+    await runExport(S().docs[id], req(f), r.deps)
+    await runExport(S().docs[id], req(f), r.deps)
+    const sc = JSON.parse(String(r.files[1]['spec.json'])).changes.screens as Array<{ status: string }>
+    expect(sc.map((s) => s.status)).toEqual(['unchanged', 'unchanged'])
+  })
+})
+
+describe('the earlier side is kept between previews', () => {
+  it('asking again with other options does not read the earlier version again', async () => {
+    const { previewExport } = await import('./exportFlow')
+    const f = screens(2)
+    const r = rig()
+    await runExport(S().docs[id], req(f), r.deps)
+    let loads = 0
+    const counting = { ...r.deps, loadVersion: async (v: string) => (loads++, r.deps.loadVersion!(v)) }
+    await previewExport(S().docs[id], req(f), counting)
+    await previewExport(S().docs[id], req(f, { rem: true }), counting)
+    await previewExport(S().docs[id], req(f, { retina: true }), counting)
+    // the version is read each time (cheap); the expensive part, planning and building the earlier document, is reused
+    expect(loads).toBe(3)
+    const p = await previewExport(S().docs[id], req(f), counting)
+    expect(p.changes?.counts.unchanged).toBe(2)
   })
 })

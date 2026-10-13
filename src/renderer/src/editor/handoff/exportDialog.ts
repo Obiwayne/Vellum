@@ -40,7 +40,11 @@ export function appExportDeps(docId: string, localFonts?: string[]): ExportDeps 
       if (!api?.handoffExport) return { ok: false, error: 'Exporting needs the Vellum app.' }
       return api.handoffExport(args)
     },
-    saveVersion: (name) => saveNamedVersion(docId, name),
+    saveVersion: (name, record) => {
+      // the frames this export carried go into the document first, so the snapshot holds them
+      getStore().recordHandoff(docId, record.version, record.frames)
+      return saveNamedVersion(docId, name)
+    },
     listVersions: () => listVersions(docId),
     loadVersion: (versionId) => loadVersionDoc(docId, versionId),
     now: () => new Date().toISOString(),

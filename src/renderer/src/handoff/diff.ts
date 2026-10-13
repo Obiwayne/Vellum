@@ -197,7 +197,25 @@ function diffAssets(prev: HandoffSpec, next: HandoffSpec): AssetChange[] {
     else if (assetKey(old) !== assetKey(x)) out.push({ path, status: 'changed' })
   }
   for (const path of a.keys()) if (!b.has(path)) out.push({ path, status: 'removed' })
-  return out.sort((x, y) => (x.path < y.path ? -1 : x.path > y.path ? 1 : 0))
+  // the same bytes under a new path (a renamed layer) is nothing to download again: drop the add + remove pair
+  const bySha = (st: 'added' | 'removed', specs: Map<string, AssetRecord>): Map<string, string[]> => {
+    const m = new Map<string, string[]>()
+    for (const c of out) if (c.status === st && specs.get(c.path)?.sha256) m.set(specs.get(c.path)!.sha256 as string, [...(m.get(specs.get(c.path)!.sha256 as string) ?? []), c.path])
+    return m
+  }
+  const gone = bySha('removed', a)
+  const came = bySha('added', b)
+  const drop = new Set<string>()
+  for (const [sha, removedPaths] of gone) {
+    const addedPaths = came.get(sha)
+    if (!addedPaths) continue
+    const n = Math.min(removedPaths.length, addedPaths.length)
+    for (let i = 0; i < n; i++) {
+      drop.add(removedPaths[i])
+      drop.add(addedPaths[i])
+    }
+  }
+  return out.filter((c) => !drop.has(c.path)).sort((x, y) => (x.path < y.path ? -1 : x.path > y.path ? 1 : 0))
 }
 
 export function diffSpecs(prev: HandoffSpec, next: HandoffSpec, previousVersion: number = prev.handoff.version): ChangeSet {
