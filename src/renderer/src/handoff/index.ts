@@ -4,6 +4,7 @@
 import type { Doc } from '../model/types'
 import { formatNumber } from '../model/devSpec'
 import { collect, walkSpec } from './collect'
+import { changesMd } from './changesMd'
 import { fontsMd, handoffMd, handoffState } from './handoffMd'
 import { componentMarkdown, fractionalIn, screenMarkdown, type MarkdownContext } from './markdown'
 import { assertSafePaths } from './paths'
@@ -31,6 +32,7 @@ export function buildHandoff(doc: Doc, options: HandoffOptions): HandoffResult {
   files['spec.json'] = jsonText(spec)
   files['spec.schema.json'] = jsonText(SPEC_SCHEMA)
   files['.handoff.json'] = handoffState(spec)
+  if (options.changes) files['CHANGES.md'] = changesMd(options.changes, options.version)
 
   let notes = 0
   let needsDecision = 0

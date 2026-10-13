@@ -1744,6 +1744,9 @@ exports[`snapshots of every file for the fixture > spec.schema.json 1`] = `
       "items": {
         "$ref": "#/$defs/Font"
       }
+    },
+    "changes": {
+      "$ref": "#/$defs/Changes"
     }
   },
   "required": [
@@ -1760,6 +1763,225 @@ exports[`snapshots of every file for the fixture > spec.schema.json 1`] = `
   ],
   "additionalProperties": false,
   "$defs": {
+    "Changes": {
+      "type": "object",
+      "properties": {
+        "previous": {
+          "type": "integer"
+        },
+        "screens": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              },
+              "status": {
+                "enum": [
+                  "added",
+                  "removed",
+                  "changed",
+                  "unchanged"
+                ]
+              },
+              "nodes": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/$defs/NodeChange"
+                }
+              }
+            },
+            "required": [
+              "id",
+              "name",
+              "status",
+              "nodes"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "components": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "ref": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              },
+              "status": {
+                "enum": [
+                  "added",
+                  "removed",
+                  "changed",
+                  "unchanged"
+                ]
+              },
+              "nodes": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/$defs/NodeChange"
+                }
+              }
+            },
+            "required": [
+              "ref",
+              "name",
+              "status",
+              "nodes"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "tokens": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "status": {
+                "enum": [
+                  "added",
+                  "removed",
+                  "changed"
+                ]
+              },
+              "text": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "name",
+              "status",
+              "text"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "assets": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "path": {
+                "type": "string"
+              },
+              "status": {
+                "enum": [
+                  "added",
+                  "removed",
+                  "changed"
+                ]
+              }
+            },
+            "required": [
+              "path",
+              "status"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "rebuild": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "counts": {
+          "type": "object",
+          "properties": {
+            "added": {
+              "type": "integer"
+            },
+            "removed": {
+              "type": "integer"
+            },
+            "changed": {
+              "type": "integer"
+            },
+            "unchanged": {
+              "type": "integer"
+            }
+          },
+          "required": [
+            "added",
+            "removed",
+            "changed",
+            "unchanged"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "previous",
+        "screens",
+        "components",
+        "tokens",
+        "assets",
+        "rebuild",
+        "counts"
+      ],
+      "additionalProperties": false
+    },
+    "NodeChange": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "path": {
+          "type": "string"
+        },
+        "kind": {
+          "enum": [
+            "added",
+            "removed",
+            "changed"
+          ]
+        },
+        "changes": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "property": {
+                "type": "string"
+              },
+              "from": {
+                "type": "string"
+              },
+              "to": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "property",
+              "from",
+              "to"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "descendants": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "id",
+        "path",
+        "kind",
+        "changes"
+      ],
+      "additionalProperties": false
+    },
     "Screen": {
       "type": "object",
       "properties": {

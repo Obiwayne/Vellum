@@ -164,6 +164,9 @@ export interface Store {
   /** set a token's value in a mode (the base mode writes token.value) */
   setTokenValue(docId: string, tokenName: string, mode: string | null, value: string | null, opts?: MutateOptions): void
 
+  /** note which frames hand-off `version` carried (saved with the file, not part of undo history) */
+  recordHandoff(docId: string, version: number, frames: string[]): void
+
   // comments (saved with the file, not part of undo history)
   addComment(docId: string, anchor: CommentAnchor, body: string, author?: CommentAuthor): string | null
   replyComment(docId: string, threadId: string, body: string, author?: CommentAuthor): boolean
@@ -945,6 +948,17 @@ export const useStore = create<Store>()((set, get) => {
           } else (t.modes ??= {})[mode] = value
         },
         opts
+      )
+    },
+
+    recordHandoff(docId, version, frames) {
+      mutate(
+        docId,
+        'Record handoff',
+        (d) => {
+          d.handoff = { version, frames: [...new Set(frames)] }
+        },
+        { noHistory: true, allowInDev: true }
       )
     },
 

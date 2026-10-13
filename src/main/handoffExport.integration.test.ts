@@ -204,3 +204,71 @@ describe('ready marks drive the default scope', () => {
     void card
   })
 })
+
+describe('second export: CHANGES.md against the previous Handoff vN (T72)', () => {
+  /** a history that remembers the document at each saved version, like version history does */
+  function history() {
+    const saved: Array<{ id: string; name: string; doc: ReturnType<typeof doc> }> = []
+    return {
+      deps: (target: string): ExportDeps => ({
+        ...deps({}, { path: target }),
+        saveVersion: async (name: string) => void saved.push({ id: `v${saved.length + 1}`, name, doc: JSON.parse(JSON.stringify(doc())) }),
+        listVersions: async () => saved.map((s) => ({ id: s.id, name: s.name })),
+        loadVersion: async (versionId: string) => saved.find((s) => s.id === versionId)?.doc ?? null
+      }),
+      saved
+    }
+  }
+
+  it('the first export has no CHANGES.md; the second lists exactly what was edited', async () => {
+    const { screen, scratch } = sample()
+    S().setReady(id, [screen, scratch], 1)
+    const h = history()
+    const first = await runExport(doc(), req([screen, scratch]), h.deps(join(dir, 'one')))
+    expect(first.ok).toBe(true)
+    if (!first.ok) return
+    expect(readdirSync(first.path)).not.toContain('CHANGES.md')
+    expect(JSON.parse(readFileSync(join(first.path, 'spec.json'), 'utf8')).changes).toBeUndefined()
+
+    // edit the title of one screen only
+    const title = doc().nodes[screen].children[0]
+    S().setText(id, title, 'Pay later')
+    const second = await runExport(doc(), req([screen, scratch]), h.deps(join(dir, 'two')))
+    expect(second.ok && second.version).toBe(2)
+    if (!second.ok) return
+    const md = readFileSync(join(second.path, 'CHANGES.md'), 'utf8')
+    expect(md.split('\n')[0]).toBe('# Changes since handoff v1')
+    expect(md).toContain('**Rebuild only these:** Checkout.')
+    expect(md).toContain('**Unchanged:** Scratch.')
+    expect(md).toContain('- Checkout › Title')
+    expect(md).toContain('  - text: "Pay now" → "Pay later"')
+    const spec = JSON.parse(readFileSync(join(second.path, 'spec.json'), 'utf8'))
+    expect(spec.changes.counts).toEqual({ added: 0, removed: 0, changed: 1, unchanged: 1 })
+    expect(readFileSync(join(second.path, 'HANDOFF.md'), 'utf8')).toMatch(/Read `CHANGES\.md` first/)
+    expect(h.saved.map((s) => s.name)).toEqual(['Handoff v1', 'Handoff v2'])
+  })
+
+  it('the preview shows the same counts the file will carry, and nothing without an earlier export', async () => {
+    const { screen } = sample()
+    S().setReady(id, [screen], 1)
+    const h = history()
+    const none = await previewExport(doc(), req([screen]), h.deps(join(dir, 'x')))
+    expect(none.changes).toBeUndefined()
+    await runExport(doc(), req([screen]), h.deps(join(dir, 'one')))
+    S().setText(id, doc().nodes[screen].children[0], 'Later')
+    const p = await previewExport(doc(), req([screen]), h.deps(join(dir, 'x')))
+    expect(p.changes).toMatchObject({ previous: 1, counts: { changed: 1, unchanged: 0 }, rebuild: ['Checkout'] })
+    expect(p.files).toContain('CHANGES.md')
+  })
+
+  it('an unreadable earlier version means no CHANGES.md rather than a failed export', async () => {
+    const { screen } = sample()
+    S().setReady(id, [screen], 1)
+    const h = history()
+    await runExport(doc(), req([screen]), h.deps(join(dir, 'one')))
+    const d = { ...h.deps(join(dir, 'two')), loadVersion: async () => null }
+    const out = await runExport(doc(), req([screen]), d)
+    expect(out.ok).toBe(true)
+    if (out.ok) expect(readdirSync(out.path)).not.toContain('CHANGES.md')
+  })
+})

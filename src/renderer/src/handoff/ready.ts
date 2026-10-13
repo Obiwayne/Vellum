@@ -89,3 +89,18 @@ export function previousHandoff(versions: ReadonlyArray<{ name?: string | null; 
   }
   return best
 }
+
+/** The newest "Handoff vN" in a history list with N below `before` (the version being exported), with its history id. */
+export function previousHandoffBefore(
+  versions: ReadonlyArray<{ id?: string; name?: string | null }>,
+  before: number
+): { version: number; id: string } | undefined {
+  let best: { version: number; id: string } | undefined
+  for (const v of versions) {
+    const m = HANDOFF_VERSION_RE.exec(v.name ?? '')
+    if (!m || !v.id) continue
+    const n = Number(m[1])
+    if (n < before && (!best || n > best.version)) best = { version: n, id: v.id }
+  }
+  return best
+}
