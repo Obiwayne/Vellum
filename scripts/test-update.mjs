@@ -140,9 +140,16 @@ const realDataStamp = () =>
   ps(`$d = Join-Path ([Environment]::GetFolderPath('ApplicationData')) 'Vellum'; (@('profiles.json', 'profiles', 'bridge-token', 'index.json') | ForEach-Object { $p = Join-Path $d $_; if (Test-Path $p) { "$_=$((Get-Item $p).LastWriteTimeUtc.Ticks)" } else { "$_=none" } }) -join ';'`)
 const realBefore = realDataStamp()
 const productVersion = () => ps(`if (Test-Path '${exe}') { (Get-Item '${exe}').VersionInfo.ProductVersion }`)
-// matched by the executable path under the install folder (Win32_Process, which also reports processes Get-Process cannot read the path of)
-const installedProcs = () => ps(`(Get-CimInstance Win32_Process -Filter "Name = '${PRODUCT}.exe'" -ErrorAction SilentlyContinue | Where-Object { $_.ExecutablePath -and $_.ExecutablePath.StartsWith('${installDir}', [StringComparison]::OrdinalIgnoreCase) } | Measure-Object).Count`)
-const seenProcs = () => ps(`(Get-CimInstance Win32_Process -ErrorAction SilentlyContinue | Where-Object { $_.Name -like '${PRODUCT}*' -or $_.Name -like 'Vellum-Setup-*' } | ForEach-Object { "$($_.Name) pid=$($_.ProcessId) session=$($_.SessionId) path=$($_.ExecutablePath)" }) -join '; '`)
+// the product's processes by executable path (Win32_Process also reports the path of processes Get-Process cannot read)
+const productProcs = () => {
+  const json = ps(`ConvertTo-Json -InputObject @(Get-CimInstance Win32_Process -Filter "Name = '${PRODUCT}.exe'" -ErrorAction SilentlyContinue | ForEach-Object { @{ pid = $_.ProcessId; path = $_.ExecutablePath; session = $_.SessionId } }) -Compress`)
+  try {
+    return [].concat(JSON.parse(json || '[]'))
+  } catch {
+    return []
+  }
+}
+const installedProcs = () => productProcs().filter((p) => (p.path ?? '').toLowerCase().startsWith(installDir.toLowerCase())).length
 const installerProcs = () => ps(`(Get-Process -ErrorAction SilentlyContinue | Where-Object { $_.ProcessName -like 'Vellum-Setup-*' } | Measure-Object).Count`)
 let app
 let updaterCache = ''
@@ -238,7 +245,7 @@ try {
   check(productVersion().startsWith(newVersion), `after install() the installed ${PRODUCT}.exe is version ${productVersion()} (expected ${newVersion})`)
   const t2 = Date.now() + 90000
   while (Date.now() < t2 && Number(installedProcs()) === 0) await sleep(1000)
-  const relaunch = relaunchVerdict({ started: installedProcs(), seen: seenProcs() })
+  const relaunch = relaunchVerdict({ processes: productProcs(), installDir })
   if (!relaunch.ok) say(`${relaunch.detail}; this script runs in session ${ps('(Get-Process -Id $PID).SessionId')}`)
   check(relaunch.ok, relaunch.label)
   const entries = JSON.parse(ps(`$e = @(Get-ChildItem 'HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall' | ForEach-Object { Get-ItemProperty $_.PSPath } | Where-Object { $_.DisplayName -like '${PRODUCT}*' } | ForEach-Object { @{ v = $_.DisplayVersion; u = $_.UninstallString } }); ConvertTo-Json -InputObject $e -Compress`) || '[]')

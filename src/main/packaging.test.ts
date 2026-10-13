@@ -285,28 +285,41 @@ describe('release workflow (.github/workflows/release.yml)', () => {
 })
 
 describe('relaunch check decision (update test)', () => {
-  const load = async (): Promise<{ relaunchVerdict: (o: { started: unknown; seen: string }) => { ok: boolean; label: string; detail: string } }> =>
+  type Verdict = { ok: boolean; label: string; detail: string }
+  const load = async (): Promise<{ relaunchVerdict: (o: { processes: unknown; installDir: string }) => Verdict }> =>
     import(pathToFileURL(join(process.cwd(), 'scripts', 'relaunch-verdict.mjs')).href)
-  it('passes when the new version runs from the install folder', async () => {
+  const B = String.fromCharCode(92)
+  const win = (...parts: string[]): string => parts.join(B)
+  const dir = win('C:', 'Users', 'x', 'Temp', 'vellum-update-test-1', 'app')
+  const exe = win(dir, 'VellumInstallTest.exe')
+  it('passes when the new version runs from the install folder, ignoring case and slash style', async () => {
     const { relaunchVerdict } = await load()
-    expect(relaunchVerdict({ started: '1', seen: 'VellumInstallTest.exe pid=4 session=1' })).toMatchObject({ ok: true, detail: '' })
+    expect(relaunchVerdict({ processes: [{ pid: 4, path: exe, session: 1 }], installDir: dir }).ok).toBe(true)
+    expect(relaunchVerdict({ processes: [{ pid: 4, path: exe.toUpperCase().split(B).join('/'), session: 1 }], installDir: dir }).ok).toBe(true)
+    expect(relaunchVerdict({ processes: [{ pid: 4, path: exe }], installDir: dir + B }).ok).toBe(true)
   })
-  it('fails, and says what it saw, when nothing was relaunched; there is no CI exemption', async () => {
+  it('fails, and says what it saw, when nothing runs from the folder; there is no CI exemption', async () => {
     const { relaunchVerdict } = await load()
     const prev = process.env.CI
     process.env.CI = 'true'
     try {
-      const v = relaunchVerdict({ started: '0', seen: 'Vellum-Setup-0.1.1.exe pid=9 session=0' })
-      expect(v.ok).toBe(false)
-      expect(v.detail).toContain('Vellum-Setup-0.1.1.exe pid=9 session=0')
-      expect(relaunchVerdict({ started: '', seen: '' }).ok).toBe(false)
+      const none = relaunchVerdict({ processes: [], installDir: dir })
+      expect(none.ok).toBe(false)
+      expect(none.detail).toContain('processes seen: none')
+      const elsewhere = win('C:', 'elsewhere', 'VellumInstallTest.exe')
+      const other = relaunchVerdict({ processes: [{ pid: 9, path: elsewhere, session: 0 }, { pid: 10, path: null, session: 0 }], installDir: dir })
+      expect(other.ok).toBe(false)
+      expect(other.detail).toContain('pid=9 session=0 path=' + elsewhere)
+      expect(other.detail).toContain('(unreadable)')
+      expect(relaunchVerdict({ processes: [{ pid: 1, path: win(dir + '-other', 'VellumInstallTest.exe') }], installDir: dir }).ok).toBe(false) // a sibling folder with the same prefix
+      expect(relaunchVerdict({ processes: undefined, installDir: dir }).ok).toBe(false)
     } finally {
       if (prev === undefined) delete process.env.CI
       else process.env.CI = prev
     }
   })
   it('is what test-update.mjs uses', () => {
-    expect(read('scripts/test-update.mjs')).toContain('relaunchVerdict({ started: installedProcs()')
+    expect(read('scripts/test-update.mjs')).toContain('relaunchVerdict({ processes: productProcs(), installDir })')
   })
   it('compares against the long form of the temp install folder (the runner TEMP is an 8.3 path)', () => {
     expect(read('scripts/test-update.mjs')).toContain("const work = realpathSync.native(mkdtempSync(join(tmpdir(), 'vellum-update-test-')))")
