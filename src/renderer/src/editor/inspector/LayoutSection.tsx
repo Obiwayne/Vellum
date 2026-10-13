@@ -120,7 +120,7 @@ function LimitFields({ ctx }: { ctx: Ctx }): JSX.Element {
         return (
           <Field
             key={l.key}
-            label={l.label}
+            label={<span className="insp-limit__label">{l.label}</span>}
             title={l.title}
             value={isMixed(v) ? null : v}
             type="number"

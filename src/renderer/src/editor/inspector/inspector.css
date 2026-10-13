@@ -863,3 +863,9 @@
 .insp-dev__flabel {
   color: var(--text-2);
 }
+
+/* Min / Max W and H: a caption longer than the 24px X/Y/W/H label keeps a gap before its value */
+.insp-limit__label {
+  white-space: nowrap;
+  margin-right: 6px;
+}
