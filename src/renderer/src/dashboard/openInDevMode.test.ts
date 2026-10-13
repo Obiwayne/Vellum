@@ -30,6 +30,27 @@ describe('Open in Dev Mode', () => {
     expect(canEdit(id)).toBe(false)
   })
 
+  it('after Open in Dev Mode the design cannot be changed: edits are refused and the document is untouched', () => {
+    const id = S().createDoc('Acme', { open: false })
+    const root = S().docs[id].pages[0].rootId
+    const frame = S().createNode(id, { type: 'frame', name: 'Frame', style: { width: 200, height: 100 } }, root)
+    const text = S().createNode(id, { type: 'text', text: 'Hello' }, frame)
+    entry(id, 'Open in Dev Mode').onSelect?.()
+    const before = JSON.stringify(S().docs[id])
+    S().createNode(id, { type: 'rect' }, frame)
+    S().setText(id, text, 'Changed')
+    S().updateStyles(id, [frame], { width: 50 })
+    S().renameNode(id, frame, 'Renamed')
+    S().deleteNodes(id, [text])
+    S().setReady(id, [frame], 1)
+    S().setDev(id, [frame], { notes: 'x' })
+    expect(JSON.stringify(S().docs[id])).toBe(before)
+    // Dev Mode is a view setting: leaving it restores editing
+    S().setDevMode(id, false)
+    S().setText(id, text, 'Changed')
+    expect(S().docs[id].nodes[text].text).toBe('Changed')
+  })
+
   it('plain Open still opens for editing', () => {
     const id = S().createDoc('Acme', { open: false })
     entry(id, 'Open').onSelect?.()

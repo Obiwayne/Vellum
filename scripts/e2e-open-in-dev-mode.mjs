@@ -28,7 +28,28 @@ try {
   await page.getByRole('button', { name: 'Create profile' }).click()
   await page.waitForTimeout(2000)
 
-  // the card's context menu
+  const layers = () => page.evaluate(() => document.querySelectorAll('[data-node-id]').length)
+  const drawFrame = async () => {
+    await page.keyboard.press('f')
+    await page.mouse.move(330, 150)
+    await page.mouse.down()
+    await page.mouse.move(600, 330, { steps: 5 })
+    await page.mouse.up()
+    await page.waitForTimeout(400)
+  }
+
+  // control: the same drag in Design mode does draw a frame, so "nothing was added" below means something
+  await page.locator('.db-card').first().dblclick()
+  await page.waitForTimeout(2000)
+  const start = await layers()
+  await drawFrame()
+  const drawn = await layers()
+  check(!(await modeIsDev()) && drawn === start + 1, `control: in Design mode the drag draws a frame (${start} layers before, ${drawn} after)`)
+  await page.keyboard.press('Escape')
+
+  // the card's context menu: the file is already open for editing, the entry switches it to Dev Mode
+  await page.keyboard.press('Control+Shift+D')
+  await page.waitForTimeout(600)
   await page.locator('.db-card').first().click({ button: 'right' })
   await page.waitForTimeout(300)
   await shot('file-menu-open-in-dev-mode')
@@ -37,16 +58,13 @@ try {
   await page.waitForTimeout(2500)
   await shot('opened-in-dev-mode')
   check(await modeIsDev(), 'the file opened with the Dev switch on')
-  // drawing is refused: no frame appears
-  const before = await page.evaluate(() => document.querySelectorAll('[data-node-id]').length)
-  await page.keyboard.press('f')
-  await page.mouse.move(330, 150)
-  await page.mouse.down()
-  await page.mouse.move(600, 330, { steps: 5 })
-  await page.mouse.up()
-  await page.waitForTimeout(400)
-  const after = await page.evaluate(() => document.querySelectorAll('[data-node-id]').length)
-  check(before === after && /read-only/.test(await body()), `drawing a frame in Dev Mode adds nothing (${before} layers before, ${after} after) and the read-only toast shows`)
+  const before = await layers()
+  await drawFrame()
+  const after = await layers()
+  check(before === drawn && before === after && /read-only/.test(await body()), `drawing a frame in Dev Mode adds nothing (${before} layers before, ${after} after, ${drawn} with the control frame) and the read-only toast shows`)
+  await page.keyboard.press('Delete')
+  await page.waitForTimeout(300)
+  check((await layers()) === after, 'Delete removes nothing in Dev Mode')
   await shot('edit-refused-in-dev-mode')
 
   // Learn page
