@@ -3,6 +3,7 @@
 import { existsSync, readFileSync, readdirSync } from 'node:fs'
 import { createRequire } from 'node:module'
 import { join } from 'node:path'
+import { pathToFileURL } from 'node:url'
 import { describe, expect, it } from 'vitest'
 
 const read = (p: string): string => readFileSync(p, 'utf8').replace(/\r\n/g, '\n')
@@ -280,5 +281,31 @@ describe('release workflow (.github/workflows/release.yml)', () => {
     expect(doc).toMatch(/git tag v/)
     expect(doc).toMatch(/Publish release/)
     expect(doc).toMatch(/## Roll back/)
+  })
+})
+
+describe('relaunch check decision (update test)', () => {
+  const load = async (): Promise<{ relaunchVerdict: (o: { started: unknown; seen: string }) => { ok: boolean; label: string; detail: string } }> =>
+    import(pathToFileURL(join(process.cwd(), 'scripts', 'relaunch-verdict.mjs')).href)
+  it('passes when the new version runs from the install folder', async () => {
+    const { relaunchVerdict } = await load()
+    expect(relaunchVerdict({ started: '1', seen: 'VellumInstallTest.exe pid=4 session=1' })).toMatchObject({ ok: true, detail: '' })
+  })
+  it('fails, and says what it saw, when nothing was relaunched; there is no CI exemption', async () => {
+    const { relaunchVerdict } = await load()
+    const prev = process.env.CI
+    process.env.CI = 'true'
+    try {
+      const v = relaunchVerdict({ started: '0', seen: 'Vellum-Setup-0.1.1.exe pid=9 session=0' })
+      expect(v.ok).toBe(false)
+      expect(v.detail).toContain('Vellum-Setup-0.1.1.exe pid=9 session=0')
+      expect(relaunchVerdict({ started: '', seen: '' }).ok).toBe(false)
+    } finally {
+      if (prev === undefined) delete process.env.CI
+      else process.env.CI = prev
+    }
+  })
+  it('is what test-update.mjs uses', () => {
+    expect(read('scripts/test-update.mjs')).toContain('relaunchVerdict({ started: installedProcs()')
   })
 })
