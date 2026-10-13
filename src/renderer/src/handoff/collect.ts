@@ -7,6 +7,7 @@ import { nodeSpec, tokenUse, varsIn, type NodeSpec, type SpecOptions, type Token
 import { modesOf } from '../model/modes'
 import { isPageRoot, numericSize } from '../model/ops'
 import { variantValues, variantsOf } from '../model/variants'
+import { breakpointDelta } from './deltas'
 import { PathRegistry, slug } from './paths'
 import type {
   AssetRecord,
@@ -207,6 +208,8 @@ export function collect(doc: Doc, options: HandoffOptions): Collected {
       if (it.ready) b.ready = it.ready
       bps.push(b)
     }
+    // every other breakpoint is described against the widest one
+    for (const b of bps.slice(1)) b.delta = breakpointDelta(doc, { name: bps[0].bp, frameId: bps[0].frameId, root: bps[0].root }, { name: b.bp, frameId: b.frameId, root: b.root })
     screens.push({ id: bps[0].frameId, name: g.name, slug: sSlug, breakpoints: bps })
   }
   skippedHidden += countHidden(doc, screens.flatMap((s) => s.breakpoints.map((b) => b.frameId)))

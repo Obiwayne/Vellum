@@ -2,7 +2,7 @@ import { useRef, useState } from 'react'
 import { ChevronDown, FlipHorizontal2, FlipVertical2, RotateCwSquare } from 'lucide-react'
 import { Button, Checkbox, Field, IconButton, Menu, Section, type MenuEntry } from '../../ui'
 import { useStore } from '../../model/store'
-import { axisConstraint, canConstrain, editPlain, isFlowLayout, setConstraint } from '../../model/ops'
+import { axisConstraint, canConstrain, editPlain, isFlowLayout, numericSize, setConstraint } from '../../model/ops'
 import type { CNode, Doc } from '../../model/types'
 import { common, co, displayPos, fv, inFlexParent, isMixed, measuredSize, sizeMode, type Ctx, type SizeMode } from './common'
 
@@ -100,6 +100,38 @@ function SizeField({ ctx, axis }: { ctx: Ctx; axis: 'width' | 'height' }): JSX.E
       />
       <Menu open={open} onClose={() => setOpen(false)} anchor={(btn.current?.closest('.c-field') as HTMLElement | null) ?? btn.current} items={items} minWidth={80} ignore={[btn.current]} />
     </>
+  )
+}
+
+// ------------------------------------------------------------------------------------------ min / max
+const LIMITS: Array<{ key: 'minWidth' | 'maxWidth' | 'minHeight' | 'maxHeight'; label: string; title: string }> = [
+  { key: 'minWidth', label: 'Min W', title: 'Minimum width in px; None or 0 removes it' },
+  { key: 'maxWidth', label: 'Max W', title: 'Maximum width in px; None or 0 removes it' },
+  { key: 'minHeight', label: 'Min H', title: 'Minimum height in px; None or 0 removes it' },
+  { key: 'maxHeight', label: 'Max H', title: 'Maximum height in px; None or 0 removes it' }
+]
+
+/** Min / max size as plain min-width / max-width / min-height / max-height: the handoff reads them as the resize limits. */
+function LimitFields({ ctx }: { ctx: Ctx }): JSX.Element {
+  return (
+    <div className="insp-g2" data-testid="size-limits">
+      {LIMITS.map((l) => {
+        const v = common(ctx.nodes, (n) => numericSize(n.style[l.key]))
+        return (
+          <Field
+            key={l.key}
+            label={l.label}
+            title={l.title}
+            value={isMixed(v) ? null : v}
+            type="number"
+            min={0}
+            placeholder={isMixed(v) ? 'Mixed' : 'None'}
+            keywords={['None']}
+            onChange={(next) => ctx.set({ [l.key]: typeof next === 'number' && next > 0 ? next : null })}
+          />
+        )
+      })}
+    </div>
   )
 }
 
@@ -254,6 +286,7 @@ export function LayoutSection({ ctx }: { ctx: Ctx }): JSX.Element {
           />
         </div>
       </div>
+      <LimitFields ctx={ctx} />
       {allFrames && !anyFlow && !allFlexChild && (
         <div className="insp-g2">
           <Button
