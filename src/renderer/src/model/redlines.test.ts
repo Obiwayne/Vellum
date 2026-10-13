@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { redlines, relationOf, type RedRect } from './redlines'
+import { containerRedlines, redlines, relationOf, type RedRect } from './redlines'
 
 const r = (x: number, y: number, width: number, height: number, rotated = false): RedRect => ({ x, y, width, height, ...(rotated ? { rotated: true } : {}) })
 const vals = (lines: ReturnType<typeof redlines>['lines']): string[] => lines.map((l) => `${l.kind}:${l.axis}:${l.label}`)
@@ -116,5 +116,51 @@ describe('rotated layers', () => {
 describe('nothing selected', () => {
   it('has no lines', () => {
     expect(redlines(null, r(0, 0, 1, 1), r(0, 0, 5, 5))).toEqual({ relation: null, lines: [] })
+  })
+})
+
+describe('containerRedlines: padding and gaps of a flex or grid container', () => {
+  const box = r(0, 0, 400, 200)
+  const kids = [r(16, 16, 100, 50), r(136, 16, 100, 50), r(256, 16, 100, 50)]
+
+  it('measures padding on four sides at the middle of each edge, zero sides left out', () => {
+    const ls = containerRedlines({ box, padding: [16, 44, 0, 16], children: [] })
+    expect(ls.map((l) => `${l.kind}:${l.axis}:${l.label}`)).toEqual(['padding:y:16', 'padding:x:44', 'padding:x:16'])
+    expect(ls[0].from).toEqual({ x: 200, y: 0 })
+    expect(ls[0].to).toEqual({ x: 200, y: 16 })
+    expect(ls[1].from).toEqual({ x: 356, y: 100 })
+    expect(ls[1].to).toEqual({ x: 400, y: 100 })
+  })
+
+  it('measures the gap between neighbours in a row, once each', () => {
+    const ls = containerRedlines({ box, padding: [0, 0, 0, 0], children: kids })
+    expect(ls.map((l) => `${l.kind}:${l.axis}:${l.label}`)).toEqual(['spacing:x:20', 'spacing:x:20'])
+    expect(ls[0].from).toEqual({ x: 116, y: 41 })
+    expect(ls[0].to).toEqual({ x: 136, y: 41 })
+  })
+
+  it('measures vertical gaps in a column', () => {
+    const col = [r(0, 0, 100, 40), r(0, 52, 100, 40), r(0, 104, 100, 40)]
+    const ls = containerRedlines({ box: r(0, 0, 100, 144), padding: [0, 0, 0, 0], children: col })
+    expect(ls.map((l) => `${l.axis}:${l.label}`)).toEqual(['y:12', 'y:12'])
+  })
+
+  it('shows row and column gaps of a grid, and a different last gap', () => {
+    const grid = [r(0, 0, 50, 50), r(60, 0, 50, 50), r(0, 70, 50, 50), r(60, 70, 50, 50)]
+    const ls = containerRedlines({ box: r(0, 0, 110, 120), padding: [0, 0, 0, 0], children: grid })
+    const got = ls.map((l) => `${l.axis}:${l.label}`).sort()
+    expect(got).toEqual(['x:10', 'x:10', 'y:20', 'y:20'])
+  })
+
+  it('draws nothing for a rotated container, and caps the number of gaps', () => {
+    expect(containerRedlines({ box: r(0, 0, 400, 200, true), padding: [8, 8, 8, 8], children: kids })).toEqual([])
+    const many = Array.from({ length: 200 }, (_, i) => r(i * 12, 0, 10, 10))
+    const ls = containerRedlines({ box: r(0, 0, 2400, 10), padding: [0, 0, 0, 0], children: many })
+    expect(ls.filter((l) => l.kind === 'spacing').length).toBe(60)
+  })
+
+  it('overlapping or touching children have no gap', () => {
+    const ls = containerRedlines({ box, padding: [0, 0, 0, 0], children: [r(0, 0, 100, 50), r(100, 0, 100, 50), r(150, 0, 100, 50)] })
+    expect(ls).toEqual([])
   })
 })

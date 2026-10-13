@@ -2,13 +2,20 @@
 // the selection's parent. Only in Dev Mode. The geometry itself is model/redlines.ts (pure); this file decides
 // which rects take part and which are "rotated", so it can be tested without a canvas.
 import type { CNode, Doc, WorldRect } from '../../model/types'
-import { isPageRoot } from '../../model/ops'
-import { redlines, type RedRect, type RedlineResult } from '../../model/redlines'
+import { isFlowLayout, isPageRoot } from '../../model/ops'
+import { layoutIntent } from '../../model/devSpec'
+import { containerRedlines, redlines, type RedRect, type RedlineResult } from '../../model/redlines'
+import { sizeBadgeText } from './sizeLabel'
 
 export interface RedlineScene extends RedlineResult {
   /** world rect of the layer the "rotated" note is drawn at, when something was skipped */
   noteAt?: WorldRect
+  /** size chips: the hovered layer's size with its sizing rule in words ("Fit 120 × 40") */
+  sizeLabels: Array<{ at: WorldRect; text: string }>
 }
+
+/** Children shown with a container's gaps: more than this and the gaps are not drawn (a long list is noise). */
+const MAX_CHILDREN = 60
 
 export interface SceneInput {
   doc: Doc
@@ -23,11 +30,17 @@ export interface SceneInput {
   gesturing?: boolean
 }
 
-/** Ids whose rect the scene needs besides the selection and the hovered layer: the selection's parent. */
+/** Ids whose rect the scene needs besides the selection and the hovered layer: the selection's parent and, for a flex or grid container, its visible children. */
 export function sceneExtraIds(doc: Doc, selection: string[], devMode: boolean): string[] {
   if (!devMode || selection.length !== 1) return []
-  const parent = doc.nodes[selection[0]]?.parent
-  return parent && !isPageRoot(doc, parent) ? [parent] : []
+  const n = doc.nodes[selection[0]]
+  if (!n) return []
+  const out: string[] = []
+  if (n.parent && !isPageRoot(doc, n.parent)) out.push(n.parent)
+  if (n.type === 'frame' && isFlowLayout(n.style)) {
+    for (const c of n.children) if (doc.nodes[c]?.visible && out.length < MAX_CHILDREN + 1) out.push(c)
+  }
+  return out
 }
 
 const union = (rs: WorldRect[]): WorldRect => {
@@ -63,8 +76,27 @@ export function redlineScene(input: SceneInput): RedlineScene | null {
   }
 
   const res = redlines(sel, other, parent)
-  if (!res.lines.length && !res.skipped) return null
-  const scene: RedlineScene = res
+
+  // a single flex or grid container: its padding on four sides and the gaps between its children
+  if (selNodes.length === 1 && !sel.rotated) {
+    const n = selNodes[0]
+    if (n.type === 'frame' && isFlowLayout(n.style)) {
+      const kids = n.children
+        .filter((c) => doc.nodes[c]?.visible)
+        .map((c) => rects.get(c))
+        .filter((r): r is WorldRect => Boolean(r))
+      if (kids.length <= MAX_CHILDREN) res.lines.push(...containerRedlines({ box: sel, padding: layoutIntent(doc, n.id).padding, children: kids }))
+    }
+  }
+
+  const sizeLabels: RedlineScene['sizeLabels'] = []
+  if (other && !other.rotated && hovered) {
+    const hn = doc.nodes[hovered]
+    if (hn) sizeLabels.push({ at: { x: other.x, y: other.y, width: other.width, height: other.height }, text: sizeBadgeText([hn], other) })
+  }
+
+  if (!res.lines.length && !res.skipped && !sizeLabels.length) return null
+  const scene: RedlineScene = { ...res, sizeLabels }
   if (res.skipped) {
     const at = other?.rotated ? other : sel
     scene.noteAt = { x: at.x, y: at.y, width: at.width, height: at.height }

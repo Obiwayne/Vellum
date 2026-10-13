@@ -3,7 +3,7 @@ import { createElement, act } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { RedlineLayer } from './RedlineLayer'
-import { redlines } from '../../model/redlines'
+import { redlines as geometry, type RedlineResult } from '../../model/redlines'
 import type { RedlineScene } from './redlineScene'
 import type { Camera } from '../../model/types'
 
@@ -23,7 +23,8 @@ afterEach(() => {
 
 const cam = (zoom: number): Camera => ({ x: 10, y: 20, zoom })
 const draw = (scene: RedlineScene, zoom: number): void => act(() => root.render(createElement(RedlineLayer, { scene, cam: cam(zoom) })))
-const sceneOf = (): RedlineScene => redlines({ x: 0, y: 0, width: 100, height: 100 }, { x: 180, y: 20, width: 40, height: 40 })
+const scene = (r: RedlineResult, over: Partial<RedlineScene> = {}): RedlineScene => ({ ...r, sizeLabels: [], ...over })
+const sceneOf = (): RedlineScene => scene(geometry({ x: 0, y: 0, width: 100, height: 100 }, { x: 180, y: 20, width: 40, height: 40 }))
 
 describe('RedlineLayer', () => {
   it('draws one line and one label per distance, in the redline colour class', () => {
@@ -52,7 +53,7 @@ describe('RedlineLayer', () => {
   })
 
   it('draws a vertical line with a vertical tick pair', () => {
-    draw(redlines({ x: 0, y: 0, width: 100, height: 50 }, { x: 10, y: 120, width: 30, height: 30 }), 1)
+    draw(scene(geometry({ x: 0, y: 0, width: 100, height: 50 }, { x: 10, y: 120, width: 30, height: 30 })), 1)
     const body = host.querySelector('.cv-redline-body') as HTMLElement
     expect(body.style.width).toBe('1px')
     expect(body.style.height).toBe('70px')
@@ -60,10 +61,18 @@ describe('RedlineLayer', () => {
   })
 
   it('says "rotated" instead of distances', () => {
-    const scene: RedlineScene = { ...redlines({ x: 0, y: 0, width: 10, height: 10, rotated: true }, null), noteAt: { x: 0, y: 0, width: 10, height: 10 } }
-    draw(scene, 1)
+    draw(scene(geometry({ x: 0, y: 0, width: 10, height: 10, rotated: true }, null), { noteAt: { x: 0, y: 0, width: 10, height: 10 } }), 1)
     expect(host.querySelectorAll('.cv-redline')).toHaveLength(0)
     expect(host.querySelector('.cv-redline-label--note')?.textContent).toBe('rotated')
+  })
+
+  it('draws the hovered size chip under the layer, at screen size', () => {
+    draw(scene(geometry(null, null), { sizeLabels: [{ at: { x: 100, y: 100, width: 80, height: 40 }, text: 'Fit 80 × 40' }] }), 2)
+    const chip = host.querySelector('.cv-redline-label--size') as HTMLElement
+    expect(chip.textContent).toBe('Fit 80 × 40')
+    // centre of the layer: (100 + 40) * 2 + 10; just below its bottom edge: (100 + 40) * 2 + 20 + 14
+    expect(chip.style.left).toBe('290px')
+    expect(chip.style.top).toBe('314px')
   })
 
   it('never takes the pointer', () => {

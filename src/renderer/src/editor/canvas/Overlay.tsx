@@ -12,6 +12,7 @@ import { GradientHandles, gradientBox, type Grad, type GradPart } from './Gradie
 import { MIN_HANDLE_FRAME, SpacingHandles, type SpacingTarget } from './SpacingHandles'
 import { redlineScene, sceneExtraIds } from './redlineScene'
 import { RedlineLayer } from './RedlineLayer'
+import { sizeBadgeText } from './sizeLabel'
 
 export type Handle = 'nw' | 'n' | 'ne' | 'e' | 'se' | 's' | 'sw' | 'w'
 
@@ -59,21 +60,7 @@ const box = (r: WorldRect, extra: CSSProperties = {}): CSSProperties => ({
   ...extra
 })
 
-function dimLabel(v: string | number | undefined, measured: number): string {
-  const m = Math.round(measured * 100) / 100
-  const txt = Number.isInteger(m) ? String(m) : m.toFixed(1).replace(/\.0$/, '')
-  if (v === undefined || v === 'fit-content' || v === 'auto' || v === 'max-content' || v === 'min-content') return `Fit ${txt}`
-  if (v === '100%' || v === 'stretch') return `Fill ${txt}`
-  return txt
-}
-
-export function sizeBadgeText(nodes: CNode[], rect: WorldRect): string {
-  if (nodes.length === 1) {
-    const n = nodes[0]
-    return `${dimLabel(n.style.width, rect.width)} × ${dimLabel(n.style.height, rect.height)}`
-  }
-  return `${dimLabel(0, rect.width)} × ${dimLabel(0, rect.height)}`
-}
+export { sizeBadgeText }
 
 const HANDLE_CURSOR: Record<Handle, string> = {
   nw: 'nwse-resize',

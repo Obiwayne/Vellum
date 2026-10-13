@@ -14,7 +14,7 @@ import { NodeView } from './NodeView'
 import { Overlay, SHADER_COLOR, SHADER_IMAGE, type Guide, type Handle, type Transient } from './Overlay'
 import { clampZoom, registerViewport } from './camera'
 import { clientToWorld, contains, intersects, measure, rectFromPoints, registerWorld, union } from './geometry'
-import { containerAt, drillNode, nodeIdFromTarget, pickNode } from './selection'
+import { containerAt, drillNode, hoverPick, nodeIdFromTarget, pickNode } from './selection'
 import * as A from './actions'
 import { COMPONENT_DRAG_TYPE, dropComponent } from './componentActions'
 import { canvasMenu, layersMenu, nodeMenu } from './menus'
@@ -1228,7 +1228,7 @@ export function CanvasView({ docId }: { docId: string }): JSX.Element | null {
       return
     }
     const deepest = nodeIdFromTarget(e.target)
-    const pick = deepest ? pickNode(d, deepest, ed.selection, e.ctrlKey || e.metaKey) : null
+    const pick = deepest ? hoverPick(d, deepest, ed.selection, { deep: e.ctrlKey || e.metaKey, alt: e.altKey, devMode: ed.devMode }) : null
     if (pick !== ed.hovered) s.setHovered(docId, pick)
   }
 
