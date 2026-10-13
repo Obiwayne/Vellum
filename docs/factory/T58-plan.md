@@ -334,3 +334,21 @@ Drawn in Vellum, file **"Vellum — Dev Mode and handoff"** (page 1, four artboa
 | D04 · Changes since last handoff | Rebuild list with old to new values, tokens, assets, unchanged list; becomes CHANGES.md | `D04-changes-since-handoff.png` |
 
 Not drawn (for the design crew, from the section 13 list): the Design | Dev switch in the top bar at component level, the Layers-tree ready badge states in context, "Open in Dev Mode (read-only)" file-open prompt, "Make State property" flow, breakpoint tagging control, and empty states. The four screens are layout sketches in the app's own style, not final visual design.
+
+### Design station addendum (artboards D05, D06, and notes for the builder)
+
+| Artboard | Shows | PNG |
+|---|---|---|
+| D05 · Export handoff, states | Empty (no ready screens, "Choose frames anyway"), Exporting (progress, Cancel), Failed (nothing written; temp folder then move), Done (counts, path, "Copy prompt", "Open folder") | `D05-export-states.png` |
+| D06 · Spec panel, nothing selected, and edit refused | Page summary with ready/changed dots, file facts, Export and Copy CSS variables; the read-only toast | `D06-spec-panel-empty-and-edit-refused.png` |
+
+State coverage per surface: Export dialog: filled (D02), empty, loading, error, done (D05). Changes view: filled (D04); "no changes since v3" is plain text "Nothing changed. Export again only to refresh renders." (not drawn). Spec panel: selection (D01), none (D06). Dev section: D03.
+
+**Builder must not guess:**
+- Copy text in D02/D04/D05 is a draft; the structure (counts, "pulls in", unchanged list, decrypted-copy line) is not.
+- The bundle is built in a temp folder and moved into place, so a failed export never leaves a half-written folder.
+- "Copy prompt" puts a fixed sentence on the clipboard ("Read HANDOFF.md first, then CHANGES.md; build and verify against screens/*.png"), not file contents.
+- Dev section is editable in Design mode only; in Dev Mode it is shown read-only.
+- Status colours (ready green, changed amber, dev violet, redline red) are new tokens in this file, `--color-dev`, `--color-dev-soft`, `--color-redline`, `--color-ready`, `--color-changed`; they need adding to the app's UI tokens, and redline red must be distinct from the canvas selection colour.
+- Layout, spacing and type come from the app's UI tokens as used in the Live collaboration file (Inter 11–16px, DM Mono for values, 6px radius controls, 12px dialogs). No separate "design framework" file exists in Vellum; that file was the closest reference.
+- Not drawn: top-bar Design | Dev control, read-only open prompt, Make State property, breakpoint tagging control, Layers badges in context.
