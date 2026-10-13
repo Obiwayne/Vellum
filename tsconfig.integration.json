@@ -1,0 +1,9 @@
+{
+  "extends": "./tsconfig.web.json",
+  "compilerOptions": {
+    "composite": false,
+    "noEmit": true,
+    "types": ["node"]
+  },
+  "include": ["src/main/handoffExport.integration.test.ts", "src/main/v010-roundtrip.test.ts", "src/renderer/src/env.d.ts"]
+}

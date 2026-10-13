@@ -48,8 +48,12 @@ export interface CNode {
 
 /** Developer-facing info on a node: spec, not conversation. All fields optional; an empty object is never stored. */
 export interface DevInfo {
-  /** frames: handoff version in which the frame was marked ready for dev */
-  ready?: { at: number }
+  /**
+   * frames: marked ready for dev. `at` = the handoff version the next export carried at mark time; `hash` = content hash
+   * of the frame then (see handoff/ready.ts): a different hash later means "changed since ready". Marks without a
+   * hash (made before it existed) count as unchanged.
+   */
+  ready?: { at: number; hash?: string }
   /** dev notes: behaviour, data, edge cases (markdown-lite). Never appears in Share/Copy HTML. */
   notes?: string
   /** described (undrawn) states by state name, e.g. 'hover' */

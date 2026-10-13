@@ -3,6 +3,9 @@ import { ChevronDown, ChevronRight, Columns3, Component, Diamond, Eye, EyeOff, F
 import { useContextMenu, type MenuEntry } from '../../ui'
 import { canEdit, getStore, useStore } from '../../model/store'
 import * as ops from '../../model/ops'
+import { canMark, readyStatus } from '../../handoff/ready'
+import { toggleReady } from '../../handoff/readyActions'
+import '../handoff/export-handoff.css'
 import type { CNode, Doc } from '../../model/types'
 import { CANVAS_COMMAND_EVENT } from '../../shell/commands'
 import * as A from '../canvas/actions'
@@ -73,6 +76,7 @@ function flatten(doc: Doc, rootId: string, expanded: Set<string>): Row[] {
 
 /** Actions shared by the row context menu. `ids` = nodes to act on. */
 export function nodeMenu(docId: string, ids: string[], onRename?: () => void): MenuEntry[] {
+  const frames = ids.filter((id) => canMark(getStore().docs[docId], id))
   const s = getStore()
   const doc = s.docs[docId]
   if (!doc) return []
@@ -125,6 +129,15 @@ export function nodeMenu(docId: string, ids: string[], onRename?: () => void): M
       }
     },
     ...componentMenu(docId, ids),
+    ...(frames.length
+      ? ([
+          { type: 'separator' },
+          {
+            label: frames.every((id) => doc.nodes[id].dev?.ready) ? 'Clear ready for dev' : 'Mark ready for dev',
+            onSelect: () => void toggleReady(docId, frames)
+          }
+        ] as MenuEntry[])
+      : []),
     { type: 'separator' },
     { label: 'Bring to front', shortcut: ']', onSelect: () => reorder(true) },
     { label: 'Send to back', shortcut: '[', onSelect: () => reorder(false) },
@@ -349,6 +362,7 @@ export function LayersTree({ docId }: { docId: string }): JSX.Element | null {
             hovered={hovered === r.id}
             parentSelected={!selSet.has(r.id) && ops.ancestors(doc, r.id).some((a) => selSet.has(a))}
             dropInside={drop?.id === r.id && drop.pos === 'inside'}
+            ready={doc.nodes[r.id].dev?.ready ? readyStatus(doc, r.id) : null}
             renaming={renaming === r.id}
             onToggle={(deep) => toggle(r.id, deep)}
             onClick={(e) => onRowClick(e, r.id)}
@@ -381,6 +395,8 @@ interface LayerRowProps {
   hovered: boolean
   parentSelected: boolean
   dropInside: boolean
+  /** top-level frames: marked ready for dev, and whether it changed since */
+  ready: 'ready' | 'changed' | null
   renaming: boolean
   onToggle: (deep: boolean) => void
   onClick: (e: React.MouseEvent) => void
@@ -437,6 +453,13 @@ const LayerRow = memo(function LayerRow(p: LayerRowProps): JSX.Element {
       <span className="lp-layer__icon">
         <NodeIcon node={n} />
       </span>
+      {p.ready && (
+        <span
+          className={'lp-layer__ready' + (p.ready === 'changed' ? ' lp-layer__ready--changed' : '')}
+          title={p.ready === 'changed' ? 'Changed since it was marked ready for dev' : 'Ready for dev'}
+          data-ready={p.ready}
+        />
+      )}
       {p.renaming ? (
         <InlineEdit value={n.name} onCommit={(v) => p.onRenameDone(v)} onCancel={() => p.onRenameDone(null)} />
       ) : (
