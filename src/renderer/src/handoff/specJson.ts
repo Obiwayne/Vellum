@@ -71,8 +71,19 @@ export const SPEC_SCHEMA: S = {
   ),
   $defs: {
     Screen: obj({ id: str, name: str, slug: str, breakpoints: arr(ref('Breakpoint')) }, ['id', 'name', 'slug', 'breakpoints']),
+    Delta: obj(
+      {
+        base: str,
+        changes: arr(obj({ path: str, changes: arr(obj({ property: str, from: str, to: str }, ['property', 'from', 'to'])) }, ['path', 'changes'])),
+        onlyHere: arr(str),
+        notHere: arr(str),
+        hiddenHere: arr(str),
+        ambiguous: arr(str)
+      },
+      ['base', 'changes', 'onlyHere', 'notHere', 'hiddenHere', 'ambiguous']
+    ),
     Breakpoint: obj(
-      { bp: str, frameId: str, width: num, height: num, ready: obj({ at: int }, ['at']), png: str, root: ref('Node') },
+      { bp: str, frameId: str, width: num, height: num, ready: obj({ at: int }, ['at']), png: str, delta: ref('Delta'), root: ref('Node') },
       ['bp', 'frameId', 'png', 'root']
     ),
     Component: obj(

@@ -149,3 +149,15 @@ describe('docDiff dev aspect', () => {
     expect(diffDocs(before, d).changed).toHaveLength(0)
   })
 })
+
+describe('breakpoints', () => {
+  it('suggests a name from the width', async () => {
+    const { suggestBreakpoint, BREAKPOINT_WIDTHS } = await import('./dev')
+    expect(suggestBreakpoint(1440)).toBe('Desktop')
+    expect(suggestBreakpoint(1024)).toBe('Desktop')
+    expect(suggestBreakpoint(768)).toBe('Tablet')
+    expect(suggestBreakpoint(390)).toBe('Mobile')
+    expect(suggestBreakpoint(0)).toBe('Mobile')
+    expect(BREAKPOINT_WIDTHS).toEqual({ Desktop: 1280, Tablet: 768, Mobile: 390 })
+  })
+})
