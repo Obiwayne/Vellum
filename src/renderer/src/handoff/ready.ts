@@ -9,19 +9,44 @@ import { withDev } from './collect'
 
 export type ReadyStatus = 'ready' | 'changed'
 
-const cache = new WeakMap<Doc['nodes'], Map<string, string | null>>()
+/**
+ * What a frame's hash depends on, as object identities: every node of its subtree, the mains its instances point
+ * at, and the document-wide tables a spec reads. Edits elsewhere leave all of them untouched (immer shares them), so
+ * the hash is reused instead of rebuilding the spec on every Layers render.
+ */
+function dependencies(doc: Doc, id: string): object[] {
+  const refs: object[] = [doc.tokens, doc.textStyles ?? EMPTY, doc.modes ?? EMPTY]
+  const seen = new Set<string>()
+  const walk = (nid: string): void => {
+    if (seen.has(nid)) return
+    seen.add(nid)
+    const n = doc.nodes[nid]
+    if (!n) return
+    refs.push(n)
+    if (n.instance) {
+      const main = doc.nodes[n.instance.of]
+      if (main) refs.push(main)
+    }
+    for (const c of n.children) walk(c)
+  }
+  walk(id)
+  return refs
+}
+
+const EMPTY: object[] = []
+const memo = new Map<string, { refs: object[]; hash: string | null }>()
+
+const same = (a: object[], b: object[]): boolean => a.length === b.length && a.every((x, i) => x === b[i])
 
 /** Content hash of a frame's hand-off spec (authored values; hidden layers are not part of it), or null. */
 export function frameHash(doc: Doc, id: string): string | null {
-  let per = cache.get(doc.nodes)
-  if (!per) {
-    per = new Map()
-    cache.set(doc.nodes, per)
-  }
-  if (per.has(id)) return per.get(id) as string | null
+  const key = `${doc.id}:${id}`
+  const refs = dependencies(doc, id)
+  const hit = memo.get(key)
+  if (hit && same(hit.refs, refs)) return hit.hash
   const spec = nodeSpec(doc, id, { precision: 2 })
   const h = spec ? contentHash(withDev(doc, spec)) : null
-  per.set(id, h)
+  memo.set(key, { refs, hash: h })
   return h
 }
 
