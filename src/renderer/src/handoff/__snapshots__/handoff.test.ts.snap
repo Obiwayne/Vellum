@@ -1,0 +1,2665 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`snapshots of every file for the fixture > .handoff.json 1`] = `
+"{
+  "schema": "vellum.handoff.state/1",
+  "version": 1,
+  "screens": {
+    "checkout": {
+      "9-0": "150e5cd056bd5eab",
+      "19-0": "99b90029f4a86cbf"
+    }
+  },
+  "components": {
+    "button": "9ccfb5feccf75767"
+  },
+  "tokens": "101eb12e76df96ff",
+  "textStyles": "742750b313d64ffb",
+  "assets": "741638a58d84769d"
+}
+"
+`;
+
+exports[`snapshots of every file for the fixture > CLAUDE.md 1`] = `
+"# Acme checkout — handoff v1
+
+> ## Andy's quick start
+> 1. Drop this folder next to your repo (outside it is fine; nothing here runs).
+> 2. Tell Claude Code: "build screens/checkout.md from this handoff".
+> 3. Verify the result against the PNGs in screens/. Handoff v1, 1 screen.
+
+Exported 2026-10-13T12:00:00Z from Vellum 1.0.0. Schema \`vellum.handoff/1\`.
+
+## What is in here
+
+- 1 screen (2 breakpoints), 9 layers, 1 component, 6 tokens, 1 text style, 1 font family, 0 assets.
+- Dev notes: 3. Open decisions: 1.
+- Theme modes: Light, Dark (the first is the base).
+
+## Read order
+
+1. \`HANDOFF.md\`
+2. \`tokens/tokens.css\`
+3. \`tokens/tokens.json\`
+4. \`tokens/tailwind.css\`
+5. \`components/button.md\`
+6. \`screens/checkout.md\`
+7. \`fonts.md\`
+8. \`spec.json\`
+
+## Rules
+
+1. **Stack-neutral.** Build with the project's framework. Map the tokens to the project's theme: the values in \`tokens/\` are the truth, the names are suggestions. Reuse existing components before creating new ones. Never hard-code a value that has a token.
+2. **Layout intent first.** Each layer lists its rule (flex or grid, Fixed / Fit / Fill, min and max, constraints) before its numbers. Never turn intent into absolute pixel positions. The px values in \`spec.json\` are the design-time size.
+3. **Verify.** Render each screen at the design width and compare with the PNG in \`screens/\`. Tolerance: layout within 0.5px, text on the same line breaks, colours exact. List what differs; do not tweak the design silently.
+4. **Precision.** Values are measured and kept to 2 decimals with trailing zeros trimmed (\`347.5\`, never \`348\`). Fractional sizes are flagged: build with the rule, not the number.
+5. **Ask or flag.** Anything marked \`needs decision\` or \`dev note\` goes into the PR description; do not guess.
+
+## Open decisions
+
+- Checkout (Desktop) › Card: Is the card tappable?
+
+## States not specified
+
+These interactive components have no drawn or described hover, pressed, focus or disabled state. Use the project defaults and say so; do not invent a look.
+
+- Button: pressed, focus, disabled
+
+## Warnings
+
+- 1 node has a fractional size: build with the layout rule, not the number.
+
+> 9 layers were not measured: their sizes come from the authored style. Treat them as intent.
+"
+`;
+
+exports[`snapshots of every file for the fixture > HANDOFF.md 1`] = `
+"# Acme checkout — handoff v1
+
+> ## Andy's quick start
+> 1. Drop this folder next to your repo (outside it is fine; nothing here runs).
+> 2. Tell Claude Code: "build screens/checkout.md from this handoff".
+> 3. Verify the result against the PNGs in screens/. Handoff v1, 1 screen.
+
+Exported 2026-10-13T12:00:00Z from Vellum 1.0.0. Schema \`vellum.handoff/1\`.
+
+## What is in here
+
+- 1 screen (2 breakpoints), 9 layers, 1 component, 6 tokens, 1 text style, 1 font family, 0 assets.
+- Dev notes: 3. Open decisions: 1.
+- Theme modes: Light, Dark (the first is the base).
+
+## Read order
+
+1. \`HANDOFF.md\`
+2. \`tokens/tokens.css\`
+3. \`tokens/tokens.json\`
+4. \`tokens/tailwind.css\`
+5. \`components/button.md\`
+6. \`screens/checkout.md\`
+7. \`fonts.md\`
+8. \`spec.json\`
+
+## Rules
+
+1. **Stack-neutral.** Build with the project's framework. Map the tokens to the project's theme: the values in \`tokens/\` are the truth, the names are suggestions. Reuse existing components before creating new ones. Never hard-code a value that has a token.
+2. **Layout intent first.** Each layer lists its rule (flex or grid, Fixed / Fit / Fill, min and max, constraints) before its numbers. Never turn intent into absolute pixel positions. The px values in \`spec.json\` are the design-time size.
+3. **Verify.** Render each screen at the design width and compare with the PNG in \`screens/\`. Tolerance: layout within 0.5px, text on the same line breaks, colours exact. List what differs; do not tweak the design silently.
+4. **Precision.** Values are measured and kept to 2 decimals with trailing zeros trimmed (\`347.5\`, never \`348\`). Fractional sizes are flagged: build with the rule, not the number.
+5. **Ask or flag.** Anything marked \`needs decision\` or \`dev note\` goes into the PR description; do not guess.
+
+## Open decisions
+
+- Checkout (Desktop) › Card: Is the card tappable?
+
+## States not specified
+
+These interactive components have no drawn or described hover, pressed, focus or disabled state. Use the project defaults and say so; do not invent a look.
+
+- Button: pressed, focus, disabled
+
+## Warnings
+
+- 1 node has a fractional size: build with the layout rule, not the number.
+
+> 9 layers were not measured: their sizes come from the authored style. Treat them as intent.
+"
+`;
+
+exports[`snapshots of every file for the fixture > components/button.md 1`] = `
+"# Button
+
+Component set \`6-0\`. Used by: Checkout.
+
+> Dev note: Primary call to action.
+
+> Dev note: Only one per screen.
+
+## Properties
+
+| Property | Type | Default | Options |
+|---|---|---|---|
+| Variant | variant | Default | Default, Variant 2 |
+
+## Variants
+
+### Button (Variant=Default)
+
+- **Variant=Default — Row, padding 0 16 0 16, width 160, height 44** \`3-0\`
+  - size 160px × 44px; flow position 0 (not measured: from the authored style)
+  - padding 0px 16px 0px 16px
+  - fill #2563EBFF --color-brand; radius 8px
+  - tokens: --color-brand
+  - state hover: backgroundColor: var(--color-brand-hover)
+  - dev note: Primary call to action.
+  - dev note: Only one per screen.
+  - **Label — Block, width fit, height fit** \`4-0\` (text)
+    - size: fit content (not measured); flow position 0
+    - text colour #FFFFFFFF
+    - "Buy" · Inter, sans-serif, 16px, weight 600
+
+### Button (Variant=Variant 2)
+
+- **Button / Large — Row, padding 0 16 0 16, width 160, height 56** \`7-0\`
+  - size 160px × 56px; flow position 0 (not measured: from the authored style)
+  - padding 0px 16px 0px 16px
+  - fill #2563EBFF --color-brand; radius 8px
+  - tokens: --color-brand
+  - **Label — Block, width fit, height fit** \`8-0\` (text)
+    - size: fit content (not measured); flow position 0
+    - text colour #FFFFFFFF
+    - "Buy" · Inter, sans-serif, 16px, weight 600
+
+## States
+
+| State | How it is specified |
+|---|---|
+| hover | described (state rule on the component) |
+| pressed | missing: not specified, use the project default |
+| focus | missing: not specified, use the project default |
+| disabled | missing: not specified, use the project default |
+"
+`;
+
+exports[`snapshots of every file for the fixture > fonts.md 1`] = `
+"# Fonts
+
+Font files are not part of this bundle. Install or load the families below, or substitute a licensed equivalent and say so.
+
+| Family | Weights | Italic | Source | Used by | CSS stack |
+|---|---|---|---|---|---|
+| Inter | 400, 600, 700 | no | unknown | 6 layers | \`Inter, sans-serif\` |
+
+- **Inter**: source unknown. Check its licence before shipping it.
+"
+`;
+
+exports[`snapshots of every file for the fixture > screens/checkout.md 1`] = `
+"# Checkout
+
+Screen \`9-0\`, 2 breakpoints. Build to the layout rules first; the numbers describe the design size.
+
+## Desktop · 1280px wide
+
+Frame \`9-0\` · ready in handoff v1 · reference \`screens/checkout.desktop.png\`
+
+> 1 node has fractional sizes (e.g. 347.5 × 52 for "Card"); build with the rule, not the number.
+
+- **Checkout — Column, gap 16, padding 24, width 1280, height 800** \`9-0\`
+  - size 1280px × 800px; at 0, 0 in artboard (not measured: from the authored style)
+  - padding 24px 24px 24px 24px
+  - fill #FFFFFFFF --color-surface
+  - tokens: --color-surface
+  - **Title — Block, width fit, height fit** \`10-0\` (text)
+    - size: fit content (not measured); flow position 0
+    - text colour #0F171FFF (authored oklch(0.2 0.02 250)) --color-text
+    - "Pay now" · Inter, sans-serif, 28px, weight 700 · line height 36px (1.29) · text style Heading/H1
+    - tokens: --text-xl, --color-text
+  - **Card — Row, gap 16, width 347.5, height 52** \`11-0\`
+    - size 347.5px × 52px; flow position 1 (not measured: from the authored style)
+    - fill #FFFFFFFF --color-surface; stroke 1px solid #E5E7EBFF; radius 12px
+    - tokens: --space-4, --color-surface
+    - accessibility: role region, label Order total
+    - dev note: Collapses to a single column under 640px.
+    - **needs decision:** Is the card tappable?
+    - **Amount — Block, width fit, height fit** \`12-0\` (text)
+      - size: fit content (not measured); flow position 0
+      - text colour #0F171FFF (authored oklch(0.2 0.02 250)) --color-text
+      - "Total 42.00" · Inter, sans-serif, 16px, weight 400
+      - tokens: --color-text
+  - **Variant=Default — Row, padding 0 16 0 16, width 160, height 44** \`13-0\`
+    - size 160px × 44px; flow position 2 (not measured: from the authored style)
+    - padding 0px 16px 0px 16px
+    - fill #2563EBFF --color-brand; radius 8px
+    - tokens: --color-brand
+    - component Button (Variant=Default)
+    - **Label — Block, width fit, height fit** \`14-0\` (text)
+      - size: fit content (not measured); flow position 0
+      - text colour #FFFFFFFF
+      - "Buy" · Inter, sans-serif, 16px, weight 600
+  - **Locked divider — Block, width 400, height 1** \`15-0\` (rect)
+    - size 400px × 1px; flow position 3 (not measured: from the authored style)
+    - fill #E5E7EBFF
+
+## Mobile · 390px wide
+
+Frame \`19-0\` · ready in handoff v1 · reference \`screens/checkout.mobile.png\`
+
+- **Checkout mobile — Column, gap 12, padding 16, width 390, height 844** \`19-0\`
+  - size 390px × 844px; at 0, 0 in artboard (not measured: from the authored style)
+  - padding 16px 16px 16px 16px
+  - fill #FFFFFFFF --color-surface
+  - tokens: --color-surface
+  - **Title — Block, width fit, height fit** \`20-0\` (text)
+    - size: fit content (not measured); flow position 0
+    - text colour #0F171FFF (authored oklch(0.2 0.02 250)) --color-text
+    - "Pay now" · Inter, sans-serif, 28px, weight 700 · line height 36px (1.29) · text style Heading/H1
+    - tokens: --text-xl, --color-text
+"
+`;
+
+exports[`snapshots of every file for the fixture > spec.json 1`] = `
+"{
+  "schema": "vellum.handoff/1",
+  "handoff": {
+    "version": 1,
+    "exportedAt": "2026-10-13T12:00:00Z",
+    "vellum": "1.0.0",
+    "fileId": "file-checkout",
+    "fileName": "Acme checkout"
+  },
+  "units": {
+    "length": "px",
+    "remBase": 16,
+    "precision": 2
+  },
+  "modes": [
+    "Light",
+    "Dark"
+  ],
+  "screens": [
+    {
+      "id": "9-0",
+      "name": "Checkout",
+      "slug": "checkout",
+      "breakpoints": [
+        {
+          "bp": "Desktop",
+          "frameId": "9-0",
+          "width": 1280,
+          "height": 800,
+          "png": "screens/checkout.desktop.png",
+          "root": {
+            "id": "9-0",
+            "name": "Checkout",
+            "type": "frame",
+            "sizing": {
+              "w": {
+                "mode": "fixed",
+                "value": 1280
+              },
+              "h": {
+                "mode": "fixed",
+                "value": 800
+              }
+            },
+            "layout": {
+              "kind": "flex",
+              "padding": [
+                24,
+                24,
+                24,
+                24
+              ],
+              "summary": "Column, gap 16, padding 24",
+              "direction": "column",
+              "wrap": false,
+              "gap": 16,
+              "overflow": "visible"
+            },
+            "style": {
+              "authored": {
+                "display": "flex",
+                "flexDirection": "column",
+                "gap": 16,
+                "padding": 24,
+                "width": 1280,
+                "height": 800,
+                "backgroundColor": "var(--color-surface)"
+              },
+              "resolved": {
+                "display": "flex",
+                "flexDirection": "column",
+                "gap": "16px",
+                "padding": "24px",
+                "width": "1280px",
+                "height": "800px",
+                "backgroundColor": "#FFFFFF"
+              }
+            },
+            "paints": [
+              {
+                "kind": "fill",
+                "type": "solid",
+                "color": {
+                  "value": "#FFFFFF",
+                  "hex8": "#FFFFFFFF",
+                  "opacity": 1,
+                  "token": "--color-surface"
+                }
+              }
+            ],
+            "effects": [],
+            "box": {
+              "width": 1280,
+              "height": 800,
+              "relTo": "artboard",
+              "measured": false,
+              "x": 0,
+              "y": 0
+            },
+            "tokens": [
+              "--color-surface"
+            ],
+            "children": [
+              {
+                "id": "10-0",
+                "name": "Title",
+                "type": "text",
+                "sizing": {
+                  "w": {
+                    "mode": "fit"
+                  },
+                  "h": {
+                    "mode": "fit"
+                  }
+                },
+                "layout": {
+                  "kind": "block",
+                  "padding": [
+                    0,
+                    0,
+                    0,
+                    0
+                  ],
+                  "summary": "Block",
+                  "overflow": "visible"
+                },
+                "style": {
+                  "authored": {
+                    "fontFamily": "Inter, sans-serif",
+                    "fontSize": "var(--text-xl)",
+                    "fontWeight": 700,
+                    "lineHeight": "36px",
+                    "color": "var(--color-text)"
+                  },
+                  "resolved": {
+                    "fontFamily": "Inter, sans-serif",
+                    "fontSize": "28px",
+                    "fontWeight": "700",
+                    "lineHeight": "36px",
+                    "color": "oklch(0.2 0.02 250)"
+                  }
+                },
+                "paints": [
+                  {
+                    "kind": "text",
+                    "type": "solid",
+                    "color": {
+                      "value": "oklch(0.2 0.02 250)",
+                      "hex8": "#0F171FFF",
+                      "opacity": 1,
+                      "oklch": "oklch(0.2 0.02 250)",
+                      "token": "--color-text"
+                    }
+                  }
+                ],
+                "effects": [],
+                "flowIndex": 0,
+                "text": {
+                  "content": "Pay now",
+                  "fontSize": 28,
+                  "fontWeight": 700,
+                  "lineHeightPx": 36,
+                  "lineHeightRatio": 1.2857,
+                  "lineHeightSource": "authored",
+                  "letterSpacingPx": 0,
+                  "letterSpacingEm": 0,
+                  "fontFamily": "Inter, sans-serif",
+                  "textStyle": "Heading/H1"
+                },
+                "box": {
+                  "relTo": "parent",
+                  "measured": false
+                },
+                "tokens": [
+                  "--text-xl",
+                  "--color-text"
+                ],
+                "children": []
+              },
+              {
+                "id": "11-0",
+                "name": "Card",
+                "type": "frame",
+                "sizing": {
+                  "w": {
+                    "mode": "fixed",
+                    "value": 347.5
+                  },
+                  "h": {
+                    "mode": "fixed",
+                    "value": 52
+                  }
+                },
+                "layout": {
+                  "kind": "flex",
+                  "padding": [
+                    0,
+                    0,
+                    0,
+                    0
+                  ],
+                  "summary": "Row, gap 16",
+                  "direction": "row",
+                  "wrap": false,
+                  "gap": 16,
+                  "overflow": "visible"
+                },
+                "style": {
+                  "authored": {
+                    "display": "flex",
+                    "flexDirection": "row",
+                    "gap": "var(--space-4)",
+                    "width": 347.5,
+                    "height": 52,
+                    "backgroundColor": "var(--color-surface)",
+                    "borderRadius": 12,
+                    "border": "1px solid #E5E7EB"
+                  },
+                  "resolved": {
+                    "display": "flex",
+                    "flexDirection": "row",
+                    "gap": "16px",
+                    "width": "347.5px",
+                    "height": "52px",
+                    "backgroundColor": "#FFFFFF",
+                    "borderRadius": "12px",
+                    "border": "1px solid #E5E7EB"
+                  }
+                },
+                "paints": [
+                  {
+                    "kind": "fill",
+                    "type": "solid",
+                    "color": {
+                      "value": "#FFFFFF",
+                      "hex8": "#FFFFFFFF",
+                      "opacity": 1,
+                      "token": "--color-surface"
+                    }
+                  },
+                  {
+                    "kind": "stroke",
+                    "type": "solid",
+                    "width": 1,
+                    "style": "solid",
+                    "color": {
+                      "value": "#E5E7EB",
+                      "hex8": "#E5E7EBFF",
+                      "opacity": 1
+                    }
+                  }
+                ],
+                "effects": [],
+                "flowIndex": 1,
+                "radius": 12,
+                "box": {
+                  "width": 347.5,
+                  "height": 52,
+                  "relTo": "parent",
+                  "measured": false
+                },
+                "tokens": [
+                  "--space-4",
+                  "--color-surface"
+                ],
+                "children": [
+                  {
+                    "id": "12-0",
+                    "name": "Amount",
+                    "type": "text",
+                    "sizing": {
+                      "w": {
+                        "mode": "fit"
+                      },
+                      "h": {
+                        "mode": "fit"
+                      }
+                    },
+                    "layout": {
+                      "kind": "block",
+                      "padding": [
+                        0,
+                        0,
+                        0,
+                        0
+                      ],
+                      "summary": "Block",
+                      "overflow": "visible"
+                    },
+                    "style": {
+                      "authored": {
+                        "fontFamily": "Inter, sans-serif",
+                        "fontSize": 16,
+                        "fontWeight": 400,
+                        "color": "var(--color-text)"
+                      },
+                      "resolved": {
+                        "fontFamily": "Inter, sans-serif",
+                        "fontSize": "16px",
+                        "fontWeight": "400",
+                        "color": "oklch(0.2 0.02 250)"
+                      }
+                    },
+                    "paints": [
+                      {
+                        "kind": "text",
+                        "type": "solid",
+                        "color": {
+                          "value": "oklch(0.2 0.02 250)",
+                          "hex8": "#0F171FFF",
+                          "opacity": 1,
+                          "oklch": "oklch(0.2 0.02 250)",
+                          "token": "--color-text"
+                        }
+                      }
+                    ],
+                    "effects": [],
+                    "flowIndex": 0,
+                    "text": {
+                      "content": "Total 42.00",
+                      "fontSize": 16,
+                      "fontWeight": 400,
+                      "lineHeightPx": null,
+                      "lineHeightRatio": null,
+                      "lineHeightSource": "unknown",
+                      "letterSpacingPx": 0,
+                      "letterSpacingEm": 0,
+                      "fontFamily": "Inter, sans-serif"
+                    },
+                    "box": {
+                      "relTo": "parent",
+                      "measured": false
+                    },
+                    "tokens": [
+                      "--color-text"
+                    ],
+                    "children": []
+                  }
+                ],
+                "notes": [
+                  "Collapses to a single column under 640px."
+                ],
+                "a11y": {
+                  "role": "region",
+                  "label": "Order total"
+                },
+                "needsDecision": "Is the card tappable?"
+              },
+              {
+                "id": "13-0",
+                "name": "Variant=Default",
+                "type": "frame",
+                "sizing": {
+                  "w": {
+                    "mode": "fixed",
+                    "value": 160
+                  },
+                  "h": {
+                    "mode": "fixed",
+                    "value": 44
+                  }
+                },
+                "layout": {
+                  "kind": "flex",
+                  "padding": [
+                    0,
+                    16,
+                    0,
+                    16
+                  ],
+                  "summary": "Row, padding 0 16 0 16",
+                  "direction": "row",
+                  "wrap": false,
+                  "align": "center",
+                  "justify": "center",
+                  "overflow": "visible"
+                },
+                "style": {
+                  "authored": {
+                    "display": "flex",
+                    "flexDirection": "row",
+                    "alignItems": "center",
+                    "justifyContent": "center",
+                    "width": 160,
+                    "height": 44,
+                    "paddingLeft": 16,
+                    "paddingRight": 16,
+                    "backgroundColor": "var(--color-brand)",
+                    "borderRadius": 8
+                  },
+                  "resolved": {
+                    "display": "flex",
+                    "flexDirection": "row",
+                    "alignItems": "center",
+                    "justifyContent": "center",
+                    "width": "160px",
+                    "height": "44px",
+                    "paddingLeft": "16px",
+                    "paddingRight": "16px",
+                    "backgroundColor": "#2563EB",
+                    "borderRadius": "8px"
+                  }
+                },
+                "paints": [
+                  {
+                    "kind": "fill",
+                    "type": "solid",
+                    "color": {
+                      "value": "#2563EB",
+                      "hex8": "#2563EBFF",
+                      "opacity": 1,
+                      "token": "--color-brand"
+                    }
+                  }
+                ],
+                "effects": [],
+                "flowIndex": 2,
+                "radius": 8,
+                "component": {
+                  "ref": "3-0",
+                  "name": "Button",
+                  "variant": {
+                    "p:5-0": "Default"
+                  }
+                },
+                "box": {
+                  "width": 160,
+                  "height": 44,
+                  "relTo": "parent",
+                  "measured": false
+                },
+                "tokens": [
+                  "--color-brand"
+                ],
+                "children": [
+                  {
+                    "id": "14-0",
+                    "name": "Label",
+                    "type": "text",
+                    "sizing": {
+                      "w": {
+                        "mode": "fit"
+                      },
+                      "h": {
+                        "mode": "fit"
+                      }
+                    },
+                    "layout": {
+                      "kind": "block",
+                      "padding": [
+                        0,
+                        0,
+                        0,
+                        0
+                      ],
+                      "summary": "Block",
+                      "overflow": "visible"
+                    },
+                    "style": {
+                      "authored": {
+                        "fontFamily": "Inter, sans-serif",
+                        "fontSize": 16,
+                        "fontWeight": 600,
+                        "color": "#FFFFFF"
+                      },
+                      "resolved": {
+                        "fontFamily": "Inter, sans-serif",
+                        "fontSize": "16px",
+                        "fontWeight": "600",
+                        "color": "#FFFFFF"
+                      }
+                    },
+                    "paints": [
+                      {
+                        "kind": "text",
+                        "type": "solid",
+                        "color": {
+                          "value": "#FFFFFF",
+                          "hex8": "#FFFFFFFF",
+                          "opacity": 1
+                        }
+                      }
+                    ],
+                    "effects": [],
+                    "flowIndex": 0,
+                    "text": {
+                      "content": "Buy",
+                      "fontSize": 16,
+                      "fontWeight": 600,
+                      "lineHeightPx": null,
+                      "lineHeightRatio": null,
+                      "lineHeightSource": "unknown",
+                      "letterSpacingPx": 0,
+                      "letterSpacingEm": 0,
+                      "fontFamily": "Inter, sans-serif"
+                    },
+                    "box": {
+                      "relTo": "parent",
+                      "measured": false
+                    },
+                    "tokens": [],
+                    "children": []
+                  }
+                ]
+              },
+              {
+                "id": "15-0",
+                "name": "Locked divider",
+                "type": "rect",
+                "sizing": {
+                  "w": {
+                    "mode": "fixed",
+                    "value": 400
+                  },
+                  "h": {
+                    "mode": "fixed",
+                    "value": 1
+                  }
+                },
+                "layout": {
+                  "kind": "block",
+                  "padding": [
+                    0,
+                    0,
+                    0,
+                    0
+                  ],
+                  "summary": "Block",
+                  "overflow": "visible"
+                },
+                "style": {
+                  "authored": {
+                    "width": 400,
+                    "height": 1,
+                    "backgroundColor": "#E5E7EB"
+                  },
+                  "resolved": {
+                    "width": "400px",
+                    "height": "1px",
+                    "backgroundColor": "#E5E7EB"
+                  }
+                },
+                "paints": [
+                  {
+                    "kind": "fill",
+                    "type": "solid",
+                    "color": {
+                      "value": "#E5E7EB",
+                      "hex8": "#E5E7EBFF",
+                      "opacity": 1
+                    }
+                  }
+                ],
+                "effects": [],
+                "flowIndex": 3,
+                "box": {
+                  "width": 400,
+                  "height": 1,
+                  "relTo": "parent",
+                  "measured": false
+                },
+                "tokens": [],
+                "children": []
+              }
+            ]
+          },
+          "ready": {
+            "at": 1
+          }
+        },
+        {
+          "bp": "Mobile",
+          "frameId": "19-0",
+          "width": 390,
+          "height": 844,
+          "png": "screens/checkout.mobile.png",
+          "root": {
+            "id": "19-0",
+            "name": "Checkout mobile",
+            "type": "frame",
+            "sizing": {
+              "w": {
+                "mode": "fixed",
+                "value": 390
+              },
+              "h": {
+                "mode": "fixed",
+                "value": 844
+              }
+            },
+            "layout": {
+              "kind": "flex",
+              "padding": [
+                16,
+                16,
+                16,
+                16
+              ],
+              "summary": "Column, gap 12, padding 16",
+              "direction": "column",
+              "wrap": false,
+              "gap": 12,
+              "overflow": "visible"
+            },
+            "style": {
+              "authored": {
+                "display": "flex",
+                "flexDirection": "column",
+                "gap": 12,
+                "padding": 16,
+                "width": 390,
+                "height": 844,
+                "backgroundColor": "var(--color-surface)"
+              },
+              "resolved": {
+                "display": "flex",
+                "flexDirection": "column",
+                "gap": "12px",
+                "padding": "16px",
+                "width": "390px",
+                "height": "844px",
+                "backgroundColor": "#FFFFFF"
+              }
+            },
+            "paints": [
+              {
+                "kind": "fill",
+                "type": "solid",
+                "color": {
+                  "value": "#FFFFFF",
+                  "hex8": "#FFFFFFFF",
+                  "opacity": 1,
+                  "token": "--color-surface"
+                }
+              }
+            ],
+            "effects": [],
+            "box": {
+              "width": 390,
+              "height": 844,
+              "relTo": "artboard",
+              "measured": false,
+              "x": 0,
+              "y": 0
+            },
+            "tokens": [
+              "--color-surface"
+            ],
+            "children": [
+              {
+                "id": "20-0",
+                "name": "Title",
+                "type": "text",
+                "sizing": {
+                  "w": {
+                    "mode": "fit"
+                  },
+                  "h": {
+                    "mode": "fit"
+                  }
+                },
+                "layout": {
+                  "kind": "block",
+                  "padding": [
+                    0,
+                    0,
+                    0,
+                    0
+                  ],
+                  "summary": "Block",
+                  "overflow": "visible"
+                },
+                "style": {
+                  "authored": {
+                    "fontFamily": "Inter, sans-serif",
+                    "fontSize": "var(--text-xl)",
+                    "fontWeight": 700,
+                    "lineHeight": "36px",
+                    "color": "var(--color-text)"
+                  },
+                  "resolved": {
+                    "fontFamily": "Inter, sans-serif",
+                    "fontSize": "28px",
+                    "fontWeight": "700",
+                    "lineHeight": "36px",
+                    "color": "oklch(0.2 0.02 250)"
+                  }
+                },
+                "paints": [
+                  {
+                    "kind": "text",
+                    "type": "solid",
+                    "color": {
+                      "value": "oklch(0.2 0.02 250)",
+                      "hex8": "#0F171FFF",
+                      "opacity": 1,
+                      "oklch": "oklch(0.2 0.02 250)",
+                      "token": "--color-text"
+                    }
+                  }
+                ],
+                "effects": [],
+                "flowIndex": 0,
+                "text": {
+                  "content": "Pay now",
+                  "fontSize": 28,
+                  "fontWeight": 700,
+                  "lineHeightPx": 36,
+                  "lineHeightRatio": 1.2857,
+                  "lineHeightSource": "authored",
+                  "letterSpacingPx": 0,
+                  "letterSpacingEm": 0,
+                  "fontFamily": "Inter, sans-serif",
+                  "textStyle": "Heading/H1"
+                },
+                "box": {
+                  "relTo": "parent",
+                  "measured": false
+                },
+                "tokens": [
+                  "--text-xl",
+                  "--color-text"
+                ],
+                "children": []
+              }
+            ]
+          },
+          "ready": {
+            "at": 1
+          }
+        }
+      ]
+    }
+  ],
+  "components": [
+    {
+      "ref": "6-0",
+      "name": "Button",
+      "slug": "button",
+      "isSet": true,
+      "props": [
+        {
+          "id": "p:5-0",
+          "name": "Variant",
+          "type": "variant",
+          "options": [
+            "Default",
+            "Variant 2"
+          ],
+          "default": "Default"
+        }
+      ],
+      "variants": [
+        {
+          "ref": "3-0",
+          "name": "Button",
+          "values": {
+            "p:5-0": "Default"
+          },
+          "root": {
+            "id": "3-0",
+            "name": "Variant=Default",
+            "type": "frame",
+            "sizing": {
+              "w": {
+                "mode": "fixed",
+                "value": 160
+              },
+              "h": {
+                "mode": "fixed",
+                "value": 44
+              }
+            },
+            "layout": {
+              "kind": "flex",
+              "padding": [
+                0,
+                16,
+                0,
+                16
+              ],
+              "summary": "Row, padding 0 16 0 16",
+              "direction": "row",
+              "wrap": false,
+              "align": "center",
+              "justify": "center",
+              "overflow": "visible"
+            },
+            "style": {
+              "authored": {
+                "display": "flex",
+                "flexDirection": "row",
+                "alignItems": "center",
+                "justifyContent": "center",
+                "width": 160,
+                "height": 44,
+                "paddingLeft": 16,
+                "paddingRight": 16,
+                "backgroundColor": "var(--color-brand)",
+                "borderRadius": 8
+              },
+              "resolved": {
+                "display": "flex",
+                "flexDirection": "row",
+                "alignItems": "center",
+                "justifyContent": "center",
+                "width": "160px",
+                "height": "44px",
+                "paddingLeft": "16px",
+                "paddingRight": "16px",
+                "backgroundColor": "#2563EB",
+                "borderRadius": "8px"
+              }
+            },
+            "paints": [
+              {
+                "kind": "fill",
+                "type": "solid",
+                "color": {
+                  "value": "#2563EB",
+                  "hex8": "#2563EBFF",
+                  "opacity": 1,
+                  "token": "--color-brand"
+                }
+              }
+            ],
+            "effects": [],
+            "flowIndex": 0,
+            "radius": 8,
+            "box": {
+              "width": 160,
+              "height": 44,
+              "relTo": "parent",
+              "measured": false
+            },
+            "tokens": [
+              "--color-brand"
+            ],
+            "children": [
+              {
+                "id": "4-0",
+                "name": "Label",
+                "type": "text",
+                "sizing": {
+                  "w": {
+                    "mode": "fit"
+                  },
+                  "h": {
+                    "mode": "fit"
+                  }
+                },
+                "layout": {
+                  "kind": "block",
+                  "padding": [
+                    0,
+                    0,
+                    0,
+                    0
+                  ],
+                  "summary": "Block",
+                  "overflow": "visible"
+                },
+                "style": {
+                  "authored": {
+                    "fontFamily": "Inter, sans-serif",
+                    "fontSize": 16,
+                    "fontWeight": 600,
+                    "color": "#FFFFFF"
+                  },
+                  "resolved": {
+                    "fontFamily": "Inter, sans-serif",
+                    "fontSize": "16px",
+                    "fontWeight": "600",
+                    "color": "#FFFFFF"
+                  }
+                },
+                "paints": [
+                  {
+                    "kind": "text",
+                    "type": "solid",
+                    "color": {
+                      "value": "#FFFFFF",
+                      "hex8": "#FFFFFFFF",
+                      "opacity": 1
+                    }
+                  }
+                ],
+                "effects": [],
+                "flowIndex": 0,
+                "text": {
+                  "content": "Buy",
+                  "fontSize": 16,
+                  "fontWeight": 600,
+                  "lineHeightPx": null,
+                  "lineHeightRatio": null,
+                  "lineHeightSource": "unknown",
+                  "letterSpacingPx": 0,
+                  "letterSpacingEm": 0,
+                  "fontFamily": "Inter, sans-serif"
+                },
+                "box": {
+                  "relTo": "parent",
+                  "measured": false
+                },
+                "tokens": [],
+                "children": []
+              }
+            ],
+            "notes": [
+              "Primary call to action.",
+              "Only one per screen."
+            ],
+            "states": {
+              "hover": {
+                "backgroundColor": "var(--color-brand-hover)"
+              }
+            }
+          }
+        },
+        {
+          "ref": "7-0",
+          "name": "Button",
+          "values": {
+            "p:5-0": "Variant 2"
+          },
+          "root": {
+            "id": "7-0",
+            "name": "Button / Large",
+            "type": "frame",
+            "sizing": {
+              "w": {
+                "mode": "fixed",
+                "value": 160
+              },
+              "h": {
+                "mode": "fixed",
+                "value": 56
+              }
+            },
+            "layout": {
+              "kind": "flex",
+              "padding": [
+                0,
+                16,
+                0,
+                16
+              ],
+              "summary": "Row, padding 0 16 0 16",
+              "direction": "row",
+              "wrap": false,
+              "align": "center",
+              "justify": "center",
+              "overflow": "visible"
+            },
+            "style": {
+              "authored": {
+                "display": "flex",
+                "flexDirection": "row",
+                "alignItems": "center",
+                "justifyContent": "center",
+                "width": 160,
+                "height": 56,
+                "paddingLeft": 16,
+                "paddingRight": 16,
+                "backgroundColor": "var(--color-brand)",
+                "borderRadius": 8
+              },
+              "resolved": {
+                "display": "flex",
+                "flexDirection": "row",
+                "alignItems": "center",
+                "justifyContent": "center",
+                "width": "160px",
+                "height": "56px",
+                "paddingLeft": "16px",
+                "paddingRight": "16px",
+                "backgroundColor": "#2563EB",
+                "borderRadius": "8px"
+              }
+            },
+            "paints": [
+              {
+                "kind": "fill",
+                "type": "solid",
+                "color": {
+                  "value": "#2563EB",
+                  "hex8": "#2563EBFF",
+                  "opacity": 1,
+                  "token": "--color-brand"
+                }
+              }
+            ],
+            "effects": [],
+            "flowIndex": 0,
+            "radius": 8,
+            "box": {
+              "width": 160,
+              "height": 56,
+              "relTo": "parent",
+              "measured": false
+            },
+            "tokens": [
+              "--color-brand"
+            ],
+            "children": [
+              {
+                "id": "8-0",
+                "name": "Label",
+                "type": "text",
+                "sizing": {
+                  "w": {
+                    "mode": "fit"
+                  },
+                  "h": {
+                    "mode": "fit"
+                  }
+                },
+                "layout": {
+                  "kind": "block",
+                  "padding": [
+                    0,
+                    0,
+                    0,
+                    0
+                  ],
+                  "summary": "Block",
+                  "overflow": "visible"
+                },
+                "style": {
+                  "authored": {
+                    "fontFamily": "Inter, sans-serif",
+                    "fontSize": 16,
+                    "fontWeight": 600,
+                    "color": "#FFFFFF"
+                  },
+                  "resolved": {
+                    "fontFamily": "Inter, sans-serif",
+                    "fontSize": "16px",
+                    "fontWeight": "600",
+                    "color": "#FFFFFF"
+                  }
+                },
+                "paints": [
+                  {
+                    "kind": "text",
+                    "type": "solid",
+                    "color": {
+                      "value": "#FFFFFF",
+                      "hex8": "#FFFFFFFF",
+                      "opacity": 1
+                    }
+                  }
+                ],
+                "effects": [],
+                "flowIndex": 0,
+                "text": {
+                  "content": "Buy",
+                  "fontSize": 16,
+                  "fontWeight": 600,
+                  "lineHeightPx": null,
+                  "lineHeightRatio": null,
+                  "lineHeightSource": "unknown",
+                  "letterSpacingPx": 0,
+                  "letterSpacingEm": 0,
+                  "fontFamily": "Inter, sans-serif"
+                },
+                "box": {
+                  "relTo": "parent",
+                  "measured": false
+                },
+                "tokens": [],
+                "children": []
+              }
+            ]
+          }
+        }
+      ],
+      "usedBy": [
+        "9-0"
+      ],
+      "notes": [
+        "Primary call to action.",
+        "Only one per screen."
+      ],
+      "states": [
+        {
+          "state": "hover",
+          "badge": "described"
+        },
+        {
+          "state": "pressed",
+          "badge": "missing"
+        },
+        {
+          "state": "focus",
+          "badge": "missing"
+        },
+        {
+          "state": "disabled",
+          "badge": "missing"
+        }
+      ],
+      "interactive": true
+    }
+  ],
+  "tokens": [
+    {
+      "name": "--color-brand",
+      "type": "color",
+      "values": {
+        "Light": {
+          "value": "#2563EB",
+          "hex8": "#2563EBFF"
+        },
+        "Dark": {
+          "value": "#60A5FA",
+          "hex8": "#60A5FAFF"
+        }
+      }
+    },
+    {
+      "name": "--color-brand-hover",
+      "type": "color",
+      "values": {
+        "Light": {
+          "value": "#2563EB",
+          "hex8": "#2563EBFF"
+        },
+        "Dark": {
+          "value": "#93C5FD",
+          "hex8": "#93C5FDFF"
+        }
+      }
+    },
+    {
+      "name": "--color-surface",
+      "type": "color",
+      "values": {
+        "Light": {
+          "value": "#FFFFFF",
+          "hex8": "#FFFFFFFF"
+        },
+        "Dark": {
+          "value": "#111827",
+          "hex8": "#111827FF"
+        }
+      }
+    },
+    {
+      "name": "--color-text",
+      "type": "color",
+      "values": {
+        "Light": {
+          "value": "oklch(0.2 0.02 250)",
+          "hex8": "#0F171FFF"
+        },
+        "Dark": {
+          "value": "#F9FAFB",
+          "hex8": "#F9FAFBFF"
+        }
+      }
+    },
+    {
+      "name": "--space-4",
+      "type": "length",
+      "values": {
+        "Light": {
+          "value": "16px"
+        },
+        "Dark": {
+          "value": "16px"
+        }
+      }
+    },
+    {
+      "name": "--text-xl",
+      "type": "length",
+      "values": {
+        "Light": {
+          "value": "28px"
+        },
+        "Dark": {
+          "value": "28px"
+        }
+      }
+    }
+  ],
+  "textStyles": [
+    {
+      "id": "ts-h1",
+      "name": "Heading/H1",
+      "style": {
+        "fontFamily": "Inter, sans-serif",
+        "fontSize": "var(--text-xl)",
+        "fontWeight": 700,
+        "lineHeight": "36px"
+      }
+    }
+  ],
+  "assets": [],
+  "fonts": [
+    {
+      "family": "Inter",
+      "weights": [
+        400,
+        600,
+        700
+      ],
+      "italic": false,
+      "source": "unknown",
+      "stack": "Inter, sans-serif",
+      "usedBy": 6
+    }
+  ]
+}
+"
+`;
+
+exports[`snapshots of every file for the fixture > spec.schema.json 1`] = `
+"{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "vellum.handoff/1",
+  "title": "Vellum handoff",
+  "type": "object",
+  "properties": {
+    "schema": {
+      "const": "vellum.handoff/1"
+    },
+    "handoff": {
+      "type": "object",
+      "properties": {
+        "version": {
+          "type": "integer"
+        },
+        "exportedAt": {
+          "type": "string"
+        },
+        "vellum": {
+          "type": "string"
+        },
+        "fileId": {
+          "type": "string"
+        },
+        "fileName": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "version",
+        "exportedAt",
+        "vellum",
+        "fileId",
+        "fileName"
+      ],
+      "additionalProperties": false
+    },
+    "units": {
+      "type": "object",
+      "properties": {
+        "length": {
+          "const": "px"
+        },
+        "remBase": {
+          "type": "number"
+        },
+        "precision": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "length",
+        "remBase",
+        "precision"
+      ],
+      "additionalProperties": false
+    },
+    "modes": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "screens": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/Screen"
+      }
+    },
+    "components": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/Component"
+      }
+    },
+    "tokens": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/Token"
+      }
+    },
+    "textStyles": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/TextStyle"
+      }
+    },
+    "assets": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/Asset"
+      }
+    },
+    "fonts": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/Font"
+      }
+    }
+  },
+  "required": [
+    "schema",
+    "handoff",
+    "units",
+    "modes",
+    "screens",
+    "components",
+    "tokens",
+    "textStyles",
+    "assets",
+    "fonts"
+  ],
+  "additionalProperties": false,
+  "$defs": {
+    "Screen": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "slug": {
+          "type": "string"
+        },
+        "breakpoints": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Breakpoint"
+          }
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "slug",
+        "breakpoints"
+      ],
+      "additionalProperties": false
+    },
+    "Breakpoint": {
+      "type": "object",
+      "properties": {
+        "bp": {
+          "type": "string"
+        },
+        "frameId": {
+          "type": "string"
+        },
+        "width": {
+          "type": "number"
+        },
+        "height": {
+          "type": "number"
+        },
+        "ready": {
+          "type": "object",
+          "properties": {
+            "at": {
+              "type": "integer"
+            }
+          },
+          "required": [
+            "at"
+          ],
+          "additionalProperties": false
+        },
+        "png": {
+          "type": "string"
+        },
+        "root": {
+          "$ref": "#/$defs/Node"
+        }
+      },
+      "required": [
+        "bp",
+        "frameId",
+        "png",
+        "root"
+      ],
+      "additionalProperties": false
+    },
+    "Component": {
+      "type": "object",
+      "properties": {
+        "ref": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "slug": {
+          "type": "string"
+        },
+        "isSet": {
+          "type": "boolean"
+        },
+        "props": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/PropDef"
+          }
+        },
+        "variants": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "ref": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              },
+              "values": {
+                "type": "object",
+                "additionalProperties": {
+                  "type": "string"
+                }
+              },
+              "root": {
+                "$ref": "#/$defs/Node"
+              }
+            },
+            "required": [
+              "ref",
+              "name",
+              "values",
+              "root"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "usedBy": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "notes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "states": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "state": {
+                "type": "string"
+              },
+              "badge": {
+                "enum": [
+                  "drawn",
+                  "described",
+                  "missing"
+                ]
+              }
+            },
+            "required": [
+              "state",
+              "badge"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "interactive": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "ref",
+        "name",
+        "slug",
+        "isSet",
+        "props",
+        "variants",
+        "usedBy",
+        "notes",
+        "states",
+        "interactive"
+      ],
+      "additionalProperties": false
+    },
+    "PropDef": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "type": {
+          "enum": [
+            "variant",
+            "boolean",
+            "text",
+            "swap"
+          ]
+        },
+        "default": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "boolean"
+            }
+          ]
+        },
+        "options": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "type",
+        "default"
+      ],
+      "additionalProperties": false
+    },
+    "Token": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "type": {
+          "enum": [
+            "color",
+            "length",
+            "number",
+            "other"
+          ]
+        },
+        "values": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "object",
+            "properties": {
+              "value": {
+                "type": "string"
+              },
+              "hex8": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "value"
+            ],
+            "additionalProperties": false
+          }
+        }
+      },
+      "required": [
+        "name",
+        "type",
+        "values"
+      ],
+      "additionalProperties": false
+    },
+    "TextStyle": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "style": {
+          "type": "object",
+          "additionalProperties": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "number"
+              }
+            ]
+          }
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "style"
+      ],
+      "additionalProperties": false
+    },
+    "Asset": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "path": {
+          "type": "string"
+        },
+        "kind": {
+          "enum": [
+            "image",
+            "icon",
+            "png"
+          ]
+        },
+        "nodeIds": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "layerName": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "path",
+        "kind",
+        "nodeIds"
+      ],
+      "additionalProperties": false
+    },
+    "Font": {
+      "type": "object",
+      "properties": {
+        "family": {
+          "type": "string"
+        },
+        "weights": {
+          "type": "array",
+          "items": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "number"
+              }
+            ]
+          }
+        },
+        "italic": {
+          "type": "boolean"
+        },
+        "source": {
+          "enum": [
+            "google",
+            "local",
+            "system",
+            "unknown"
+          ]
+        },
+        "stack": {
+          "type": "string"
+        },
+        "usedBy": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "family",
+        "weights",
+        "italic",
+        "source",
+        "stack",
+        "usedBy"
+      ],
+      "additionalProperties": false
+    },
+    "Color": {
+      "type": "object",
+      "properties": {
+        "value": {
+          "type": "string"
+        },
+        "hex8": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "opacity": {
+          "type": "number"
+        },
+        "oklch": {
+          "type": "string"
+        },
+        "token": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "value",
+        "hex8",
+        "opacity"
+      ],
+      "additionalProperties": false
+    },
+    "Paint": {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "enum": [
+            "fill",
+            "stroke",
+            "text"
+          ]
+        },
+        "type": {
+          "enum": [
+            "solid",
+            "gradient",
+            "image"
+          ]
+        },
+        "color": {
+          "$ref": "#/$defs/Color"
+        },
+        "value": {
+          "type": "string"
+        },
+        "width": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "array",
+              "items": {
+                "type": "number"
+              }
+            }
+          ]
+        },
+        "style": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "type"
+      ],
+      "additionalProperties": false
+    },
+    "Effect": {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "enum": [
+            "shadow",
+            "inner-shadow",
+            "blur",
+            "backdrop-blur"
+          ]
+        },
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        },
+        "blur": {
+          "type": "number"
+        },
+        "spread": {
+          "type": "number"
+        },
+        "color": {
+          "$ref": "#/$defs/Color"
+        }
+      },
+      "required": [
+        "kind",
+        "blur"
+      ],
+      "additionalProperties": false
+    },
+    "Text": {
+      "type": "object",
+      "properties": {
+        "content": {
+          "type": "string"
+        },
+        "fontFamily": {
+          "type": "string"
+        },
+        "fontSize": {
+          "type": "number"
+        },
+        "fontWeight": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "number"
+            }
+          ]
+        },
+        "fontStyle": {
+          "type": "string"
+        },
+        "lineHeightPx": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "lineHeightRatio": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "lineHeightSource": {
+          "enum": [
+            "authored",
+            "measured",
+            "estimated",
+            "unknown"
+          ]
+        },
+        "letterSpacingPx": {
+          "type": "number"
+        },
+        "letterSpacingEm": {
+          "type": "number"
+        },
+        "textAlign": {
+          "type": "string"
+        },
+        "textTransform": {
+          "type": "string"
+        },
+        "textDecoration": {
+          "type": "string"
+        },
+        "textStyle": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "content",
+        "fontSize",
+        "fontWeight",
+        "lineHeightPx",
+        "lineHeightRatio",
+        "lineHeightSource",
+        "letterSpacingPx",
+        "letterSpacingEm"
+      ],
+      "additionalProperties": false
+    },
+    "SizeRule": {
+      "type": "object",
+      "properties": {
+        "mode": {
+          "enum": [
+            "fixed",
+            "fit",
+            "fill",
+            "percent"
+          ]
+        },
+        "value": {
+          "type": "number"
+        },
+        "weight": {
+          "type": "number"
+        },
+        "min": {
+          "type": "number"
+        },
+        "max": {
+          "type": "number"
+        },
+        "aspect": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "mode"
+      ]
+    },
+    "Node": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "type": {
+          "enum": [
+            "frame",
+            "rect",
+            "text",
+            "image",
+            "svg"
+          ]
+        },
+        "tag": {
+          "type": "string"
+        },
+        "box": {
+          "type": "object",
+          "properties": {
+            "x": {
+              "type": "number"
+            },
+            "y": {
+              "type": "number"
+            },
+            "width": {
+              "type": "number"
+            },
+            "height": {
+              "type": "number"
+            },
+            "relTo": {
+              "enum": [
+                "parent",
+                "artboard"
+              ]
+            },
+            "measured": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "relTo",
+            "measured"
+          ],
+          "additionalProperties": false
+        },
+        "artboardBox": {
+          "type": "object",
+          "properties": {
+            "x": {
+              "type": "number"
+            },
+            "y": {
+              "type": "number"
+            }
+          },
+          "required": [
+            "x",
+            "y"
+          ],
+          "additionalProperties": false
+        },
+        "flowIndex": {
+          "type": "integer"
+        },
+        "sizing": {
+          "type": "object",
+          "properties": {
+            "w": {
+              "$ref": "#/$defs/SizeRule"
+            },
+            "h": {
+              "$ref": "#/$defs/SizeRule"
+            }
+          },
+          "required": [
+            "w",
+            "h"
+          ],
+          "additionalProperties": false
+        },
+        "layout": {
+          "type": "object",
+          "required": [
+            "kind",
+            "padding",
+            "summary"
+          ]
+        },
+        "style": {
+          "type": "object",
+          "properties": {
+            "authored": {
+              "type": "object",
+              "additionalProperties": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "number"
+                  }
+                ]
+              }
+            },
+            "resolved": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "string"
+              }
+            }
+          },
+          "required": [
+            "authored",
+            "resolved"
+          ],
+          "additionalProperties": false
+        },
+        "rotation": {
+          "type": "number"
+        },
+        "opacity": {
+          "type": "number"
+        },
+        "radius": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "string"
+            },
+            {
+              "type": "array",
+              "items": {
+                "type": "number"
+              }
+            }
+          ]
+        },
+        "text": {
+          "$ref": "#/$defs/Text"
+        },
+        "paints": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Paint"
+          }
+        },
+        "effects": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Effect"
+          }
+        },
+        "tokens": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "component": {
+          "type": "object",
+          "properties": {
+            "ref": {
+              "type": "string"
+            },
+            "name": {
+              "type": "string"
+            },
+            "variant": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "string"
+              }
+            },
+            "props": {
+              "type": "object",
+              "additionalProperties": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "boolean"
+                  }
+                ]
+              }
+            },
+            "overrides": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          "required": [
+            "ref"
+          ],
+          "additionalProperties": false
+        },
+        "image": {
+          "type": "object",
+          "properties": {
+            "alt": {
+              "type": "string"
+            },
+            "objectFit": {
+              "type": "string"
+            }
+          },
+          "required": [],
+          "additionalProperties": false
+        },
+        "notes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "a11y": {
+          "type": "object",
+          "properties": {
+            "role": {
+              "type": "string"
+            },
+            "label": {
+              "type": "string"
+            },
+            "tab": {
+              "type": "integer"
+            }
+          },
+          "required": [],
+          "additionalProperties": false
+        },
+        "states": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "object"
+          }
+        },
+        "needsDecision": {
+          "type": "string"
+        },
+        "children": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Node"
+          }
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "type",
+        "box",
+        "sizing",
+        "layout",
+        "style",
+        "paints",
+        "effects",
+        "tokens",
+        "children"
+      ],
+      "additionalProperties": false
+    }
+  }
+}
+"
+`;
+
+exports[`snapshots of every file for the fixture > tokens/tailwind.css 1`] = `
+"/* tailwind.css — generated by Vellum from the exported frames; do not edit */
+
+/* Tailwind v4: only names in Tailwind's theme namespaces (--color-*, --spacing-*, --radius-*, --font-*, ...) become utilities. */
+@theme {
+  --color-brand: #2563EB;
+  --color-brand-hover: #2563EB;
+  --color-surface: #FFFFFF;
+  --color-text: oklch(0.2 0.02 250);
+  --space-4: 16px;
+  --text-xl: 28px;
+}
+
+/* Dark mode: plain overrides, outside @theme */
+[data-mode="Dark"] {
+  --color-brand: #60A5FA;
+  --color-brand-hover: #93C5FD;
+  --color-surface: #111827;
+  --color-text: #F9FAFB;
+  --space-4: 16px;
+  --text-xl: 28px;
+}
+"
+`;
+
+exports[`snapshots of every file for the fixture > tokens/tokens.css 1`] = `
+"/* tokens.css — generated by Vellum from the exported frames; do not edit */
+:root {
+  --color-brand: #2563EB;
+  --color-brand-hover: var(--color-brand);
+  --color-surface: #FFFFFF;
+  --color-text: oklch(0.2 0.02 250);
+  --space-4: 16px;
+  --text-xl: 28px;
+}
+
+[data-mode="Light"] {
+  --color-brand: #2563EB;
+  --color-brand-hover: var(--color-brand);
+  --color-surface: #FFFFFF;
+  --color-text: oklch(0.2 0.02 250);
+  --space-4: 16px;
+  --text-xl: 28px;
+}
+
+[data-mode="Dark"] {
+  --color-brand: #60A5FA;
+  --color-brand-hover: #93C5FD;
+  --color-surface: #111827;
+  --color-text: #F9FAFB;
+  --space-4: 16px;
+  --text-xl: 28px;
+}
+"
+`;
+
+exports[`snapshots of every file for the fixture > tokens/tokens.json 1`] = `
+"{
+  "Light": {
+    "color": {
+      "brand": {
+        "$root": {
+          "$value": "#2563EBFF",
+          "$type": "color"
+        },
+        "hover": {
+          "$value": "#2563EBFF",
+          "$type": "color"
+        }
+      },
+      "surface": {
+        "$value": "#FFFFFFFF",
+        "$type": "color"
+      },
+      "text": {
+        "$value": "#0F171FFF",
+        "$type": "color",
+        "$extensions": {
+          "vellum": {
+            "authored": "oklch(0.2 0.02 250)"
+          }
+        }
+      }
+    },
+    "space": {
+      "4": {
+        "$value": "16px",
+        "$type": "dimension"
+      }
+    },
+    "text": {
+      "xl": {
+        "$value": "28px",
+        "$type": "dimension"
+      }
+    }
+  },
+  "Dark": {
+    "color": {
+      "brand": {
+        "$root": {
+          "$value": "#60A5FAFF",
+          "$type": "color"
+        },
+        "hover": {
+          "$value": "#93C5FDFF",
+          "$type": "color"
+        }
+      },
+      "surface": {
+        "$value": "#111827FF",
+        "$type": "color"
+      },
+      "text": {
+        "$value": "#F9FAFBFF",
+        "$type": "color"
+      }
+    },
+    "space": {
+      "4": {
+        "$value": "16px",
+        "$type": "dimension"
+      }
+    },
+    "text": {
+      "xl": {
+        "$value": "28px",
+        "$type": "dimension"
+      }
+    }
+  }
+}
+"
+`;
+
+exports[`snapshots of every file for the fixture > with measured rects and rem on, the markdown changes in the places it should 1`] = `
+"# Checkout
+
+Screen \`9-0\`, 2 breakpoints. Build to the layout rules first; the numbers describe the design size.
+
+## Desktop · 100.25px (6.2656rem) wide
+
+Frame \`9-0\` · ready in handoff v1 · reference \`screens/checkout.desktop.png\`
+
+> 7 nodes have fractional sizes (e.g. 100.25 × 40 for "Checkout"); build with the rule, not the number.
+
+- **Checkout — Column, gap 16, padding 24, width 1280, height 800** \`9-0\`
+  - size 100.25px (6.2656rem) × 40px (2.5rem); at 0, 0 in artboard
+  - padding 24px (1.5rem) 24px (1.5rem) 24px (1.5rem) 24px (1.5rem)
+  - fill #FFFFFFFF --color-surface
+  - tokens: --color-surface
+  - **Title — Block, width fit, height fit** \`10-0\` (text)
+    - size 100.25px (6.2656rem) × 40px (2.5rem); flow position 0
+    - text colour #0F171FFF (authored oklch(0.2 0.02 250)) --color-text
+    - "Pay now" · Inter, sans-serif, 28px (1.75rem), weight 700 · line height 36px (1.29) · text style Heading/H1
+    - tokens: --text-xl, --color-text
+  - **Card — Row, gap 16, width 347.5, height 52** \`11-0\`
+    - size 100.25px (6.2656rem) × 40px (2.5rem); flow position 1
+    - fill #FFFFFFFF --color-surface; stroke 1px solid #E5E7EBFF; radius 12px (0.75rem)
+    - tokens: --space-4, --color-surface
+    - accessibility: role region, label Order total
+    - dev note: Collapses to a single column under 640px.
+    - **needs decision:** Is the card tappable?
+    - **Amount — Block, width fit, height fit** \`12-0\` (text)
+      - size 100.25px (6.2656rem) × 40px (2.5rem); flow position 0
+      - text colour #0F171FFF (authored oklch(0.2 0.02 250)) --color-text
+      - "Total 42.00" · Inter, sans-serif, 16px (1rem), weight 400 · line height 40px (2.5) estimated
+      - tokens: --color-text
+  - **Variant=Default — Row, padding 0 16 0 16, width 160, height 44** \`13-0\`
+    - size 100.25px (6.2656rem) × 40px (2.5rem); flow position 2
+    - padding 0px (0rem) 16px (1rem) 0px (0rem) 16px (1rem)
+    - fill #2563EBFF --color-brand; radius 8px (0.5rem)
+    - tokens: --color-brand
+    - component Button (Variant=Default)
+    - **Label — Block, width fit, height fit** \`14-0\` (text)
+      - size 100.25px (6.2656rem) × 40px (2.5rem); flow position 0
+      - text colour #FFFFFFFF
+      - "Buy" · Inter, sans-serif, 16px (1rem), weight 600 · line height 40px (2.5) estimated
+  - **Locked divider — Block, width 400, height 1** \`15-0\` (rect)
+    - size 100.25px (6.2656rem) × 40px (2.5rem); flow position 3
+    - fill #E5E7EBFF
+
+## Mobile · 100.25px (6.2656rem) wide
+
+Frame \`19-0\` · ready in handoff v1 · reference \`screens/checkout.mobile.png\`
+
+> 2 nodes have fractional sizes (e.g. 100.25 × 40 for "Checkout mobile"); build with the rule, not the number.
+
+- **Checkout mobile — Column, gap 12, padding 16, width 390, height 844** \`19-0\`
+  - size 100.25px (6.2656rem) × 40px (2.5rem); at 0, 0 in artboard
+  - padding 16px (1rem) 16px (1rem) 16px (1rem) 16px (1rem)
+  - fill #FFFFFFFF --color-surface
+  - tokens: --color-surface
+  - **Title — Block, width fit, height fit** \`20-0\` (text)
+    - size 100.25px (6.2656rem) × 40px (2.5rem); flow position 0
+    - text colour #0F171FFF (authored oklch(0.2 0.02 250)) --color-text
+    - "Pay now" · Inter, sans-serif, 28px (1.75rem), weight 700 · line height 36px (1.29) · text style Heading/H1
+    - tokens: --text-xl, --color-text
+"
+`;
