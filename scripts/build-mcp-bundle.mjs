@@ -1,5 +1,6 @@
 // Bundles the MCP server (mcp/src/index.ts, with @modelcontextprotocol/sdk, zod and ws inlined) into one file,
-// resources-out/mcp/index.mjs, which electron-builder copies next to the app (extraResources, outside the asar). The packaged
+// resources-out/mcp/index.mjs, and the remote connector (mcp/src/remote/index.ts, docs/REMOTE.md) into remote.mjs.
+// electron-builder copies both next to the app (extraResources, outside the asar). The packaged
 // app runs it with its own Electron as Node:  ELECTRON_RUN_AS_NODE=1 Vellum.exe resources/mcp/index.mjs
 // Needs mcp/node_modules (cd mcp && npm ci). Usage: node scripts/build-mcp-bundle.mjs   (npm run build:mcp)
 import { build } from 'esbuild'
@@ -16,19 +17,25 @@ if (!existsSync(join(root, 'mcp', 'node_modules', '@modelcontextprotocol'))) {
   process.exit(1)
 }
 mkdirSync(dirname(outfile), { recursive: true })
-await build({
-  entryPoints: [entry],
-  outfile,
-  bundle: true,
-  platform: 'node',
-  format: 'esm',
-  target: 'node22',
-  // the SDK and ws contain CommonJS code that calls require(): give the ES module one
-  banner: { js: "import { createRequire as __vellumCreateRequire } from 'node:module'; const require = __vellumCreateRequire(import.meta.url);" },
-  // ws loads these native speed-ups only if they are installed (it falls back without them)
-  external: ['bufferutil', 'utf-8-validate'],
-  nodePaths: [join(root, 'mcp', 'node_modules')],
-  legalComments: 'none',
-  logLevel: 'warning'
-})
-console.log(`wrote ${outfile} (${Math.round(statSync(outfile).size / 1024)} KB)`)
+const remoteEntry = join(root, 'mcp', 'src', 'remote', 'index.ts')
+const remoteOut = join(root, 'resources-out', 'mcp', 'remote.mjs')
+for (const [entryPoint, out] of [
+  [entry, outfile],
+  [remoteEntry, remoteOut]
+])
+  await build({
+    entryPoints: [entryPoint],
+    outfile: out,
+    bundle: true,
+    platform: 'node',
+    format: 'esm',
+    target: 'node22',
+    // the SDK and ws contain CommonJS code that calls require(): give the ES module one
+    banner: { js: "import { createRequire as __vellumCreateRequire } from 'node:module'; const require = __vellumCreateRequire(import.meta.url);" },
+    // ws loads these native speed-ups only if they are installed (it falls back without them)
+    external: ['bufferutil', 'utf-8-validate'],
+    nodePaths: [join(root, 'mcp', 'node_modules')],
+    legalComments: 'none',
+    logLevel: 'warning'
+  })
+for (const out of [outfile, remoteOut]) console.log(`wrote ${out} (${Math.round(statSync(out).size / 1024)} KB)`)

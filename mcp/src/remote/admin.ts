@@ -2,6 +2,8 @@
 // New login code, approve or remove apps, disconnect connections, set the public address, see the audit log.
 // Guards: loopback Host only, any proxy/tunnel header is refused (a tunnel daemon connects from 127.0.0.1 too),
 // cross-origin requests are refused, and every POST carries a per-process CSRF token.
+// /api/* is the same, as JSON, for the Vellum app's Settings → Connect to Claude: it needs the x-vellum-admin header
+// with the secret from <remote dir>/admin-token (only this user can read it).
 import { randomBytes } from 'node:crypto'
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from 'node:http'
 import { VELLUM_PORT } from '../bridge.js'
@@ -35,6 +37,19 @@ export interface AdminOptions {
   /** Saves the public address so it survives a restart. */
   savePublic: (host: string | null, tunnel: Tunnel | null) => void
   log?: (line: string) => void
+  /** Secret for /api/*; without one the API is off. */
+  apiToken?: string
+}
+
+/** Everything the Settings section shows. */
+export interface AdminState {
+  status: ReturnType<Connector['status']>
+  apps: ReturnType<Connector['auth']['apps']>
+  connections: ReturnType<Connector['auth']['grants']>
+  codeActiveUntil: string | null
+  loginLockedUntil: string | null
+  adminUrl: string
+  audit: Record<string, unknown>[]
 }
 
 export async function startAdmin(connector: Connector, opts: AdminOptions): Promise<{ port: number; close(): Promise<void> }> {
@@ -136,6 +151,48 @@ ${a.status === 'waiting' ? `<span class="warn">Waiting since ${time(a.requestedA
     page(res, body, true)
   }
 
+  const api = async (req: IncomingMessage, res: ServerResponse, path: string, port: number) => {
+    const given = req.headers['x-vellum-admin']
+    if (!opts.apiToken || typeof given !== 'string' || !sameToken(given, opts.apiToken)) throw new HttpError(403, 'Admin token required')
+    const json = (data: unknown) => {
+      res.writeHead(200, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' })
+      res.end(JSON.stringify(data))
+    }
+    if (req.method === 'GET' && path === '/api/state') {
+      const state: AdminState = {
+        status: connector.status(),
+        apps: auth.apps(),
+        connections: auth.grants(),
+        codeActiveUntil: auth.codeActiveUntil(),
+        loginLockedUntil: auth.lockedUntilIso(),
+        adminUrl: `http://127.0.0.1:${port}`,
+        audit: connector.recentAudit(25)
+      }
+      return json(state)
+    }
+    if (req.method !== 'POST') throw new HttpError(404, 'Not found')
+    const f = await readForm(req)
+    switch (path) {
+      case '/api/code':
+        return json(auth.issueCode())
+      case '/api/code/cancel':
+        return json({ ok: auth.cancelCode() })
+      case '/api/apps/approve':
+        return json({ ok: !!auth.approveApp(f.id ?? '') })
+      case '/api/apps/remove':
+        return json(auth.removeApp(f.id || ' '))
+      case '/api/disconnect':
+        return json({ revoked: auth.revoke(f.id || undefined) })
+      case '/api/public': {
+        const tunnel: Tunnel = f.tunnel === 'cloudflare' ? 'cloudflare' : 'tailscale'
+        connector.setPublic(f.host ?? '', tunnel)
+        opts.savePublic(connector.status().publicHost, tunnel)
+        return json({ ok: true })
+      }
+    }
+    throw new HttpError(404, 'Not found')
+  }
+
   const handle = async (req: IncomingMessage, res: ServerResponse, port: number) => {
     const host = String(req.headers.host ?? '').toLowerCase()
     if (![`127.0.0.1:${port}`, `localhost:${port}`].includes(host)) throw new HttpError(421, 'Unknown host')
@@ -143,6 +200,7 @@ ${a.status === 'waiting' ? `<span class="warn">Waiting since ${time(a.requestedA
     const origin = req.headers.origin
     if (origin && origin !== `http://${host}`) throw new HttpError(403, 'Cross-origin request refused')
     const path = new URL(req.url ?? '/', 'http://admin').pathname
+    if (path.startsWith('/api/')) return api(req, res, path, port)
     if (req.method === 'GET' && path === '/') return home(res)
     if (req.method !== 'POST') throw new HttpError(404, 'Not found')
     const f = await readForm(req)

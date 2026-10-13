@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 // Vellum remote connector: lets claude.ai (web, desktop, phone) use the Vellum MCP tools through a tunnel.
 // Usage: node mcp/dist/remote/index.js   (or VellumRemote.cmd). See docs/REMOTE.md.
+import { randomBytes } from 'node:crypto'
 import { mkdirSync, readFileSync } from 'node:fs'
 import { hostname } from 'node:os'
 import { join } from 'node:path'
@@ -14,6 +15,30 @@ import { writePrivate } from './util.js'
 interface Config {
   publicHost?: string | null
   tunnel?: Tunnel | null
+  /** Owned by the Vellum app (Settings → Connect to Claude): start the connector with the app. */
+  enabled?: boolean
+}
+
+const readConfig = (file: string): Config => {
+  try {
+    return JSON.parse(readFileSync(file, 'utf8')) as Config
+  } catch {
+    return {}
+  }
+}
+
+/** The secret the Vellum app sends to /api/* on the admin port; made once, readable by this user only. */
+function adminToken(dir: string): string {
+  const file = join(dir, 'admin-token')
+  try {
+    const t = readFileSync(file, 'utf8').trim()
+    if (/^[0-9a-f]{64}$/.test(t)) return t
+  } catch {
+    /* first run */
+  }
+  const t = randomBytes(32).toString('hex')
+  writePrivate(file, t)
+  return t
 }
 
 const log = (line: string) => console.log(`[vellum-remote] ${new Date().toLocaleTimeString()} ${line}`)
@@ -22,12 +47,7 @@ async function main(): Promise<void> {
   const dir = process.env.VELLUM_REMOTE_DIR || join(userDataDir(), 'remote')
   mkdirSync(dir, { recursive: true, mode: 0o700 })
   const configFile = join(dir, 'config.json')
-  let config: Config = {}
-  try {
-    config = JSON.parse(readFileSync(configFile, 'utf8')) as Config
-  } catch {
-    /* first run */
-  }
+  const config = readConfig(configFile)
   const tunnelEnv = process.env.VELLUM_REMOTE_TUNNEL
   prefetchFonts()
   const connector = await startConnector({
@@ -41,7 +61,8 @@ async function main(): Promise<void> {
   })
   const admin = await startAdmin(connector, {
     port: Number(process.env.VELLUM_REMOTE_ADMIN_PORT) || DEFAULT_ADMIN_PORT,
-    savePublic: (publicHost, tunnel) => writePrivate(configFile, JSON.stringify({ ...config, publicHost, tunnel }, null, 2)),
+    savePublic: (publicHost, tunnel) => writePrivate(configFile, JSON.stringify({ ...readConfig(configFile), publicHost, tunnel }, null, 2)),
+    apiToken: adminToken(dir),
     log
   })
   const shutdown = (): void => {

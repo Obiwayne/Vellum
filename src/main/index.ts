@@ -8,6 +8,7 @@ import { clearCachesIfProtected, migrateLegacyUserData, registerStorageIpc } fro
 import { startBridge } from './bridge'
 import { startUpdater } from './updater'
 import { registerInvokeAIIpc } from './plugins/invokeai'
+import { registerRemoteIpc } from './remote'
 import { mcpEntryFor } from '@shared/mcpSnippets'
 import { userDataDir } from './userDataDir'
 import { cleanStaleRenderTemp, disposeRenderer, registerRenderScheme, renderHtml, renderPdf } from './offscreen'
@@ -253,6 +254,7 @@ if (!gotLock) {
     cleanStaleRenderTemp()
     void clearCachesIfProtected()
     startBridge(() => mainWindow)
+    registerRemoteIpc(trustedSender)
     startUpdater(() => mainWindow, trustedSender)
     createWindow()
     app.on('activate', () => {

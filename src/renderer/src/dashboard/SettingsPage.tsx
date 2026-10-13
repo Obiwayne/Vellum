@@ -4,6 +4,7 @@ import { getStore, useStore } from '../model/store'
 import { Avatar } from '../profile/parts'
 import { AUTO_LOCK_OPTIONS, refreshProfiles, useCurrentProfile } from '../profile/profile'
 import { EditProfileModal } from '../profile/ProfileModals'
+import { ConnectClaudeSection } from './ConnectClaudeSection'
 
 export const DEFAULT_USER_NAME = 'You'
 
@@ -130,6 +131,7 @@ export function SettingsPage(): JSX.Element {
         </div>
         <Checkbox checked={bool(PREF.autoUpdate, true)} onChange={(v) => setPref(PREF.autoUpdate, v)} />
       </div>
+      <ConnectClaudeSection />
     </div>
   )
 }

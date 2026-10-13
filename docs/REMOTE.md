@@ -10,21 +10,31 @@ claude.ai ──https──▶ tunnel (Tailscale Funnel / Cloudflare) ──▶ 
 
 ## Run it
 
-1. Open Vellum.
-2. Run `VellumRemote.cmd` (or `cd mcp && npm run build && npm run remote`) and keep its window open.
-3. Open the admin page, http://127.0.0.1:29181, and fill in **Public address** (for Tailscale, `name.tailnet.ts.net:8443`).
-4. Start the tunnel, forwarding **only** port 29180:
+1. Open Vellum: Dashboard → **Settings** → **Connect to Claude** → turn on **Use Vellum from claude.ai**. The app starts
+   the connector as a child process (its own Electron as Node) and keeps it running while the switch is on; it stops when
+   Vellum quits. The switch is saved in `config.json` (`enabled`).
+   Without the app UI: run `VellumRemote.cmd` (or `cd mcp && npm run build && npm run remote`) and keep its window open;
+   Settings then shows it as started outside the app.
+2. Fill in **Public address** in Settings (or on the admin page, http://127.0.0.1:29181). For Tailscale that's
+   `name.tailnet.ts.net:8443`.
+3. Start the tunnel, forwarding **only** port 29180:
    - Tailscale Funnel: `tailscale funnel --bg --https=8443 29180` (off: `tailscale funnel --https=8443 off`).
      Port 443 can be used by something else; Funnel also offers 8443 and 10000.
    - Cloudflare Tunnel: point a hostname at `http://127.0.0.1:29180`.
-5. In claude.ai: Settings → Connectors → Add custom connector, URL `https://<public address>/mcp`.
-6. Claude opens a sign-in page. On the admin page press **New code** and type the code there.
-7. The first time, the app waits for approval: press **Approve** on the admin page. The sign-in page carries on by itself.
+4. In claude.ai: Settings → Connectors → Add custom connector, URL `https://<public address>/mcp`.
+5. Claude opens a sign-in page. In Settings (or on the admin page) press **New code** and type the code there.
+6. The first time, the app waits for approval: press **Approve** in Settings. The sign-in page carries on by itself.
+
+Settings → Connect to Claude also lists approved apps (Remove) and connections (Disconnect), and has the
+**Connect your agent…** commands for agents on this PC.
+
+The app talks to the connector through `/api/*` on the admin port with the `x-vellum-admin` header, whose secret is in
+`admin-token` in the data folder (src/main/remote.ts).
 
 ## Files
 
-`%APPDATA%\Vellum\remote\` (`VELLUM_REMOTE_DIR` overrides): `remote.json` (clients, approved apps, token hashes; no raw
-tokens), `config.json` (public address, tunnel type), `remote.log` (audit log, one JSON line per event).
+`%APPDATA%\Vellum\remote\` (`VELLUM_REMOTE_DIR` overrides): `admin-token` (the app's secret for the admin API), `remote.json` (clients, approved apps, token hashes; no raw
+tokens), `config.json` (the Settings switch, public address, tunnel type), `remote.log` (audit log, one JSON line per event).
 
 | Env var | Default | Purpose |
 |---|---|---|
