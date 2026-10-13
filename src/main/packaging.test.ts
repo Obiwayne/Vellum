@@ -1,6 +1,8 @@
 // Packaging config sanity (electron-builder.yml, package.json): one version source, the installer is per user and keeps data,
 // only what the packaged main process needs is a production dependency.
-import { existsSync, readFileSync, readdirSync } from 'node:fs'
+import { execFileSync } from 'node:child_process'
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, realpathSync, rmSync } from 'node:fs'
+import { tmpdir } from 'node:os'
 import { createRequire } from 'node:module'
 import { join } from 'node:path'
 import { pathToFileURL } from 'node:url'
@@ -318,13 +320,24 @@ describe('relaunch check decision (update test)', () => {
       else process.env.CI = prev
     }
   })
-  it('needs the long install path: an 8.3 TEMP path does not match the long path Windows reports for the process', async () => {
+  it('matches a long-path process when the expected install folder is given as an 8.3 short path; a wrong folder fails', async () => {
     const { relaunchVerdict } = await load()
-    const short = win('C:', 'Users', 'RUNNER~1', 'AppData', 'Local', 'Temp', 'vellum-update-test-1', 'app')
-    const long = win('C:', 'Users', 'runneradmin', 'AppData', 'Local', 'Temp', 'vellum-update-test-1', 'app')
-    const proc = [{ pid: 7, path: win(long, 'VellumInstallTest.exe'), session: 1 }]
-    expect(relaunchVerdict({ processes: proc, installDir: short }).ok).toBe(false) // why test-update.mjs resolves with realpathSync.native
-    expect(relaunchVerdict({ processes: proc, installDir: long }).ok).toBe(true)
+    const base = mkdtempSync(join(tmpdir(), 'vellum-verdict-longname-'))
+    try {
+      const installDir = join(base, 'app')
+      mkdirSync(installDir)
+      const long = realpathSync.native(installDir)
+      const ps = `(New-Object -ComObject Scripting.FileSystemObject).GetFolder('${installDir}').ShortPath`
+      const short = execFileSync('powershell', ['-NoProfile', '-Command', ps], { encoding: 'utf8', windowsHide: true }).trim()
+      const proc = [{ pid: 7, path: win(long, 'VellumInstallTest.exe'), session: 1 }]
+      expect(relaunchVerdict({ processes: proc, installDir: long }).ok).toBe(true)
+      expect(relaunchVerdict({ processes: proc, installDir: short }).ok).toBe(true) // short is RUNNER~1-style on a runner, the same path where 8.3 names are off
+      const wrong = join(base, 'other')
+      mkdirSync(wrong)
+      expect(relaunchVerdict({ processes: proc, installDir: wrong }).ok).toBe(false)
+    } finally {
+      rmSync(base, { recursive: true, force: true })
+    }
   })
   it('is what test-update.mjs uses', () => {
     expect(read('scripts/test-update.mjs')).toContain('relaunchVerdict({ processes: productProcs(), installDir })')
