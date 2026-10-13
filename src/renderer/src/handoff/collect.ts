@@ -5,6 +5,8 @@
 import type { CNode, Doc } from '../model/types'
 import { nodeSpec, tokenUse, varsIn, type NodeSpec, type SpecOptions, type TokenUse } from '../model/devSpec'
 import { modesOf } from '../model/modes'
+import { textContrast } from '../model/contrast'
+import { canonicalState, drawnStateDeltas, stateTarget } from '../model/devState'
 import { isPageRoot, numericSize } from '../model/ops'
 import { variantValues, variantsOf } from '../model/variants'
 import { PathRegistry, slug } from './paths'
@@ -105,6 +107,11 @@ export function withDev(doc: Doc, spec: NodeSpec): DevNodeSpec {
     if (box.height === 0 && spec.sizing.h.mode !== 'fixed') delete known.height
   }
   const out: DevNodeSpec = { ...rest, box: known, tokens: tokens.map((t) => t.name), children: children.map((c) => withDev(doc, c)) }
+  if (spec.type === 'text') {
+    const c = textContrast(doc, spec.id)
+    if (c.ok) out.contrast = c.results.map((r) => ({ ...r }))
+    else if (c.reason !== 'hidden') out.contrastNote = c.reason
+  }
   const dev = doc.nodes[spec.id]?.dev
   if (dev) {
     const notes = notesOf(dev.notes)
@@ -272,11 +279,25 @@ export function collect(doc: Doc, options: HandoffOptions): Collected {
     const described = new Set<string>()
     for (const n of [keyNode, ...mains]) {
       for (const t of notesOf(n.dev?.notes) ?? []) if (!notes.includes(t)) notes.push(t)
-      for (const st of Object.keys(n.dev?.states ?? {})) described.add(st.toLowerCase())
+      for (const st of Object.keys(n.dev?.states ?? {})) described.add(canonicalState(st))
     }
     const drawn: string[] = []
     for (const p of props) {
-      if (p.type === 'variant' && STATE_PROP_RE.test(p.name.trim())) for (const o of p.options ?? []) drawn.push(o.toLowerCase())
+      if (p.type === 'variant' && STATE_PROP_RE.test(p.name.trim())) for (const o of p.options ?? []) drawn.push(canonicalState(o))
+    }
+    // what each drawn state changes against the default variant, and what each described state sets
+    const changesOf = new Map<string, string[]>()
+    if (isSet) {
+      for (const d of drawnStateDeltas(doc, key)) {
+        const lines = d.changes.flatMap((ch) => Object.entries(ch.patch).map(([k, v]) => `${ch.layer ? `${ch.layer} › ` : ''}${k} → ${v === null ? 'unset' : String(v)}`))
+        if (d.state !== 'default' || lines.length) changesOf.set(d.state, lines)
+      }
+    }
+    for (const n of [keyNode, ...mains]) {
+      for (const [st, patch] of Object.entries(n.dev?.states ?? {})) {
+        const k = canonicalState(st)
+        if (!changesOf.has(k)) changesOf.set(k, Object.entries(patch).filter(([, v]) => v !== null && v !== undefined).map(([p, v]) => `${p} → ${String(v)}`))
+      }
     }
     const interactive = INTERACTIVE_RE.test(name)
     const states: ComponentSpec['states'] = []
@@ -284,11 +305,14 @@ export function collect(doc: Doc, options: HandoffOptions): Collected {
     const add = (state: string, badge: StateBadge): void => {
       if (seen.has(state)) return
       seen.add(state)
-      states.push({ state, badge })
+      const t = stateTarget(state)
+      const target = [t.css, t.attr].filter(Boolean).join(' or ')
+      const changes = changesOf.get(state)
+      states.push({ state, badge, ...(target ? { target } : {}), ...(changes?.length ? { changes } : {}) })
     }
     drawn.forEach((s) => add(s, 'drawn'))
     ;[...described].sort().forEach((s) => add(s, 'described'))
-    if (interactive) STATE_VOCAB.filter((s) => !seen.has(s) && !(s === 'pressed' && seen.has('active'))).forEach((s) => add(s, 'missing'))
+    if (interactive) STATE_VOCAB.filter((s) => !seen.has(s)).forEach((s) => add(s, 'missing'))
     const base = slug(name, 'component')
     const cSlug = paths.take('components', base, '.md').replace(/^components\//, '').replace(/\.md$/, '')
     compOrder.push(key)

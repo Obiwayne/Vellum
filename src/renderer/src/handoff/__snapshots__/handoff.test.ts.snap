@@ -6,12 +6,12 @@ exports[`snapshots of every file for the fixture > .handoff.json 1`] = `
   "version": 1,
   "screens": {
     "checkout": {
-      "9-0": "150e5cd056bd5eab",
-      "19-0": "99b90029f4a86cbf"
+      "9-0": "8ece4ad58a0a14fd",
+      "19-0": "00d752c50196b3d7"
     }
   },
   "components": {
-    "button": "9ccfb5feccf75767"
+    "button": "9872ba3801d230ab"
   },
   "tokens": "101eb12e76df96ff",
   "textStyles": "742750b313d64ffb",
@@ -68,6 +68,7 @@ These interactive components have no drawn or described hover, pressed, focus or
 ## Warnings
 
 - 1 node has a fractional size: build with the layout rule, not the number.
+- Text contrast below WCAG AA: "Label" in Checkout (Dark) 2.54:1; "Label" in Button (Dark) 2.54:1.
 
 > 9 layers were not measured: their sizes come from the authored style. Treat them as intent.
 "
@@ -121,6 +122,7 @@ These interactive components have no drawn or described hover, pressed, focus or
 ## Warnings
 
 - 1 node has a fractional size: build with the layout rule, not the number.
+- Text contrast below WCAG AA: "Label" in Checkout (Dark) 2.54:1; "Label" in Button (Dark) 2.54:1.
 
 > 9 layers were not measured: their sizes come from the authored style. Treat them as intent.
 "
@@ -157,6 +159,7 @@ Component set \`6-0\`. Used by: Checkout.
     - size: fit content (not measured); flow position 0
     - text colour #FFFFFFFF
     - "Buy" · Inter, sans-serif, 16px, weight 600
+    - contrast: Light 5.17:1 AA · Dark 2.54:1 fails AA
 
 ### Button (Variant=Variant 2)
 
@@ -169,15 +172,16 @@ Component set \`6-0\`. Used by: Checkout.
     - size: fit content (not measured); flow position 0
     - text colour #FFFFFFFF
     - "Buy" · Inter, sans-serif, 16px, weight 600
+    - contrast: Light 5.17:1 AA · Dark 2.54:1 fails AA
 
 ## States
 
-| State | How it is specified |
-|---|---|
-| hover | described (state rule on the component) |
-| pressed | missing: not specified, use the project default |
-| focus | missing: not specified, use the project default |
-| disabled | missing: not specified, use the project default |
+| State | How it is specified | Maps to | What changes |
+|---|---|---|---|
+| hover | described (state rule on the component) | :hover | backgroundColor → var(--color-brand-hover) |
+| pressed | missing: not specified, use the project default | :active |  |
+| focus | missing: not specified, use the project default | :focus |  |
+| disabled | missing: not specified, use the project default | :disabled or \\[aria-disabled="true"] |  |
 "
 `;
 
@@ -215,6 +219,7 @@ Frame \`9-0\` · ready in handoff v1 · reference \`screens/checkout.desktop.png
     - text colour #0F171FFF (authored oklch(0.2 0.02 250)) --color-text
     - "Pay now" · Inter, sans-serif, 28px, weight 700 · line height 36px (1.29) · text style Heading/H1
     - tokens: --text-xl, --color-text
+    - contrast: Light 18.06:1 AAA · Dark 16.98:1 AAA
   - **Card — Row, gap 16, width 347.5, height 52** \`11-0\`
     - size 347.5px × 52px; flow position 1 (not measured: from the authored style)
     - fill #FFFFFFFF --color-surface; stroke 1px solid #E5E7EBFF; radius 12px
@@ -227,6 +232,7 @@ Frame \`9-0\` · ready in handoff v1 · reference \`screens/checkout.desktop.png
       - text colour #0F171FFF (authored oklch(0.2 0.02 250)) --color-text
       - "Total 42.00" · Inter, sans-serif, 16px, weight 400
       - tokens: --color-text
+      - contrast: Light 18.06:1 AAA · Dark 16.98:1 AAA
   - **Variant=Default — Row, padding 0 16 0 16, width 160, height 44** \`13-0\`
     - size 160px × 44px; flow position 2 (not measured: from the authored style)
     - padding 0px 16px 0px 16px
@@ -237,6 +243,7 @@ Frame \`9-0\` · ready in handoff v1 · reference \`screens/checkout.desktop.png
       - size: fit content (not measured); flow position 0
       - text colour #FFFFFFFF
       - "Buy" · Inter, sans-serif, 16px, weight 600
+      - contrast: Light 5.17:1 AA · Dark 2.54:1 fails AA
   - **Locked divider — Block, width 400, height 1** \`15-0\` (rect)
     - size 400px × 1px; flow position 3 (not measured: from the authored style)
     - fill #E5E7EBFF
@@ -255,6 +262,7 @@ Frame \`19-0\` · ready in handoff v1 · reference \`screens/checkout.mobile.png
     - text colour #0F171FFF (authored oklch(0.2 0.02 250)) --color-text
     - "Pay now" · Inter, sans-serif, 28px, weight 700 · line height 36px (1.29) · text style Heading/H1
     - tokens: --text-xl, --color-text
+    - contrast: Light 18.06:1 AAA · Dark 16.98:1 AAA
 "
 `;
 
@@ -436,7 +444,27 @@ exports[`snapshots of every file for the fixture > spec.json 1`] = `
                   "--text-xl",
                   "--color-text"
                 ],
-                "children": []
+                "children": [],
+                "contrast": [
+                  {
+                    "mode": "Light",
+                    "ratio": 18.06,
+                    "fg": "#0F171F",
+                    "bg": "#FFFFFF",
+                    "large": false,
+                    "aa": true,
+                    "aaa": true
+                  },
+                  {
+                    "mode": "Dark",
+                    "ratio": 16.98,
+                    "fg": "#F9FAFB",
+                    "bg": "#111827",
+                    "large": false,
+                    "aa": true,
+                    "aaa": true
+                  }
+                ]
               },
               {
                 "id": "11-0",
@@ -595,7 +623,27 @@ exports[`snapshots of every file for the fixture > spec.json 1`] = `
                     "tokens": [
                       "--color-text"
                     ],
-                    "children": []
+                    "children": [],
+                    "contrast": [
+                      {
+                        "mode": "Light",
+                        "ratio": 18.06,
+                        "fg": "#0F171F",
+                        "bg": "#FFFFFF",
+                        "large": false,
+                        "aa": true,
+                        "aaa": true
+                      },
+                      {
+                        "mode": "Dark",
+                        "ratio": 16.98,
+                        "fg": "#F9FAFB",
+                        "bg": "#111827",
+                        "large": false,
+                        "aa": true,
+                        "aaa": true
+                      }
+                    ]
                   }
                 ],
                 "notes": [
@@ -760,7 +808,27 @@ exports[`snapshots of every file for the fixture > spec.json 1`] = `
                       "measured": false
                     },
                     "tokens": [],
-                    "children": []
+                    "children": [],
+                    "contrast": [
+                      {
+                        "mode": "Light",
+                        "ratio": 5.17,
+                        "fg": "#FFFFFF",
+                        "bg": "#2563EB",
+                        "large": false,
+                        "aa": true,
+                        "aaa": false
+                      },
+                      {
+                        "mode": "Dark",
+                        "ratio": 2.54,
+                        "fg": "#FFFFFF",
+                        "bg": "#60A5FA",
+                        "large": false,
+                        "aa": false,
+                        "aaa": false
+                      }
+                    ]
                   }
                 ]
               },
@@ -982,7 +1050,27 @@ exports[`snapshots of every file for the fixture > spec.json 1`] = `
                   "--text-xl",
                   "--color-text"
                 ],
-                "children": []
+                "children": [],
+                "contrast": [
+                  {
+                    "mode": "Light",
+                    "ratio": 18.06,
+                    "fg": "#0F171F",
+                    "bg": "#FFFFFF",
+                    "large": false,
+                    "aa": true,
+                    "aaa": true
+                  },
+                  {
+                    "mode": "Dark",
+                    "ratio": 16.98,
+                    "fg": "#F9FAFB",
+                    "bg": "#111827",
+                    "large": false,
+                    "aa": true,
+                    "aaa": true
+                  }
+                ]
               }
             ]
           },
@@ -1164,7 +1252,27 @@ exports[`snapshots of every file for the fixture > spec.json 1`] = `
                   "measured": false
                 },
                 "tokens": [],
-                "children": []
+                "children": [],
+                "contrast": [
+                  {
+                    "mode": "Light",
+                    "ratio": 5.17,
+                    "fg": "#FFFFFF",
+                    "bg": "#2563EB",
+                    "large": false,
+                    "aa": true,
+                    "aaa": false
+                  },
+                  {
+                    "mode": "Dark",
+                    "ratio": 2.54,
+                    "fg": "#FFFFFF",
+                    "bg": "#60A5FA",
+                    "large": false,
+                    "aa": false,
+                    "aaa": false
+                  }
+                ]
               }
             ],
             "notes": [
@@ -1330,7 +1438,27 @@ exports[`snapshots of every file for the fixture > spec.json 1`] = `
                   "measured": false
                 },
                 "tokens": [],
-                "children": []
+                "children": [],
+                "contrast": [
+                  {
+                    "mode": "Light",
+                    "ratio": 5.17,
+                    "fg": "#FFFFFF",
+                    "bg": "#2563EB",
+                    "large": false,
+                    "aa": true,
+                    "aaa": false
+                  },
+                  {
+                    "mode": "Dark",
+                    "ratio": 2.54,
+                    "fg": "#FFFFFF",
+                    "bg": "#60A5FA",
+                    "large": false,
+                    "aa": false,
+                    "aaa": false
+                  }
+                ]
               }
             ]
           }
@@ -1346,19 +1474,26 @@ exports[`snapshots of every file for the fixture > spec.json 1`] = `
       "states": [
         {
           "state": "hover",
-          "badge": "described"
+          "badge": "described",
+          "target": ":hover",
+          "changes": [
+            "backgroundColor → var(--color-brand-hover)"
+          ]
         },
         {
           "state": "pressed",
-          "badge": "missing"
+          "badge": "missing",
+          "target": ":active"
         },
         {
           "state": "focus",
-          "badge": "missing"
+          "badge": "missing",
+          "target": ":focus"
         },
         {
           "state": "disabled",
-          "badge": "missing"
+          "badge": "missing",
+          "target": ":disabled or [aria-disabled=\\"true\\"]"
         }
       ],
       "interactive": true
@@ -1738,6 +1873,15 @@ exports[`snapshots of every file for the fixture > spec.schema.json 1`] = `
                   "described",
                   "missing"
                 ]
+              },
+              "target": {
+                "type": "string"
+              },
+              "changes": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
               }
             },
             "required": [
@@ -2427,6 +2571,48 @@ exports[`snapshots of every file for the fixture > spec.schema.json 1`] = `
           "required": [],
           "additionalProperties": false
         },
+        "contrast": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "mode": {
+                "type": "string"
+              },
+              "ratio": {
+                "type": "number"
+              },
+              "fg": {
+                "type": "string"
+              },
+              "bg": {
+                "type": "string"
+              },
+              "large": {
+                "type": "boolean"
+              },
+              "aa": {
+                "type": "boolean"
+              },
+              "aaa": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "mode",
+              "ratio",
+              "fg",
+              "bg",
+              "large",
+              "aa",
+              "aaa"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "contrastNote": {
+          "type": "string"
+        },
         "states": {
           "type": "object",
           "additionalProperties": {
@@ -2619,6 +2805,7 @@ Frame \`9-0\` · ready in handoff v1 · reference \`screens/checkout.desktop.png
     - text colour #0F171FFF (authored oklch(0.2 0.02 250)) --color-text
     - "Pay now" · Inter, sans-serif, 28px (1.75rem), weight 700 · line height 36px (1.29) · text style Heading/H1
     - tokens: --text-xl, --color-text
+    - contrast: Light 18.06:1 AAA · Dark 16.98:1 AAA
   - **Card — Row, gap 16, width 347.5, height 52** \`11-0\`
     - size 100.25px (6.2656rem) × 40px (2.5rem); flow position 1
     - fill #FFFFFFFF --color-surface; stroke 1px solid #E5E7EBFF; radius 12px (0.75rem)
@@ -2631,6 +2818,7 @@ Frame \`9-0\` · ready in handoff v1 · reference \`screens/checkout.desktop.png
       - text colour #0F171FFF (authored oklch(0.2 0.02 250)) --color-text
       - "Total 42.00" · Inter, sans-serif, 16px (1rem), weight 400 · line height 40px (2.5) estimated
       - tokens: --color-text
+      - contrast: Light 18.06:1 AAA · Dark 16.98:1 AAA
   - **Variant=Default — Row, padding 0 16 0 16, width 160, height 44** \`13-0\`
     - size 100.25px (6.2656rem) × 40px (2.5rem); flow position 2
     - padding 0px (0rem) 16px (1rem) 0px (0rem) 16px (1rem)
@@ -2641,6 +2829,7 @@ Frame \`9-0\` · ready in handoff v1 · reference \`screens/checkout.desktop.png
       - size 100.25px (6.2656rem) × 40px (2.5rem); flow position 0
       - text colour #FFFFFFFF
       - "Buy" · Inter, sans-serif, 16px (1rem), weight 600 · line height 40px (2.5) estimated
+      - contrast: Light 5.17:1 AA · Dark 2.54:1 fails AA
   - **Locked divider — Block, width 400, height 1** \`15-0\` (rect)
     - size 100.25px (6.2656rem) × 40px (2.5rem); flow position 3
     - fill #E5E7EBFF
@@ -2661,5 +2850,6 @@ Frame \`19-0\` · ready in handoff v1 · reference \`screens/checkout.mobile.png
     - text colour #0F171FFF (authored oklch(0.2 0.02 250)) --color-text
     - "Pay now" · Inter, sans-serif, 28px (1.75rem), weight 700 · line height 36px (1.29) · text style Heading/H1
     - tokens: --text-xl, --color-text
+    - contrast: Light 18.06:1 AAA · Dark 16.98:1 AAA
 "
 `;

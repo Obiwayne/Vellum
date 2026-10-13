@@ -63,6 +63,10 @@ export interface HandoffSummary {
   skippedHidden: number
   /** nodes without a measured rect */
   unmeasured: number
+  /** text layers that fail WCAG AA in at least one mode */
+  contrastFailures: number
+  /** image layers with no alt text (an empty alt is a decision, not a gap) */
+  imagesWithoutAlt: number
 }
 
 export interface HandoffResult {
@@ -81,6 +85,10 @@ export type DevNodeSpec = Omit<NodeSpec, 'children' | 'tokens' | 'box'> & {
   tokens: string[]
   notes?: string[]
   a11y?: { role?: string; label?: string; tab?: number }
+  /** text layers: WCAG contrast per theme mode (T69) */
+  contrast?: Array<{ mode: string; ratio: number; fg: string; bg: string; large: boolean; aa: boolean; aaa: boolean }>
+  /** why contrast was not computed (gradient or image background, unreadable colour) */
+  contrastNote?: string
   states?: Record<string, StylePatch>
   needsDecision?: string
   children: DevNodeSpec[]
@@ -132,7 +140,7 @@ export interface ComponentSpec {
   usedBy: string[]
   /** dev notes on the main(s), unique */
   notes: string[]
-  states: Array<{ state: string; badge: StateBadge }>
+  states: Array<{ state: string; badge: StateBadge; /** CSS selector suffix or ARIA/data attribute the state maps to */ target?: string; /** what changes against the default, `Layer › property → value` */ changes?: string[] }>
   /** looks interactive by name (button, link, input...) */
   interactive: boolean
 }

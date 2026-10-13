@@ -118,6 +118,10 @@ function nodeLines(n: DevNodeSpec, depth: number, ctx: MarkdownContext, out: str
     const o = c.overrides ? `, overrides on ${c.overrides.length} layer${c.overrides.length === 1 ? '' : 's'}` : ''
     out.push(`${sub}component ${inline(c.name ?? c.ref)}${v}${p}${o}`)
   }
+  if (n.contrast?.length) {
+    const parts = n.contrast.map((r) => `${inline(r.mode)} ${formatNumber(r.ratio)}:1 ${r.aa ? (r.aaa ? 'AAA' : 'AA') : 'fails AA'}${r.large ? ' (large text)' : ''}`)
+    out.push(`${sub}contrast: ${parts.join(' · ')}`)
+  } else if (n.contrastNote) out.push(`${sub}contrast: not computed (${inline(n.contrastNote)})`)
   if (n.states) for (const [state, patch] of Object.entries(n.states)) out.push(`${sub}state ${inline(state)}: ${Object.entries(patch).map(([k, x]) => `${inline(k)}: ${inline(x)}`).join('; ')}`)
   if (n.a11y) out.push(`${sub}accessibility: ${Object.entries(n.a11y).map(([k, x]) => `${inline(k)} ${inline(x)}`).join(', ')}`)
   for (const note of n.notes ?? []) out.push(`${sub}dev note: ${inline(note)}`)
@@ -189,9 +193,12 @@ export function componentMarkdown(c: ComponentSpec, ctx: MarkdownContext): strin
     out.push('')
   }
   if (c.states.length || c.interactive) {
-    out.push('## States', '', '| State | How it is specified |', '|---|---|')
-    for (const s of c.states) out.push(`| ${cell(s.state)} | ${s.badge === 'drawn' ? 'drawn (a variant)' : s.badge === 'described' ? 'described (state rule on the component)' : 'missing: not specified, use the project default'} |`)
-    if (!c.states.length) out.push('| (none) | states not specified; use the project defaults |')
+    out.push('## States', '', '| State | How it is specified | Maps to | What changes |', '|---|---|---|---|')
+    for (const s of c.states) {
+      const how = s.badge === 'drawn' ? 'drawn (a variant)' : s.badge === 'described' ? 'described (state rule on the component)' : 'missing: not specified, use the project default'
+      out.push(`| ${cell(s.state)} | ${how} | ${cell(s.target ?? '')} | ${cell((s.changes ?? []).join('; '))} |`)
+    }
+    if (!c.states.length) out.push('| (none) | states not specified; use the project defaults | | |')
     out.push('')
   }
   return out.join('\n').replace(/\n+$/, '\n')
