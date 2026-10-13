@@ -184,3 +184,25 @@ describe('hoverPick: Alt measures to any layer in Dev Mode', () => {
     expect(hoverPick(d, 'nope', [], { deep: false, alt: true, devMode: true })).toBeNull()
   })
 })
+
+describe('layers under a rotated or scaled ancestor', () => {
+  it('count as rotated: the rect is a bounding box, not their edges', () => {
+    const s = scene()
+    const only = (id: string) => (n: CNode) => n.id === id
+    // the parent frame is rotated; A is not, but sits inside it
+    const r = redlineScene(base({ selection: [s.a], hovered: s.b, rects: s.rects, isRotated: only(s.frame) }))!
+    expect(r.skipped).toBe('rotated')
+    expect(r.lines).toEqual([])
+    // hovering a layer under a rotated ancestor
+    const h = redlineScene(base({ selection: [s.frame], hovered: s.b, rects: s.rects, isRotated: only(s.frame) }))!
+    expect(h.skipped).toBe('rotated')
+    expect(h.sizeLabels).toEqual([])
+  })
+
+  it('a rotated sibling elsewhere does not affect it', () => {
+    const s = scene()
+    const r = redlineScene(base({ selection: [s.a], hovered: s.b, rects: s.rects, isRotated: (n) => n.name === 'Elsewhere' }))!
+    expect(r.skipped).toBeUndefined()
+    expect(r.lines.length).toBeGreaterThan(0)
+  })
+})

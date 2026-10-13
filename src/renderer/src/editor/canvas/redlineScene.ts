@@ -24,7 +24,7 @@ export interface SceneInput {
   devMode: boolean
   /** measured world rects by node id (the overlay's `rects`) */
   rects: Map<string, WorldRect>
-  /** the layer has rotation, scale or skew in effect */
+  /** the layer itself has rotation, scale or skew in effect (ancestors are checked by the scene) */
   isRotated: (n: CNode) => boolean
   /** a gesture (drag, resize...) is in progress: draw nothing */
   gesturing?: boolean
@@ -52,7 +52,16 @@ const union = (rs: WorldRect[]): WorldRect => {
 }
 
 export function redlineScene(input: SceneInput): RedlineScene | null {
-  const { doc, selection, hovered, devMode, rects, isRotated } = input
+  const { doc, selection, hovered, devMode, rects } = input
+  // a layer inside a rotated or scaled ancestor is measured as a bounding box too: it counts as rotated itself
+  const isRotated = (n: CNode): boolean => {
+    const seen = new Set<string>()
+    for (let cur: CNode | undefined = n; cur && !seen.has(cur.id) && !isPageRoot(doc, cur.id); cur = cur.parent ? doc.nodes[cur.parent] : undefined) {
+      seen.add(cur.id)
+      if (input.isRotated(cur)) return true
+    }
+    return false
+  }
   if (!devMode || input.gesturing || !selection.length) return null
   const selNodes = selection.map((id) => doc.nodes[id]).filter((n): n is CNode => Boolean(n))
   const selRects = selNodes.map((n) => rects.get(n.id)).filter((r): r is WorldRect => Boolean(r))
