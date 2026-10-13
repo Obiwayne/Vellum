@@ -101,16 +101,48 @@
   border-radius: 6px;
   background: rgb(0 0 0 / 0.28);
   font: 12px/1.5 'DM Mono', ui-monospace, monospace;
-  overflow: auto;
-  max-height: 220px;
-  white-space: pre;
+  /* wraps inside the panel: nothing is cut off and there is no horizontal scrollbar */
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
 }
 
-.eh-warn {
-  margin: 0;
-  padding-left: 16px;
-  font-size: 12px;
+/* warnings: an amber-tinted box, as in D02 */
+.eh-callout {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px 10px;
+  border-radius: 6px;
+  background: rgb(227 160 8 / 0.14);
   color: var(--color-changed);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.eh-callout p {
+  margin: 0;
+}
+
+/* the dialog header: 16px / 600 title with a subtitle under it */
+.eh-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 16px 12px 12px 20px;
+  border-bottom: 1px solid var(--border, rgb(255 255 255 / 0.08));
+}
+
+.eh-title {
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+.eh-sub {
+  margin-top: 2px;
+  font-size: 12px;
+  color: var(--text-muted, #9a9a9a);
 }
 
 .eh-state {
@@ -146,7 +178,9 @@
 .eh-path {
   margin: 0;
   font: 12px/1.4 'DM Mono', ui-monospace, monospace;
-  word-break: break-all;
+  /* wraps at the separators, never inside a name unless one name is wider than the dialog */
+  overflow-wrap: anywhere;
+  word-break: normal;
 }
 
 .eh-foot {
@@ -175,7 +209,7 @@
   height: 8px;
   border-radius: 50%;
   flex-shrink: 0;
-  margin-left: 4px;
+  margin-right: 6px;
   background: var(--color-ready);
 }
 
@@ -196,4 +230,49 @@
 .insp-ready__changed {
   color: var(--color-changed);
   font-size: 11px;
+}
+
+/* the "Ready for dev" switch in the inspector */
+.insp-switch {
+  position: relative;
+  width: 28px;
+  height: 16px;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: rgb(255 255 255 / 0.18);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background 0.12s ease-out;
+}
+
+.insp-switch::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #fff;
+  transition: transform 0.12s ease-out;
+}
+
+.insp-switch[aria-checked='true'] {
+  background: var(--color-ready);
+}
+
+.insp-switch[aria-checked='true']::after {
+  transform: translateX(12px);
+}
+
+.insp-switch:focus-visible {
+  outline: 2px solid var(--accent, #0d99ff);
+  outline-offset: 2px;
+}
+
+.insp-ready__label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }

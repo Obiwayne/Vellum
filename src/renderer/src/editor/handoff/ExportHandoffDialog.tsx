@@ -2,18 +2,63 @@
 // review counts and the file tree, then write a folder or a zip. States: form, empty (nothing ready), exporting,
 // failed, done.
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Button, Checkbox, Modal } from '../../ui'
+import { X } from 'lucide-react'
+import { Button, Checkbox, IconButton, Modal } from '../../ui'
 import { useStore } from '../../model/store'
+import { numericSize } from '../../model/ops'
 import type { Doc } from '../../model/types'
 import { topLevelFrames } from '../../handoff/collect'
 import { readyStatus } from '../../handoff/ready'
 import { previewExport, runExport, type ExportOutcome, type ExportRequest, type Preview } from '../../handoff/exportFlow'
+import { promptFor } from '../../handoff/exportPrompt'
 import { appExportDeps, useExportHandoff } from './exportDialog'
 import { treeLines } from './treeLines'
 import { queryLocalFamilies } from '../inspector/fonts'
 import './export-handoff.css'
 
-export const PROMPT = 'Read HANDOFF.md first, then CHANGES.md; build and verify against screens/*.png'
+/** "1 screen", "2 screens" */
+export const plural = (n: number, one: string, many = `${one}s`): string => `${n} ${n === 1 ? one : many}`
+
+const WORDS = ['', 'one', 'two', 'three', 'four', 'five']
+const list = (names: string[]): string => (names.length < 2 ? (names[0] ?? '') : `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`)
+
+/** The D02 note under the screens: tagged frames of one screen export together. */
+export function groupingNotes(doc: Doc, ids: string[]): string[] {
+  const groups = new Map<string, { name: string; frames: Array<{ bp: string; width: number }> }>()
+  for (const id of ids) {
+    const n = doc.nodes[id]
+    const tag = n?.dev?.screen
+    if (!tag) continue
+    const key = tag.name.trim().toLowerCase()
+    const g = groups.get(key) ?? { name: tag.name.trim(), frames: [] }
+    g.frames.push({ bp: tag.bp, width: numericSize(n.style.width as string | number | undefined) ?? 0 })
+    groups.set(key, g)
+  }
+  const out: string[] = []
+  for (const g of groups.values()) {
+    if (g.frames.length < 2) continue
+    const frames = [...g.frames].sort((a, b) => b.width - a.width)
+    const count = WORDS[frames.length] ?? String(frames.length)
+    const widths = frames.map((f) => f.width).filter(Boolean)
+    out.push(`${list(frames.map((f) => f.bp))} export as one screen, ${g.name}, with ${count} breakpoints${widths.length ? ` (${widths.join(' / ')})` : ''}.`)
+  }
+  return out
+}
+
+const dateText = (at: number): string => new Date(at).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })
+
+/** A path that may wrap at its separators but never inside a name. */
+const wrapPath = (p: string): JSX.Element[] =>
+  p.split(/([\\/])/).map((part, i) =>
+    part === '/' || part === '\\' ? (
+      <span key={i}>
+        {part}
+        <wbr />
+      </span>
+    ) : (
+      <span key={i}>{part}</span>
+    )
+  )
 
 type Phase = 'form' | 'exporting' | 'done' | 'failed'
 
@@ -148,7 +193,7 @@ export function ExportHandoffDialog(): JSX.Element | null {
       <Modal open onClose={close} title={`Handoff v${o.version} exported`} width={520}
         footer={
           <>
-            <Button onClick={() => void navigator.clipboard?.writeText(PROMPT)}>Copy prompt</Button>
+            <Button onClick={() => void navigator.clipboard?.writeText(promptFor(o.paths))}>Copy prompt</Button>
             <Button variant="primary" onClick={() => void window.canvasApi?.showInFolder(o.path)}>
               {o.kind === 'zip' ? 'Show file' : 'Open folder'}
             </Button>
@@ -156,16 +201,18 @@ export function ExportHandoffDialog(): JSX.Element | null {
         }>
         <div className="eh-state">
           <p className="eh-ok">
-            {o.summary.screens} screen{o.summary.screens === 1 ? '' : 's'}, {o.summary.nodes} layers, {o.files} files, {mb(o.bytes)}
+            {plural(o.summary.screens, 'screen')}, {plural(o.summary.nodes, 'layer')}, {plural(o.summary.assets, 'asset')}, {mb(o.bytes)}
           </p>
-          <p className="eh-path">{o.path}</p>
-          <p className="eh-muted">Saved in version history as “Handoff v{o.version}”. Tell Claude Code: read HANDOFF.md first.</p>
+          <p className="eh-path" title={o.path}>{wrapPath(o.path)}</p>
+          <p className="eh-muted">
+            {o.versionSaved ? `Saved in version history as “Handoff v${o.version}”. ` : ''}Tell Claude Code: {promptFor(o.paths).replace(/^Read/, 'read')}.
+          </p>
           {o.warnings.length > 0 && (
-            <ul className="eh-warn">
+            <div className="eh-callout" role="note">
               {o.warnings.slice(0, 5).map((w) => (
-                <li key={w}>{w}</li>
+                <p key={w}>{w}</p>
               ))}
-            </ul>
+            </div>
           )}
         </div>
       </Modal>
@@ -226,8 +273,21 @@ export function ExportHandoffDialog(): JSX.Element | null {
   // ---- the form
   const title = `Export handoff · v${preview?.version ?? '…'}`
   const canExport = frames.length > 0 && !planning
+  const notes = groupingNotes(doc, frames)
+  const subtitle = `A folder (or zip) a developer puts next to their repo. Needs no Vellum.${preview?.previous ? ` Previous handoff: v${preview.previous.version}${preview.previous.at ? `, ${dateText(preview.previous.at)}` : ''}.` : ''}`
+  // pulls and hidden layers first, then the writer's own warnings (its "Pulls in" line repeats the first)
+  const callout: string[] = []
+  for (const p of preview?.pulls ?? []) callout.push(`Pulls in ${plural(p.names.length, 'component')} from page ${p.page}: ${p.names.join(', ')}.`)
+  if (preview && preview.hidden > 0) callout.push(`${plural(preview.hidden, 'hidden layer')} ${preview.hidden === 1 ? 'is' : 'are'} left out.`)
+  for (const w of preview?.warnings ?? []) if (!/^Pulls in /.test(w) && callout.length < 6) callout.push(w)
+  const counts: Array<[number | undefined, string, string]> = [
+    [preview?.screens, 'screen', 'screens'],
+    [preview?.layers, 'layer', 'layers'],
+    [preview?.assets, 'asset', 'assets'],
+    [preview?.fonts, 'font', 'fonts']
+  ]
   return (
-    <Modal open onClose={close} title={title} width={820}
+    <Modal open bare onClose={close} width={820}
       footer={
         <>
           <span className="eh-foot">Writes a decrypted copy to a folder you choose. Nothing is uploaded.</span>
@@ -240,6 +300,13 @@ export function ExportHandoffDialog(): JSX.Element | null {
           </Button>
         </>
       }>
+      <div className="eh-head">
+        <div>
+          <div className="eh-title">{title}</div>
+          <div className="eh-sub">{subtitle}</div>
+        </div>
+        <IconButton icon={<X size={16} />} label="Close" onClick={close} />
+      </div>
       <div className="eh-grid">
         <div className="eh-col">
           <div className="eh-label">Screens</div>
@@ -254,6 +321,11 @@ export function ExportHandoffDialog(): JSX.Element | null {
               </div>
             ))}
           </div>
+          {notes.map((n) => (
+            <p key={n} className="eh-muted" data-testid="eh-grouping">
+              {n}
+            </p>
+          ))}
           {!frames.length && <p className="eh-muted">Tick at least one screen.</p>}
           <div className="eh-label">Options</div>
           <Checkbox checked={retina} onChange={setRetina} label="PNG reference renders (1x, 2x)" />
@@ -265,40 +337,25 @@ export function ExportHandoffDialog(): JSX.Element | null {
         <div className="eh-col eh-col--review">
           <div className="eh-label">Review before writing</div>
           {planError ? (
-            <p className="eh-error">Could not prepare the preview: {planError}. You can still export without images.</p>
+            <p className="eh-error">Could not prepare the preview: {planError}.</p>
           ) : (
             <div className="eh-counts" aria-busy={planning}>
-              {[
-                [preview?.screens, 'screens'],
-                [preview?.layers, 'layers'],
-                [preview?.assets, 'assets'],
-                [preview?.fonts, 'fonts']
-              ].map(([n, l]) => (
-                <div key={String(l)}>
+              {counts.map(([n, one, many]) => (
+                <div key={one}>
                   <b>{planning || n === undefined ? '…' : String(n)}</b>
-                  <span>{String(l)}</span>
+                  <span>{n === 1 ? one : many}</span>
                 </div>
               ))}
             </div>
           )}
-          {preview && (preview.pulls.length > 0 || preview.hidden > 0) && (
-            <div className="eh-notice">
-              {preview.pulls.map((p) => (
-                <span key={p.page}>
-                  Pulls in {p.names.length} component{p.names.length === 1 ? '' : 's'} from page {p.page}: {p.names.join(', ')}.{' '}
-                </span>
+          {callout.length > 0 && (
+            <div className="eh-callout" role="note" data-testid="eh-callout">
+              {callout.map((c) => (
+                <p key={c}>{c}</p>
               ))}
-              {preview.hidden > 0 && <span>{preview.hidden} hidden layer{preview.hidden === 1 ? ' is' : 's are'} left out.</span>}
             </div>
           )}
           {preview && <pre className="eh-tree">{treeLines(preview.files, preview.folderName).join('\n')}</pre>}
-          {preview && preview.warnings.length > 0 && (
-            <ul className="eh-warn">
-              {preview.warnings.slice(0, 4).map((w) => (
-                <li key={w}>{w}</li>
-              ))}
-            </ul>
-          )}
         </div>
       </div>
     </Modal>

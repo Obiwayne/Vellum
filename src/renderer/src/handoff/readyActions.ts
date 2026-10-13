@@ -1,6 +1,6 @@
 // Mark and clear "ready for dev" from the UI (Layers menu, inspector row, export dialog). Marking records the next
 // handoff number and the frame's content hash, as one undoable step.
-import { canEdit, getStore } from '../model/store'
+import { canEdit, getStore, notifyEditRefused } from '../model/store'
 import { listVersions } from '../history/versions'
 import { canMark, frameHash, nextHandoffNumber } from './ready'
 
@@ -8,7 +8,11 @@ import { canMark, frameHash, nextHandoffNumber } from './ready'
 export async function markReady(docId: string, ids: string[]): Promise<number> {
   const s = getStore()
   const doc = s.docs[docId]
-  if (!doc || !canEdit(docId)) return 0
+  if (!doc) return 0
+  if (!canEdit(docId)) {
+    notifyEditRefused(docId)
+    return 0
+  }
   const frames = ids.filter((id) => canMark(doc, id))
   if (!frames.length) return 0
   const at = nextHandoffNumber(await listVersions(docId))
@@ -25,7 +29,11 @@ export async function markReady(docId: string, ids: string[]): Promise<number> {
 
 export function clearReady(docId: string, ids: string[]): void {
   const doc = getStore().docs[docId]
-  if (!doc || !canEdit(docId)) return
+  if (!doc) return
+  if (!canEdit(docId)) {
+    notifyEditRefused(docId)
+    return
+  }
   const marked = ids.filter((id) => doc.nodes[id]?.dev?.ready)
   if (marked.length) getStore().setReady(docId, marked, null)
 }

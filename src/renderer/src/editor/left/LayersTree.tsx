@@ -1,11 +1,11 @@
-import { canMark, readyStatus } from '../../handoff/ready'
-import { toggleReady } from '../../handoff/readyActions'
-import '../handoff/export-handoff.css'
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { ChevronDown, ChevronRight, Columns3, Component, Diamond, Eye, EyeOff, Frame, Grid2x2, Image, Lock, LockOpen, PenTool, Rows3, Square } from 'lucide-react'
 import { useContextMenu, type MenuEntry } from '../../ui'
 import { canEdit, getStore, useStore } from '../../model/store'
 import * as ops from '../../model/ops'
+import { canMark, readyStatus } from '../../handoff/ready'
+import { toggleReady } from '../../handoff/readyActions'
+import '../handoff/export-handoff.css'
 import type { CNode, Doc } from '../../model/types'
 import { CANVAS_COMMAND_EVENT } from '../../shell/commands'
 import * as A from '../canvas/actions'
@@ -453,17 +453,17 @@ const LayerRow = memo(function LayerRow(p: LayerRowProps): JSX.Element {
       <span className="lp-layer__icon">
         <NodeIcon node={n} />
       </span>
-      {p.renaming ? (
-        <InlineEdit value={n.name} onCommit={(v) => p.onRenameDone(v)} onCancel={() => p.onRenameDone(null)} />
-      ) : (
-        <span className="lp-ellipsis lp-layer__name">{n.name}</span>
-      )}
       {p.ready && (
         <span
           className={'lp-layer__ready' + (p.ready === 'changed' ? ' lp-layer__ready--changed' : '')}
           title={p.ready === 'changed' ? 'Changed since it was marked ready for dev' : 'Ready for dev'}
           data-ready={p.ready}
         />
+      )}
+      {p.renaming ? (
+        <InlineEdit value={n.name} onCommit={(v) => p.onRenameDone(v)} onCancel={() => p.onRenameDone(null)} />
+      ) : (
+        <span className="lp-ellipsis lp-layer__name">{n.name}</span>
       )}
       <span className={['lp-layer__slot', n.locked && 'lp-layer__slot--on'].filter(Boolean).join(' ')}>
         <button

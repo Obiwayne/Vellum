@@ -9,7 +9,7 @@ import { topLevelOf } from '../model/ops'
 import { buildHandoff } from './index'
 import { planAssets, planScreenPngs, runAssetJobs, type AssetEngine } from './assets'
 import { selectFrames } from './collect'
-import { handoffVersionName, nextHandoffNumber } from './ready'
+import { handoffVersionName, nextHandoffNumber, previousHandoff } from './ready'
 import { slug } from './paths'
 import type { BundleFiles, FontSource, HandoffResult } from './types'
 
@@ -30,7 +30,7 @@ export interface ExportDeps {
   engine: AssetEngine
   write: (args: HandoffExportArgs) => Promise<HandoffExportResult>
   saveVersion: (name: string) => Promise<unknown>
-  listVersions: () => Promise<ReadonlyArray<{ name?: string | null }>>
+  listVersions: () => Promise<ReadonlyArray<{ name?: string | null; createdAt?: number }>>
   now: () => string
   vellum: string
   fontSource?: (family: string) => FontSource
@@ -52,10 +52,25 @@ export interface Preview {
   warnings: string[]
   /** every path the bundle will contain, PNG references and image variants included */
   files: string[]
+  /** the newest earlier export recorded in version history */
+  previous?: { version: number; at: number }
 }
 
 export type ExportOutcome =
-  | { ok: true; path: string; files: number; bytes: number; version: number; kind: 'folder' | 'zip'; warnings: string[]; summary: HandoffResult['summary'] }
+  | {
+      ok: true
+      path: string
+      files: number
+      bytes: number
+      version: number
+      kind: 'folder' | 'zip'
+      warnings: string[]
+      summary: HandoffResult['summary']
+      /** every file the bundle contains (bundle-relative paths) */
+      paths: string[]
+      /** false when the named version could not be recorded: the files are on disk, the number is not taken */
+      versionSaved: boolean
+    }
   | { ok: false; canceled: true; stage: 'save-dialog' | 'building' }
   | { ok: false; error: string; canceled?: undefined }
 
@@ -99,7 +114,8 @@ async function assemble(doc: Doc, req: ExportRequest, deps: ExportDeps, version:
 
 /** Everything the dialog shows before anything is written. Cheap enough to run on every change of the options. */
 export async function previewExport(doc: Doc, req: ExportRequest, deps: ExportDeps): Promise<Preview> {
-  const version = nextHandoffNumber(await deps.listVersions())
+  const versions = await deps.listVersions()
+  const version = nextHandoffNumber(versions)
   const { plan, built } = await assemble(doc, req, deps, version)
   const spec = JSON.parse(built.files['spec.json'] ?? '{}') as {
     screens?: Array<{ breakpoints?: Array<{ png?: string; frameId: string }> }>
@@ -127,7 +143,8 @@ export async function previewExport(doc: Doc, req: ExportRequest, deps: ExportDe
     hidden: built.summary.skippedHidden,
     pulls: [...byPage.entries()].map(([page, names]) => ({ page, names: [...new Set(names)].sort() })),
     warnings: built.warnings,
-    files
+    files,
+    ...(previousHandoff(versions) ? { previous: previousHandoff(versions) } : {})
   }
 }
 
@@ -156,9 +173,26 @@ export async function runExport(doc: Doc, req: ExportRequest, deps: ExportDeps, 
     }
     const written = await deps.write({ files, name: folderNameFor(source, version), kind: req.kind })
     if (!written.ok) return written.canceled ? { ok: false, canceled: true, stage: 'save-dialog' } : { ok: false, error: written.error }
-    // only a bundle that is on disk becomes a version
-    await deps.saveVersion(handoffVersionName(version)).catch(() => undefined)
-    return { ok: true, path: written.path, files: written.files, bytes: written.bytes, version, kind: written.kind, warnings, summary: built.summary }
+    // only a bundle that is on disk becomes a version; when that fails the files stay and the user is told
+    let versionSaved = true
+    try {
+      await deps.saveVersion(handoffVersionName(version))
+    } catch (e) {
+      versionSaved = false
+      warnings.unshift(`The files were written, but "${handoffVersionName(version)}" could not be saved in version history (${e instanceof Error ? e.message : String(e)}). The next export may reuse this number.`)
+    }
+    return {
+      ok: true,
+      path: written.path,
+      files: written.files,
+      bytes: written.bytes,
+      version,
+      kind: written.kind,
+      warnings,
+      summary: built.summary,
+      paths: Object.keys(files).sort(),
+      versionSaved
+    }
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : String(e) }
   }

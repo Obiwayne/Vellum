@@ -52,3 +52,15 @@ export function nextHandoffNumber(versions: ReadonlyArray<{ name?: string | null
 }
 
 export const handoffVersionName = (n: number): string => `Handoff v${n}`
+
+/** The newest recorded export (highest "Handoff vN") and when it was saved. */
+export function previousHandoff(versions: ReadonlyArray<{ name?: string | null; createdAt?: number }>): { version: number; at: number } | undefined {
+  let best: { version: number; at: number } | undefined
+  for (const v of versions) {
+    const m = HANDOFF_VERSION_RE.exec(v.name ?? '')
+    if (!m) continue
+    const n = Number(m[1])
+    if (!best || n > best.version) best = { version: n, at: v.createdAt ?? 0 }
+  }
+  return best
+}
