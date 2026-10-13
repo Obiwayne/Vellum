@@ -8,10 +8,13 @@ const NOTES: { version: string; items: string[] }[] = [
   {
     version: APP_VERSION,
     items: [
-      'First local release of Vellum.',
-      'Design with real HTML/CSS: frames, flex layouts, text, rectangles, images and SVG.',
-      'Pages, a layers tree with drag-and-drop, and theme tokens with a starter theme.',
-      'MCP server so Claude can read and write your designs.'
+      'Vellum 1.0: the first public release.',
+      'Components with variants and props, plus text styles and design tokens with light and dark themes.',
+      'An Assets panel for your components and styles.',
+      'Real HTML/CSS design: frames, flex layouts, text, shapes, images and SVG, on pages with a layers tree.',
+      'A Windows installer and automatic updates: Vellum checks for new versions and installs them when you choose.',
+      'Crash recovery: your work is saved safely, and a copy is kept in case Vellum closes unexpectedly.',
+      'An MCP server so Claude can read and write your designs.'
     ]
   }
 ]
