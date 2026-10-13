@@ -164,8 +164,8 @@ describe('applyStylePatch stays unaware of text styles', () => {
 })
 
 describe('migration to v5', () => {
-  it('DOC_VERSION is 5 (master is 4)', () => {
-    expect(ops.DOC_VERSION).toBe(5)
+  it('DOC_VERSION is 6 (dev info added in v6)', () => {
+    expect(ops.DOC_VERSION).toBe(6)
   })
 
   it.each([1, 2, 3, 4])('v%i doc reaches v5 and gains no textStyles', (v) => {
@@ -173,7 +173,7 @@ describe('migration to v5', () => {
     d.nodes[a].style = { fontSize: 12, lineHeight: '1.5' }
     d.version = v
     const m = ops.migrateDoc(d)
-    expect(m.version).toBe(5)
+    expect(m.version).toBe(ops.DOC_VERSION)
     expect(m.textStyles).toBeUndefined()
     expect(m.nodes[a].textStyle).toBeUndefined()
     expect(d.version).toBe(v)
@@ -184,7 +184,7 @@ describe('migration to v5', () => {
     delete d.nodes[a].style.lineHeight
     d.version = v
     const m = ops.migrateDoc(d)
-    expect(m.version).toBe(5)
+    expect(m.version).toBe(ops.DOC_VERSION)
     expect(m.nodes[a].style.lineHeight).toBeUndefined()
     expect(m.nodes).toBe(d.nodes)
   })

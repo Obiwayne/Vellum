@@ -11,6 +11,8 @@ import * as comp from './components'
 import * as variants from './variants'
 import * as props from './properties'
 import * as tstyle from './textStyles'
+import * as dev from './dev'
+import type { DevPatch } from './dev'
 import { htmlToNodes } from './html'
 import { MODE_ATTR, MODE_NAME_RE } from './modes'
 
@@ -134,6 +136,13 @@ export interface Store {
   applyTextStyle(docId: string, ids: string[], styleId: string): void
   /** unlink text nodes from their style; values stay */
   detachTextStyle(docId: string, ids: string[]): void
+  // dev info (undoable; see model/dev.ts). Not part of instance overrides.
+  /** merge a dev patch into each node (null clears a field). Same `coalesce` key within 1s merges (typing notes). */
+  setDev(docId: string, ids: string[], patch: DevPatch, opts?: MutateOptions): void
+  /** tag a top-level frame as a screen at a breakpoint (null clears); false when the node cannot be a screen */
+  setScreen(docId: string, id: string, screen: { name: string; bp: string } | null): boolean
+  /** mark frames ready for dev in handoff version `at` (null clears) */
+  setReady(docId: string, ids: string[], at: number | null): void
   /** select the main component of an instance (or of a node inside one) and switch to its page; false when there is none */
   goToMain(docId: string, id: string): boolean
   /** generic escape hatch: run an arbitrary recipe on the doc draft as one undoable step */
@@ -746,6 +755,22 @@ export const useStore = create<Store>()((set, get) => {
         if (!tstyle.updateTextStyle(d, styleId, patch)) return
         for (const inst of using) comp.syncInstance(d, inst) // overrides that follow this style
       }, { derived: true })
+    },
+
+    setDev(docId, ids, patch, opts) {
+      mutate(docId, 'Edit dev info', (d) => {
+        for (const id of ids) dev.setDev(d, id, patch)
+      }, { derived: true, ...opts })
+    },
+
+    setScreen(docId, id, screen) {
+      if (screen && !dev.isTopLevelFrame(get().docs[docId], id)) return false
+      mutate(docId, screen ? 'Set screen' : 'Clear screen', (d) => void dev.setScreen(d, id, screen), { derived: true })
+      return true
+    },
+
+    setReady(docId, ids, at) {
+      mutate(docId, at === null ? 'Clear ready for dev' : 'Mark ready for dev', (d) => void dev.setReady(d, ids, at), { derived: true })
     },
 
     deleteTextStyle(docId, styleId) {

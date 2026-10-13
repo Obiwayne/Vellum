@@ -52,7 +52,7 @@ describe('v4 variants doc (DOC_VERSION 4)', () => {
   it('migrates by stamping 5 and loses no node, variant or property', () => {
     const original = doc(buttonsV4)
     const m = migrateDoc(plain(original))
-    expect(m.version).toBe(5)
+    expect(m.version).toBe(DOC_VERSION)
     expect(m.version).toBe(DOC_VERSION)
     expect({ ...m, version: 4 }).toEqual(original)
     expect(Object.keys(m.nodes).sort()).toEqual(Object.keys(original.nodes).sort())

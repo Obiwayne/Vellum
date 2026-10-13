@@ -42,7 +42,8 @@ const ASPECT_LABEL: Record<ChangeAspect, string> = {
   name: 'name',
   visibility: 'visibility',
   layers: 'layer order',
-  content: 'content'
+  content: 'content',
+  dev: 'dev info'
 }
 const LIST_LIMIT = 150
 const capitalize = (t: string): string => t.charAt(0).toUpperCase() + t.slice(1)

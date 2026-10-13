@@ -86,7 +86,7 @@ create → instance mirrors; edit main style/text/add child/remove child/reorder
 
 # Variants and properties (built: T18–T24, goal G6)
 
-What was actually built on top of the plan above. Model: `model/variants.ts`, `model/properties.ts`; UI: Inspector (Variant, Properties, Bind to property, instance controls), Assets panel; MCP: `docs/MCP.md`. Document format: `DOC_VERSION` 5 (v4 added sets and variants, v5 text styles; both only add optional fields, `migrateDoc` just bumps the version).
+What was actually built on top of the plan above. Model: `model/variants.ts`, `model/properties.ts`; UI: Inspector (Variant, Properties, Bind to property, instance controls), Assets panel; MCP: `docs/MCP.md`. Document format: `DOC_VERSION` 6 (v4 added sets and variants, v5 text styles, v6 developer handoff info `CNode.dev` in `model/dev.ts`; all only add optional fields, `migrateDoc` just bumps the version).
 
 ## Component sets and variants
 - **Add variant** (context menu, or the button in the inspector of a main) duplicates a main next to itself. A lone component is first wrapped in a **set**: a flex frame (`componentSet`) whose direct children are the variant mains, each carrying `component.set` and `component.variant` (property id → option). The original becomes the `Default` variant of a property called `Variant`.
