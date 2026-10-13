@@ -62,10 +62,6 @@ try {
   const visible = await countAmber((await page.screenshot()).toString('base64'))
   check(visible > 100, `control: the promo's amber background is visible on the canvas before it is hidden (${visible} px)`)
 
-  // control for the picture check below: the detector does see the promo while it is visible
-  const visible = await countAmber((await page.screenshot()).toString('base64'))
-  check(visible > 100, `control: the promo's amber background is visible on the canvas before it is hidden (${visible} px)`)
-
   // hide the promo layer (it must not reach the bundle, the PNGs or the markdown)
   check(await hidePromo(page), 'the promo layer was found in the Layers panel and hidden')
 
