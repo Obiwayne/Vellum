@@ -96,8 +96,15 @@ export function notesOf(text: string | undefined): string[] | undefined {
 
 /** A NodeSpec with the developer-facing fields of `CNode.dev` merged in, recursively. */
 export function withDev(doc: Doc, spec: NodeSpec): DevNodeSpec {
-  const { children, tokens, ...rest } = spec
-  const out: DevNodeSpec = { ...rest, tokens: tokens.map((t) => t.name), children: children.map((c) => withDev(doc, c)) }
+  const { children, tokens, box, ...rest } = spec
+  // a size that was not measured and is not authored (Fit, Fill, auto) is `0` in NodeSpec: a developer would
+  // copy it as a real size, so the axis is left out and `measured: false` says why
+  const known: DevNodeSpec['box'] = { ...box }
+  if (!box.measured) {
+    if (box.width === 0 && spec.sizing.w.mode !== 'fixed') delete known.width
+    if (box.height === 0 && spec.sizing.h.mode !== 'fixed') delete known.height
+  }
+  const out: DevNodeSpec = { ...rest, box: known, tokens: tokens.map((t) => t.name), children: children.map((c) => withDev(doc, c)) }
   const dev = doc.nodes[spec.id]?.dev
   if (dev) {
     const notes = notesOf(dev.notes)
@@ -167,7 +174,7 @@ export function collect(doc: Doc, options: HandoffOptions): Collected {
   const screens: ScreenSpec[] = []
   let skippedHidden = 0
   for (const g of groups) {
-    const items: Array<{ id: string; bp: string; width: number; height: number; root: DevNodeSpec; ready?: { at: number } }> = []
+    const items: Array<{ id: string; bp: string; width?: number; height?: number; root: DevNodeSpec; ready?: { at: number } }> = []
     for (const id of g.frames) {
       const raw = nodeSpec(doc, id, specOpts)
       if (!raw) continue
@@ -176,7 +183,7 @@ export function collect(doc: Doc, options: HandoffOptions): Collected {
       const item: (typeof items)[number] = {
         id,
         bp: n.dev?.screen?.bp?.trim() || 'default',
-        width: root.box.width || numericSize(n.style.width as string | number | undefined) || 0,
+        width: root.box.width ?? numericSize(n.style.width as string | number | undefined) ?? undefined,
         height: root.box.height,
         root
       }
@@ -185,7 +192,7 @@ export function collect(doc: Doc, options: HandoffOptions): Collected {
     }
     if (!items.length) continue
     // largest first; ties keep document order
-    items.sort((a, b) => b.width - a.width)
+    items.sort((a, b) => (b.width ?? 0) - (a.width ?? 0))
     const sSlug = paths.take('screens', slug(g.name, 'screen'), '.md').replace(/^screens\//, '').replace(/\.md$/, '')
     const bps: BreakpointSpec[] = []
     const usedBp = new Set<string>()

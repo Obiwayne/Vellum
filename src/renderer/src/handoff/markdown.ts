@@ -80,7 +80,13 @@ function nodeLines(n: DevNodeSpec, depth: number, ctx: MarkdownContext, out: str
   out.push(`${pad}- **${inline(n.name)} — ${n.layout.summary}, ${sizingText(n.sizing.w, n.sizing.h)}** \`${n.id}\`${n.type === 'frame' ? '' : ` (${n.type})`}`)
   const b = n.box
   const pos = b.x !== undefined && b.y !== undefined ? `; at ${formatNumber(b.x)}, ${formatNumber(b.y)} in ${b.relTo}` : n.flowIndex !== undefined ? `; flow position ${n.flowIndex}` : ''
-  out.push(`${sub}size ${px(b.width, ctx.rem)} × ${px(b.height, ctx.rem)}${pos}${b.measured ? '' : ' (not measured: from the authored style)'}`)
+  const known = b.width !== undefined && b.height !== undefined
+  const size = known
+    ? `size ${px(b.width as number, ctx.rem)} × ${px(b.height as number, ctx.rem)}`
+    : b.width === undefined && b.height === undefined
+      ? 'size: fit content (not measured)'
+      : `size: ${b.width !== undefined ? `width ${px(b.width, ctx.rem)}` : `height ${px(b.height as number, ctx.rem)}`}, the other axis fits its content (not measured)`
+  out.push(`${sub}${size}${pos}${b.measured || !known ? '' : ' (not measured: from the authored style)'}`)
   if (n.layout.padding.some((v) => v)) out.push(`${sub}padding ${n.layout.padding.map((v) => px(v, ctx.rem)).join(' ')}`)
   const look: string[] = []
   for (const p of n.paints) look.push(paint(p))
@@ -119,7 +125,7 @@ function assetLines(ids: Set<string>, ctx: MarkdownContext): string[] {
 export function fractionalIn(root: DevNodeSpec): Array<{ id: string; name: string; width: number; height: number }> {
   const out: Array<{ id: string; name: string; width: number; height: number }> = []
   const walk = (n: DevNodeSpec): void => {
-    if (isFractional(n.box.width) || isFractional(n.box.height)) out.push({ id: n.id, name: n.name, width: n.box.width, height: n.box.height })
+    if ((n.box.width !== undefined && isFractional(n.box.width)) || (n.box.height !== undefined && isFractional(n.box.height))) out.push({ id: n.id, name: n.name, width: n.box.width ?? 0, height: n.box.height ?? 0 })
     n.children.forEach(walk)
   }
   walk(root)
@@ -141,7 +147,7 @@ export function screenMarkdown(screen: ScreenSpec, ctx: MarkdownContext): string
   out.push(`Screen \`${screen.id}\`, ${screen.breakpoints.length} breakpoint${screen.breakpoints.length === 1 ? '' : 's'}. Build to the layout rules first; the numbers describe the design size.`, '')
   for (const bp of screen.breakpoints) {
     const heading = bp.bp === 'default' ? 'Layout' : inline(bp.bp)
-    out.push(`## ${heading} · ${px(bp.width, ctx.rem)} wide`, '')
+    out.push(bp.width !== undefined ? `## ${heading} · ${px(bp.width, ctx.rem)} wide` : `## ${heading} · width fits its content (not measured)`, '')
     out.push(`Frame \`${bp.frameId}\`${bp.ready ? ` · ready in handoff v${bp.ready.at}` : ''} · reference \`${bp.png}\``, '')
     const frac = fractionalIn(bp.root)
     if (frac.length) {

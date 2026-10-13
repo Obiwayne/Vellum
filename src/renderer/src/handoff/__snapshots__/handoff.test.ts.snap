@@ -6,12 +6,12 @@ exports[`snapshots of every file for the fixture > .handoff.json 1`] = `
   "version": 1,
   "screens": {
     "checkout": {
-      "9-0": "fb09d309f46d3013",
-      "19-0": "737c1008f5ef6939"
+      "9-0": "150e5cd056bd5eab",
+      "19-0": "99b90029f4a86cbf"
     }
   },
   "components": {
-    "button": "499a80102b56f481"
+    "button": "9ccfb5feccf75767"
   },
   "tokens": "101eb12e76df96ff",
   "textStyles": "742750b313d64ffb",
@@ -154,7 +154,7 @@ Component set \`6-0\`. Used by: Checkout.
   - dev note: Primary call to action.
   - dev note: Only one per screen.
   - **Label — Block, width fit, height fit** \`4-0\` (text)
-    - size 0px × 0px; flow position 0 (not measured: from the authored style)
+    - size: fit content (not measured); flow position 0
     - text colour #FFFFFFFF
     - "Buy" · Inter, sans-serif, 16px, weight 600
 
@@ -166,7 +166,7 @@ Component set \`6-0\`. Used by: Checkout.
   - fill #2563EBFF --color-brand; radius 8px
   - tokens: --color-brand
   - **Label — Block, width fit, height fit** \`8-0\` (text)
-    - size 0px × 0px; flow position 0 (not measured: from the authored style)
+    - size: fit content (not measured); flow position 0
     - text colour #FFFFFFFF
     - "Buy" · Inter, sans-serif, 16px, weight 600
 
@@ -211,7 +211,7 @@ Frame \`9-0\` · ready in handoff v1 · reference \`screens/checkout.desktop.png
   - fill #FFFFFFFF --color-surface
   - tokens: --color-surface
   - **Title — Block, width fit, height fit** \`10-0\` (text)
-    - size 0px × 0px; flow position 0 (not measured: from the authored style)
+    - size: fit content (not measured); flow position 0
     - text colour #0F171FFF (authored oklch(0.2 0.02 250)) --color-text
     - "Pay now" · Inter, sans-serif, 28px, weight 700 · line height 36px (1.29) · text style Heading/H1
     - tokens: --text-xl, --color-text
@@ -223,7 +223,7 @@ Frame \`9-0\` · ready in handoff v1 · reference \`screens/checkout.desktop.png
     - dev note: Collapses to a single column under 640px.
     - **needs decision:** Is the card tappable?
     - **Amount — Block, width fit, height fit** \`12-0\` (text)
-      - size 0px × 0px; flow position 0 (not measured: from the authored style)
+      - size: fit content (not measured); flow position 0
       - text colour #0F171FFF (authored oklch(0.2 0.02 250)) --color-text
       - "Total 42.00" · Inter, sans-serif, 16px, weight 400
       - tokens: --color-text
@@ -234,7 +234,7 @@ Frame \`9-0\` · ready in handoff v1 · reference \`screens/checkout.desktop.png
     - tokens: --color-brand
     - component Button (Variant=Default)
     - **Label — Block, width fit, height fit** \`14-0\` (text)
-      - size 0px × 0px; flow position 0 (not measured: from the authored style)
+      - size: fit content (not measured); flow position 0
       - text colour #FFFFFFFF
       - "Buy" · Inter, sans-serif, 16px, weight 600
   - **Locked divider — Block, width 400, height 1** \`15-0\` (rect)
@@ -251,7 +251,7 @@ Frame \`19-0\` · ready in handoff v1 · reference \`screens/checkout.mobile.png
   - fill #FFFFFFFF --color-surface
   - tokens: --color-surface
   - **Title — Block, width fit, height fit** \`20-0\` (text)
-    - size 0px × 0px; flow position 0 (not measured: from the authored style)
+    - size: fit content (not measured); flow position 0
     - text colour #0F171FFF (authored oklch(0.2 0.02 250)) --color-text
     - "Pay now" · Inter, sans-serif, 28px, weight 700 · line height 36px (1.29) · text style Heading/H1
     - tokens: --text-xl, --color-text
@@ -293,14 +293,6 @@ exports[`snapshots of every file for the fixture > spec.json 1`] = `
             "id": "9-0",
             "name": "Checkout",
             "type": "frame",
-            "box": {
-              "width": 1280,
-              "height": 800,
-              "relTo": "artboard",
-              "measured": false,
-              "x": 0,
-              "y": 0
-            },
             "sizing": {
               "w": {
                 "mode": "fixed",
@@ -358,6 +350,14 @@ exports[`snapshots of every file for the fixture > spec.json 1`] = `
               }
             ],
             "effects": [],
+            "box": {
+              "width": 1280,
+              "height": 800,
+              "relTo": "artboard",
+              "measured": false,
+              "x": 0,
+              "y": 0
+            },
             "tokens": [
               "--color-surface"
             ],
@@ -366,12 +366,6 @@ exports[`snapshots of every file for the fixture > spec.json 1`] = `
                 "id": "10-0",
                 "name": "Title",
                 "type": "text",
-                "box": {
-                  "width": 0,
-                  "height": 0,
-                  "relTo": "parent",
-                  "measured": false
-                },
                 "sizing": {
                   "w": {
                     "mode": "fit"
@@ -434,6 +428,10 @@ exports[`snapshots of every file for the fixture > spec.json 1`] = `
                   "fontFamily": "Inter, sans-serif",
                   "textStyle": "Heading/H1"
                 },
+                "box": {
+                  "relTo": "parent",
+                  "measured": false
+                },
                 "tokens": [
                   "--text-xl",
                   "--color-text"
@@ -444,12 +442,6 @@ exports[`snapshots of every file for the fixture > spec.json 1`] = `
                 "id": "11-0",
                 "name": "Card",
                 "type": "frame",
-                "box": {
-                  "width": 347.5,
-                  "height": 52,
-                  "relTo": "parent",
-                  "measured": false
-                },
                 "sizing": {
                   "w": {
                     "mode": "fixed",
@@ -522,6 +514,12 @@ exports[`snapshots of every file for the fixture > spec.json 1`] = `
                 "effects": [],
                 "flowIndex": 1,
                 "radius": 12,
+                "box": {
+                  "width": 347.5,
+                  "height": 52,
+                  "relTo": "parent",
+                  "measured": false
+                },
                 "tokens": [
                   "--space-4",
                   "--color-surface"
@@ -531,12 +529,6 @@ exports[`snapshots of every file for the fixture > spec.json 1`] = `
                     "id": "12-0",
                     "name": "Amount",
                     "type": "text",
-                    "box": {
-                      "width": 0,
-                      "height": 0,
-                      "relTo": "parent",
-                      "measured": false
-                    },
                     "sizing": {
                       "w": {
                         "mode": "fit"
@@ -596,6 +588,10 @@ exports[`snapshots of every file for the fixture > spec.json 1`] = `
                       "letterSpacingEm": 0,
                       "fontFamily": "Inter, sans-serif"
                     },
+                    "box": {
+                      "relTo": "parent",
+                      "measured": false
+                    },
                     "tokens": [
                       "--color-text"
                     ],
@@ -615,12 +611,6 @@ exports[`snapshots of every file for the fixture > spec.json 1`] = `
                 "id": "13-0",
                 "name": "Variant=Default",
                 "type": "frame",
-                "box": {
-                  "width": 160,
-                  "height": 44,
-                  "relTo": "parent",
-                  "measured": false
-                },
                 "sizing": {
                   "w": {
                     "mode": "fixed",
@@ -694,6 +684,12 @@ exports[`snapshots of every file for the fixture > spec.json 1`] = `
                     "p:5-0": "Default"
                   }
                 },
+                "box": {
+                  "width": 160,
+                  "height": 44,
+                  "relTo": "parent",
+                  "measured": false
+                },
                 "tokens": [
                   "--color-brand"
                 ],
@@ -702,12 +698,6 @@ exports[`snapshots of every file for the fixture > spec.json 1`] = `
                     "id": "14-0",
                     "name": "Label",
                     "type": "text",
-                    "box": {
-                      "width": 0,
-                      "height": 0,
-                      "relTo": "parent",
-                      "measured": false
-                    },
                     "sizing": {
                       "w": {
                         "mode": "fit"
@@ -765,6 +755,10 @@ exports[`snapshots of every file for the fixture > spec.json 1`] = `
                       "letterSpacingEm": 0,
                       "fontFamily": "Inter, sans-serif"
                     },
+                    "box": {
+                      "relTo": "parent",
+                      "measured": false
+                    },
                     "tokens": [],
                     "children": []
                   }
@@ -774,12 +768,6 @@ exports[`snapshots of every file for the fixture > spec.json 1`] = `
                 "id": "15-0",
                 "name": "Locked divider",
                 "type": "rect",
-                "box": {
-                  "width": 400,
-                  "height": 1,
-                  "relTo": "parent",
-                  "measured": false
-                },
                 "sizing": {
                   "w": {
                     "mode": "fixed",
@@ -826,6 +814,12 @@ exports[`snapshots of every file for the fixture > spec.json 1`] = `
                 ],
                 "effects": [],
                 "flowIndex": 3,
+                "box": {
+                  "width": 400,
+                  "height": 1,
+                  "relTo": "parent",
+                  "measured": false
+                },
                 "tokens": [],
                 "children": []
               }
@@ -845,14 +839,6 @@ exports[`snapshots of every file for the fixture > spec.json 1`] = `
             "id": "19-0",
             "name": "Checkout mobile",
             "type": "frame",
-            "box": {
-              "width": 390,
-              "height": 844,
-              "relTo": "artboard",
-              "measured": false,
-              "x": 0,
-              "y": 0
-            },
             "sizing": {
               "w": {
                 "mode": "fixed",
@@ -910,6 +896,14 @@ exports[`snapshots of every file for the fixture > spec.json 1`] = `
               }
             ],
             "effects": [],
+            "box": {
+              "width": 390,
+              "height": 844,
+              "relTo": "artboard",
+              "measured": false,
+              "x": 0,
+              "y": 0
+            },
             "tokens": [
               "--color-surface"
             ],
@@ -918,12 +912,6 @@ exports[`snapshots of every file for the fixture > spec.json 1`] = `
                 "id": "20-0",
                 "name": "Title",
                 "type": "text",
-                "box": {
-                  "width": 0,
-                  "height": 0,
-                  "relTo": "parent",
-                  "measured": false
-                },
                 "sizing": {
                   "w": {
                     "mode": "fit"
@@ -986,6 +974,10 @@ exports[`snapshots of every file for the fixture > spec.json 1`] = `
                   "fontFamily": "Inter, sans-serif",
                   "textStyle": "Heading/H1"
                 },
+                "box": {
+                  "relTo": "parent",
+                  "measured": false
+                },
                 "tokens": [
                   "--text-xl",
                   "--color-text"
@@ -1030,12 +1022,6 @@ exports[`snapshots of every file for the fixture > spec.json 1`] = `
             "id": "3-0",
             "name": "Variant=Default",
             "type": "frame",
-            "box": {
-              "width": 160,
-              "height": 44,
-              "relTo": "parent",
-              "measured": false
-            },
             "sizing": {
               "w": {
                 "mode": "fixed",
@@ -1102,6 +1088,12 @@ exports[`snapshots of every file for the fixture > spec.json 1`] = `
             "effects": [],
             "flowIndex": 0,
             "radius": 8,
+            "box": {
+              "width": 160,
+              "height": 44,
+              "relTo": "parent",
+              "measured": false
+            },
             "tokens": [
               "--color-brand"
             ],
@@ -1110,12 +1102,6 @@ exports[`snapshots of every file for the fixture > spec.json 1`] = `
                 "id": "4-0",
                 "name": "Label",
                 "type": "text",
-                "box": {
-                  "width": 0,
-                  "height": 0,
-                  "relTo": "parent",
-                  "measured": false
-                },
                 "sizing": {
                   "w": {
                     "mode": "fit"
@@ -1173,6 +1159,10 @@ exports[`snapshots of every file for the fixture > spec.json 1`] = `
                   "letterSpacingEm": 0,
                   "fontFamily": "Inter, sans-serif"
                 },
+                "box": {
+                  "relTo": "parent",
+                  "measured": false
+                },
                 "tokens": [],
                 "children": []
               }
@@ -1198,12 +1188,6 @@ exports[`snapshots of every file for the fixture > spec.json 1`] = `
             "id": "7-0",
             "name": "Button / Large",
             "type": "frame",
-            "box": {
-              "width": 160,
-              "height": 56,
-              "relTo": "parent",
-              "measured": false
-            },
             "sizing": {
               "w": {
                 "mode": "fixed",
@@ -1270,6 +1254,12 @@ exports[`snapshots of every file for the fixture > spec.json 1`] = `
             "effects": [],
             "flowIndex": 0,
             "radius": 8,
+            "box": {
+              "width": 160,
+              "height": 56,
+              "relTo": "parent",
+              "measured": false
+            },
             "tokens": [
               "--color-brand"
             ],
@@ -1278,12 +1268,6 @@ exports[`snapshots of every file for the fixture > spec.json 1`] = `
                 "id": "8-0",
                 "name": "Label",
                 "type": "text",
-                "box": {
-                  "width": 0,
-                  "height": 0,
-                  "relTo": "parent",
-                  "measured": false
-                },
                 "sizing": {
                   "w": {
                     "mode": "fit"
@@ -1340,6 +1324,10 @@ exports[`snapshots of every file for the fixture > spec.json 1`] = `
                   "letterSpacingPx": 0,
                   "letterSpacingEm": 0,
                   "fontFamily": "Inter, sans-serif"
+                },
+                "box": {
+                  "relTo": "parent",
+                  "measured": false
                 },
                 "tokens": [],
                 "children": []
@@ -1668,8 +1656,6 @@ exports[`snapshots of every file for the fixture > spec.schema.json 1`] = `
       "required": [
         "bp",
         "frameId",
-        "width",
-        "height",
         "png",
         "root"
       ],
@@ -2246,8 +2232,6 @@ exports[`snapshots of every file for the fixture > spec.schema.json 1`] = `
             }
           },
           "required": [
-            "width",
-            "height",
             "relTo",
             "measured"
           ],

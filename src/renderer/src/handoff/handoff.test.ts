@@ -124,7 +124,7 @@ describe('the bundle', () => {
     const md = r.files['screens/checkout.md']
     const lines = md.split('\n')
     lines.forEach((line, i) => {
-      if (/^\s*- \*\*.* — .*\*\* `/.test(line)) expect(lines[i + 1], line).toMatch(/^\s+- size /)
+      if (/^\s*- \*\*.* — .*\*\* `/.test(line)) expect(lines[i + 1], line).toMatch(/^\s+- size[ :]/)
     })
     expect(md).toContain('Card — Row, gap 16, width 347.5, height 52')
     expect(md).toContain('fractional sizes (e.g. 347.5 × 52 for "Card")')
@@ -225,6 +225,66 @@ describe('the bundle', () => {
     const root = spec.screens[0].breakpoints[0].root
     expect(root.box.measured).toBe(true)
     expect(m.summary.unmeasured).toBeLessThan(r.summary.unmeasured)
+  })
+})
+
+describe('unmeasured Fit sizes are never printed as 0', () => {
+  const { doc } = checkoutFixture()
+  type Box = { width?: number; height?: number; measured: boolean }
+  type N = { id: string; name: string; sizing: { w: { mode: string }; h: { mode: string } }; box: Box; children: N[] }
+  const walk = (n: N, fn: (n: N) => void): void => {
+    fn(n)
+    n.children.forEach((c) => walk(c, fn))
+  }
+
+  it('markdown has no "0px" size and says "fit content (not measured)" instead', () => {
+    const sizeLines = (files: Record<string, string>): string[] =>
+      Object.entries(files).flatMap(([p, text]) => (p.endsWith('.md') ? text.split('\n').filter((l) => /^\s*- size/.test(l)) : []))
+    const r = build(doc)
+    for (const l of sizeLines(r.files)) expect(l).not.toMatch(/(^|[^0-9.])0(px|rem)/)
+    expect(r.files['screens/checkout.md']).toContain('size: fit content (not measured)')
+    for (const l of sizeLines(build(doc, { rem: true }).files)) expect(l).not.toMatch(/(^|[^0-9.])0(px|rem)/)
+  })
+
+  it('spec.json leaves the unmeasured Fit axes out; fixed sizes and measured sizes keep their numbers', () => {
+    const spec = JSON.parse(build(doc).files['spec.json'])
+    let fit = 0
+    for (const s of spec.screens) {
+      for (const b of s.breakpoints) {
+        walk(b.root as N, (n) => {
+          if (!n.box.measured) {
+            if (n.sizing.w.mode !== 'fixed') {
+              expect(n.box.width, `${n.name} width`).toBeUndefined()
+              fit++
+            }
+            if (n.sizing.h.mode !== 'fixed') expect(n.box.height, `${n.name} height`).toBeUndefined()
+          }
+          if (n.box.width !== undefined) expect(n.box.width).toBeGreaterThan(0)
+          if (n.box.height !== undefined) expect(n.box.height).toBeGreaterThan(0)
+        })
+        expect(b.width).toBeGreaterThan(0)
+      }
+    }
+    expect(fit).toBeGreaterThan(0)
+    expect(JSON.stringify(spec)).not.toMatch(/"(width|height)": 0[,\n]/)
+  })
+
+  it('a Fit frame that is neither measured nor sized has no width or height, and the file still builds', () => {
+    const d = plain(doc)
+    const f = ops.makeNode(d, { type: 'frame', name: 'Fit frame', style: { display: 'flex' } }, false)
+    ops.insertNode(d, f, d.pages[0].rootId)
+    setDev(d, f.id, { ready: { at: 1 } })
+    const out = build(d)
+    const s = JSON.parse(out.files['spec.json']).screens.find((x: { name: string }) => x.name === 'Fit frame')
+    expect(s.breakpoints[0].width).toBeUndefined()
+    expect(out.files['screens/fit-frame.md']).toContain('width fits its content (not measured)')
+    expect(out.files['screens/fit-frame.md']).not.toMatch(/(^|[^0-9.])0px/)
+  })
+
+  it('a measured size is printed as measured, even a tiny one', () => {
+    const { ids } = checkoutFixture()
+    const m = build(doc, { measure: (id) => (id === ids.heading ? { x: 0, y: 0, width: 71.5, height: 36 } : null) })
+    expect(m.files['screens/checkout.md']).toContain('size 71.5px × 36px')
   })
 })
 

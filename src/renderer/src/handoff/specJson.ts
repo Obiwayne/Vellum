@@ -73,7 +73,7 @@ export const SPEC_SCHEMA: S = {
     Screen: obj({ id: str, name: str, slug: str, breakpoints: arr(ref('Breakpoint')) }, ['id', 'name', 'slug', 'breakpoints']),
     Breakpoint: obj(
       { bp: str, frameId: str, width: num, height: num, ready: obj({ at: int }, ['at']), png: str, root: ref('Node') },
-      ['bp', 'frameId', 'width', 'height', 'png', 'root']
+      ['bp', 'frameId', 'png', 'root']
     ),
     Component: obj(
       {
@@ -183,7 +183,7 @@ export const SPEC_SCHEMA: S = {
         tag: str,
         box: obj(
           { x: num, y: num, width: num, height: num, relTo: { enum: ['parent', 'artboard'] }, measured: bool },
-          ['width', 'height', 'relTo', 'measured']
+          ['relTo', 'measured']
         ),
         artboardBox: obj({ x: num, y: num }, ['x', 'y']),
         flowIndex: int,

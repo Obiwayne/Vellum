@@ -74,7 +74,9 @@ export interface HandoffResult {
 }
 
 /** A NodeSpec plus the developer-facing fields of `CNode.dev`. */
-export type DevNodeSpec = Omit<NodeSpec, 'children' | 'tokens'> & {
+export type DevNodeSpec = Omit<NodeSpec, 'children' | 'tokens' | 'box'> & {
+  /** like NodeSpec.box, but an axis that was not measured and has no authored size is left out, never 0 */
+  box: Omit<NodeSpec['box'], 'width' | 'height'> & { width?: number; height?: number }
   /** names of the tokens this layer uses; values are in spec.tokens */
   tokens: string[]
   notes?: string[]
@@ -88,8 +90,9 @@ export interface BreakpointSpec {
   /** 'Desktop', 'Mobile', a custom name, or 'default' for an untagged frame */
   bp: string
   frameId: string
-  width: number
-  height: number
+  /** the frame's size; left out when it was not measured and is not authored (a Fit frame) */
+  width?: number
+  height?: number
   /** handoff version in which the frame was marked ready; absent when exported without a mark */
   ready?: { at: number }
   /** reserved path of the PNG reference (H4 renders it) */
