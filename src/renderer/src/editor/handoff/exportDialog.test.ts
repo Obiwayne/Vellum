@@ -17,7 +17,8 @@ vi.mock('./exportDialog', () => {
     open: (docId) => set({ docId }),
     close: () => set({ docId: null })
   }))
-  const written: unknown[] = []
+  const written: Array<{ kind: string }> = []
+  ;(globalThis as { __eh?: { mode: 'ok' | 'fail' | 'cancel'; written: Array<{ kind: string }> } }).__eh = { mode: 'ok', written }
   return {
     useExportHandoff,
     openExportHandoff: (id: string) => useExportHandoff.getState().open(id),
@@ -25,6 +26,9 @@ vi.mock('./exportDialog', () => {
       engine: { resize: async () => new Uint8Array([1]), renderPng: async () => new Uint8Array([137, 80]) },
       write: async (args: { files: Record<string, unknown>; name: string; kind: 'folder' | 'zip' }) => {
         written.push(args)
+        const eh = (globalThis as unknown as { __eh: { mode: 'ok' | 'fail' | 'cancel' } }).__eh
+        if (eh.mode === 'fail') return { ok: false, error: 'The folder is read-only or the disk is full.' }
+        if (eh.mode === 'cancel') return { ok: false, canceled: true }
         return { ok: true, path: 'C:\\Users\\wayne\\Documents\\acme-handoff-v1', files: Object.keys(args.files).length, bytes: 2048, kind: args.kind }
       },
       saveVersion: async () => undefined,
@@ -59,7 +63,20 @@ afterEach(() => {
   document.body.innerHTML = ''
 })
 
+const eh = (): { mode: 'ok' | 'fail' | 'cancel'; written: Array<{ kind: string }> } => (globalThis as unknown as { __eh: { mode: 'ok' | 'fail' | 'cancel'; written: Array<{ kind: string }> } }).__eh
+const button = (label: string): HTMLButtonElement => [...document.querySelectorAll('button')].find((b) => b.textContent === label) as HTMLButtonElement
+const click = async (label: string, wait = 600): Promise<void> => {
+  const b = button(label)
+  if (!b) throw new Error(`no button ${label}`)
+  await act(async () => {
+    b.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+    await new Promise((r) => setTimeout(r, wait))
+  })
+}
+
 beforeEach(() => {
+  eh().mode = 'ok'
+  eh().written.length = 0
   useStore.setState(useStore.getInitialState(), true)
   useExportHandoff.setState({ docId: null })
   id = S().createDoc('Acme', { open: false })
@@ -147,6 +164,61 @@ describe('the dialog', () => {
       copy.dispatchEvent(new MouseEvent('click', { bubbles: true }))
     })
     expect(written[0]).toBe('Read HANDOFF.md first; build and verify against screens/*.png')
+  })
+})
+
+describe('the other states of the dialog', () => {
+  const open = async (): Promise<void> => {
+    act(() => root.render(createElement(ExportHandoffDialog)))
+    act(() => useExportHandoff.getState().open(id))
+    await flush(800)
+  }
+
+  it('nothing ready: the empty state, then the frames can be chosen anyway with a banner', async () => {
+    S().createNode(id, { type: 'frame', name: 'Draft', style: { width: 100, height: 100 } }, S().docs[id].pages[0].rootId)
+    await open()
+    expect(text()).toContain('No screens are ready for dev')
+    expect(button('Choose frames anyway')).toBeDefined()
+    await click('Choose frames anyway', 100)
+    expect(text()).toContain('These frames are not all marked ready.')
+    expect(text()).toContain('Not ready')
+    expect(text()).toContain('Tick at least one screen.')
+    expect(button('Export folder…').disabled).toBe(true)
+  })
+
+  it('a file with no frames says there is nothing to export', async () => {
+    await open()
+    expect(text()).toContain('Nothing to export')
+  })
+
+  it('a failed write shows the reason and that nothing was written, and goes back to the form', async () => {
+    ready('Home', 400)
+    eh().mode = 'fail'
+    await open()
+    await click('Export folder…')
+    expect(document.querySelector('.c-modal__title')?.textContent).toBe('Could not export')
+    expect(document.querySelector('.eh-error')?.textContent).toBe('The folder is read-only or the disk is full.')
+    expect(text()).toContain('Nothing was written')
+    await click('Choose another folder…', 300)
+    expect(document.querySelector('.eh-title')?.textContent).toMatch(/^Export handoff · v/)
+  })
+
+  it('cancelling the save dialog returns to the form without an error', async () => {
+    ready('Home', 400)
+    eh().mode = 'cancel'
+    await open()
+    await click('Export folder…')
+    expect(document.querySelector('.eh-title')).not.toBeNull()
+    expect(text()).not.toContain('Could not export')
+    expect(button('Export folder…').disabled).toBe(false)
+  })
+
+  it('Save as zip sends kind zip and the done state offers the file', async () => {
+    ready('Home', 400)
+    await open()
+    await click('Save as zip…')
+    expect(eh().written.map((w) => w.kind)).toEqual(['zip'])
+    expect(button('Show file')).toBeDefined()
   })
 })
 
