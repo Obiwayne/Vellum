@@ -2,7 +2,7 @@
 // handles pointer interaction (select, marquee, move/reorder, resize, draw, text, pen, pan/zoom,
 // padding/gap and gradient handles).
 import { useCallback, useEffect, useRef, useState, type CSSProperties } from 'react'
-import { activePage, getStore, useStore } from '../../model/store'
+import { activePage, canEdit, getStore, notifyEditRefused, useStore } from '../../model/store'
 import { history } from '../../model/history'
 import * as ops from '../../model/ops'
 import type { Doc, WorldRect } from '../../model/types'
@@ -400,6 +400,13 @@ export function CanvasView({ docId }: { docId: string }): JSX.Element | null {
     const on = (e: Event): void => {
       if (getStore().activeTab !== docId) return
       const { command } = (e as CustomEvent<CanvasCommand>).detail
+      if (!canEdit(docId)) {
+        // Dev Mode: copy gives CSS, cut and paste are refused
+        if (command === 'copy') A.copyAs(docId, 'css')
+        else if (command !== 'selectAll') notifyEditRefused(docId)
+        else A.selectAll(docId)
+        return
+      }
       if (command === 'copy') void A.copySelection(docId)
       else if (command === 'cut') void A.cutSelection(docId)
       else if (command === 'paste') void A.paste(docId)
@@ -606,7 +613,8 @@ export function CanvasView({ docId }: { docId: string }): JSX.Element | null {
     }
     const already = ed.selection.includes(pick)
     if (!already) s.select(docId, [pick])
-    startMove(e, already ? pick : null)
+    if (canEdit(docId)) startMove(e, already ? pick : null) // Dev Mode only selects
+
   }
 
   function startMove(e: React.PointerEvent, clickOnly: string | null): void {
@@ -1080,7 +1088,7 @@ export function CanvasView({ docId }: { docId: string }): JSX.Element | null {
 
   // ---------------------------------------------------------------- overlay handlers
   function onHandleDown(e: React.PointerEvent, handle: Handle): void {
-    if (e.button !== 0) return
+    if (e.button !== 0 || !canEdit(docId)) return
     e.stopPropagation()
     e.preventDefault()
     const s = getStore()
@@ -1123,7 +1131,7 @@ export function CanvasView({ docId }: { docId: string }): JSX.Element | null {
   }
 
   function onSpacingDown(e: React.PointerEvent, id: string, target: SpacingTarget): void {
-    if (e.button !== 0 || gesture.current) return
+    if (e.button !== 0 || gesture.current || !canEdit(docId)) return
     e.stopPropagation()
     e.preventDefault()
     const s = getStore()
@@ -1141,6 +1149,7 @@ export function CanvasView({ docId }: { docId: string }): JSX.Element | null {
 
   /** Double-click a flex gap handle: toggle the "Auto" gap (space-between), as in the Flex section. */
   function onSpacingDouble(id: string, target: SpacingTarget): void {
+    if (!canEdit(docId)) return
     const s = getStore()
     const n = s.docs[docId]?.nodes[id]
     if (!n || n.locked || target.kind !== 'gap' || ops.isGrid(n)) return
@@ -1148,7 +1157,7 @@ export function CanvasView({ docId }: { docId: string }): JSX.Element | null {
   }
 
   function onGradientDown(e: React.PointerEvent, id: string, index: number, part: GradPart): void {
-    if (e.button !== 0 || gesture.current) return
+    if (e.button !== 0 || gesture.current || !canEdit(docId)) return
     e.stopPropagation()
     e.preventDefault()
     const s = getStore()
@@ -1191,7 +1200,7 @@ export function CanvasView({ docId }: { docId: string }): JSX.Element | null {
     }
     const already = s.editors[docId]?.selection.includes(id) ?? false
     if (!already) s.select(docId, [id])
-    startMove(e, already ? id : null)
+    if (canEdit(docId)) startMove(e, already ? id : null)
   }
 
   // ---------------------------------------------------------------- hover / dblclick / context menu
@@ -1241,7 +1250,7 @@ export function CanvasView({ docId }: { docId: string }): JSX.Element | null {
       return
     }
     const sel = ed.selection
-    if (sel.length === 1 && sel[0] === deepest && d.nodes[deepest]?.type === 'text' && !d.nodes[deepest].locked) {
+    if (canEdit(docId) && sel.length === 1 && sel[0] === deepest && d.nodes[deepest]?.type === 'text' && !d.nodes[deepest].locked) {
       A.startTextEditing(docId, deepest)
     }
   }
@@ -1295,6 +1304,7 @@ export function CanvasView({ docId }: { docId: string }): JSX.Element | null {
       }}
       onDrop={(e) => {
         e.preventDefault()
+        if (!canEdit(docId)) return
         const { clientX, clientY } = e
         const main = e.dataTransfer.getData(COMPONENT_DRAG_TYPE)
         if (main) {

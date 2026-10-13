@@ -112,6 +112,15 @@ Prefs read by the canvas:
 
 The zoom menu can toggle these through `setPref`.
 
+## Dev Mode (read-only inspect)
+
+`D` or the Design | Dev switch in the inspector top bar sets `EditorState.devMode` (editor state: not in the file, not undoable). In Dev Mode:
+
+- **One gate.** `store.mutate` refuses every edit unless the call passes `allowInDev` (comments, folder moves); `undo`, `redo`, drawing tools and text editing are refused too. Each refusal calls the `onEditRefused` listeners; the editor shows "Dev Mode is read-only". `canEdit(docId)` is the one check the UI uses to disable handles, drags, drops, menus and Layers rename/reorder/lock/hide. MCP writes to a file in Dev Mode answer with an error.
+- **Guard test.** `model/devMode.guard.test.ts` lists every store action as a design edit or not; an action in neither list fails the test.
+- **Still works:** select, hover, zoom, pan, comments, page switching, Copy as CSS (Ctrl+C), Tailwind (Alt+T), React (Alt+R).
+- **Spec panel** (`editor/dev/SpecPanel.tsx`, rows in `specView.ts`) shows `nodeSpec()` of the selection: box, layout intent, typography, fills and strokes with token and per-mode values, tokens used, component, the Dev notes read-only, and CSS | Tailwind | React | HTML tabs (click to copy). With nothing selected it shows a page summary with ready marks.
+
 ## Known gaps
 - Rotation isn't editable, and the overlay uses axis-aligned bounds.
 - Grid gap handles assume the tracks start at the content edge (`justifyContent` normal/start). Flex gap handles only cover the main axis; wrapped lines have no cross-axis gap handle.

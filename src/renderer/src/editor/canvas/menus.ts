@@ -1,7 +1,7 @@
 // Context menus for the canvas (node menu, empty-canvas menu, layers under the pointer).
 import { createElement } from 'react'
 import { formatShortcut, type MenuEntry } from '../../ui'
-import { getStore } from '../../model/store'
+import { canEdit, getStore } from '../../model/store'
 import { ancestors, isPageRoot } from '../../model/ops'
 import { NodeIcon } from '../left/LayersTree'
 import * as A from './actions'
@@ -55,7 +55,31 @@ export function layersMenu(docId: string, at: { x: number; y: number }): MenuEnt
 }
 
 export function nodeMenu(docId: string, at: { x: number; y: number }): MenuEntry[] {
-  return spaced(buildNodeMenu(docId, at))
+  return spaced(canEdit(docId) ? buildNodeMenu(docId, at) : devNodeMenu(docId, at))
+}
+
+/** Dev Mode: selecting and copying only; nothing here edits the file. */
+function devNodeMenu(docId: string, at: { x: number; y: number }): MenuEntry[] {
+  const s = getStore()
+  const doc = s.docs[docId]
+  const sel = s.editors[docId]?.selection ?? []
+  const hasChildren = sel.some((id) => (doc?.nodes[id]?.children.length ?? 0) > 0)
+  const layers = layersAt(docId, at.x, at.y)
+  return [
+    {
+      label: 'Select layer...',
+      disabled: !layers.length,
+      submenu: layers.map((id) => ({ label: doc?.nodes[id]?.name ?? id, checked: sel.includes(id), onSelect: () => s.select(docId, [id]) }))
+    },
+    { label: 'Select parent', shortcut: 'Esc', onSelect: () => A.selectParent(docId) },
+    { label: 'Select children', shortcut: 'Enter', disabled: !hasChildren, onSelect: () => A.selectChildren(docId) },
+    sep,
+    { label: 'Copy as CSS', shortcut: 'Ctrl+C', onSelect: () => A.copyAs(docId, 'css') },
+    { label: 'Copy as Tailwind', shortcut: 'Alt+T', onSelect: () => A.copyAs(docId, 'tailwind') },
+    { label: 'Copy as React', shortcut: 'Alt+R', onSelect: () => A.copyAs(docId, 'react') },
+    { label: 'Copy as HTML', onSelect: () => A.copyAs(docId, 'html') },
+    { label: 'Copy link', shortcut: 'Ctrl+L', onSelect: () => A.copyLink(docId) }
+  ]
 }
 
 /** Shortcuts are shown spaced: "Ctrl + Shift + V". */
@@ -150,9 +174,9 @@ function buildNodeMenu(docId: string, at: { x: number; y: number }): MenuEntry[]
 }
 
 export function canvasMenu(docId: string): MenuEntry[] {
+  const editable = canEdit(docId)
   return spaced([
-    { label: 'Paste', shortcut: 'Ctrl+V', onSelect: () => void A.paste(docId, 'normal') },
-    sep,
+    ...(editable ? [{ label: 'Paste', shortcut: 'Ctrl+V', onSelect: () => void A.paste(docId, 'normal') } as MenuEntry, sep] : []),
     { label: 'Next artboard', shortcut: 'N', onSelect: () => A.nextArtboard(docId, 1) },
     { label: 'Previous artboard', shortcut: 'Shift+N', onSelect: () => A.nextArtboard(docId, -1) },
     sep,

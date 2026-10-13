@@ -235,6 +235,8 @@ export interface EditorState {
   editingTextId: string | null
   /** nodes an agent is currently working on (teal outline) */
   workingNodes: string[]
+  /** Dev Mode: inspect only (not saved in the file, not undoable). Every edit path is refused while it is on. */
+  devMode: boolean
 }
 
 export type TabId = 'dashboard' | string

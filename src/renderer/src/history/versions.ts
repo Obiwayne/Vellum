@@ -1,7 +1,7 @@
 // Version history actions in the renderer (storage lives in src/main/history.ts).
 import { create } from 'zustand'
 import type { StoredDoc, VersionMeta } from '@shared/api'
-import { getStore } from '../model/store'
+import { canEdit, getStore, notifyEditRefused } from '../model/store'
 import { migrateDoc } from '../model/ops'
 import type { Doc } from '../model/types'
 import { flushNow } from '../model/persist'
@@ -60,6 +60,11 @@ export async function restoreVersion(docId: string, v: VersionMeta): Promise<boo
   const cur = s.docs[docId]
   const a = api()
   if (!cur || !a) return false
+  // Dev Mode is read-only: refuse before a "Before restore" version is written
+  if (!canEdit(docId)) {
+    notifyEditRefused(docId)
+    return false
+  }
   const old = await loadVersionDoc(docId, v.id)
   if (!old) return false
   flushNow()

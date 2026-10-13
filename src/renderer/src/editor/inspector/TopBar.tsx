@@ -1,10 +1,11 @@
 import { useRef, useState } from 'react'
 import { ChevronDown, Code, FileDown } from 'lucide-react'
-import { Button, Menu, Popover, type MenuEntry } from '../../ui'
+import { Button, Menu, Popover, Segmented, type MenuEntry } from '../../ui'
 import { activePage, getStore, useStore } from '../../model/store'
 import { nodeToHtml } from '../../model/html'
 import { Avatar } from '../../profile/parts'
 import { useCurrentProfile } from '../../profile/profile'
+import * as A from '../canvas/actions'
 import { zoomIn, zoomOut, zoomTo100, zoomToFit, zoomToSelection } from './zoom'
 
 /** Zoom-menu prefs (persisted via setPref). */
@@ -41,6 +42,8 @@ function download(name: string, data: string, type: string): void {
 
 export function TopBar({ docId }: { docId: string }): JSX.Element {
   const zoom = useStore((s) => s.editors[docId]?.camera.zoom ?? 1)
+  const devMode = useStore((s) => s.editors[docId]?.devMode === true)
+  const setDevMode = useStore((s) => s.setDevMode)
   const prefs = useStore((s) => s.prefs)
   const setPref = useStore((s) => s.setPref)
   const zoomRef = useRef<HTMLButtonElement | null>(null)
@@ -89,8 +92,19 @@ export function TopBar({ docId }: { docId: string }): JSX.Element {
   }
 
   return (
-    <div className="insp-top">
+    <div className={['insp-top', devMode && 'insp-top--dev'].filter(Boolean).join(' ')}>
       <Avatar className="insp-avatar" name={name} avatar={profile?.avatar} color={profile?.color ?? '#4A5A6A'} size={24} title={name} />
+      <Segmented<'design' | 'dev'>
+        value={devMode ? 'dev' : 'design'}
+        onChange={(v) => {
+          A.commitTextEditing()
+          setDevMode(docId, v === 'dev')
+        }}
+        options={[
+          { value: 'design', label: 'Design', title: 'Design mode (D)' },
+          { value: 'dev', label: 'Dev', title: 'Dev Mode: inspect only (D)' }
+        ]}
+      />
       <button
         ref={zoomRef}
         type="button"
