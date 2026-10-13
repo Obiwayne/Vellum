@@ -34,10 +34,12 @@ interface DiffNode {
   bind?: unknown
   /** id of the text style this node follows */
   textStyle?: string
+  /** developer handoff info (CNode.dev) */
+  dev?: unknown
 }
 
 /** What about a layer changed. */
-export type ChangeAspect = 'style' | 'text' | 'position' | 'name' | 'visibility' | 'layers' | 'content'
+export type ChangeAspect = 'style' | 'text' | 'position' | 'name' | 'visibility' | 'layers' | 'content' | 'dev'
 
 export interface NodeChange {
   id: string
@@ -105,6 +107,7 @@ function aspects(a: DiffNode, b: DiffNode): ChangeAspect[] {
   if ((a.x ?? 0) !== (b.x ?? 0) || (a.y ?? 0) !== (b.y ?? 0)) out.push('position')
   if (a.name !== b.name) out.push('name')
   if (Boolean(a.visible) !== Boolean(b.visible) || Boolean(a.locked) !== Boolean(b.locked)) out.push('visibility')
+  if (!same(a.dev, b.dev)) out.push('dev')
   // an instance's children are derived from its main: only the main's own change is a layers change
   if (a.parent !== b.parent || (!b.instance && !same(a.children, b.children))) out.push('layers')
   // instance link / property values / overrides, a main's variant values and props, a set's props, bindings

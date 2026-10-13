@@ -47,6 +47,9 @@ describe.each([
   let migrateDoc: (d: never) => unknown
   let store: typeof import('../renderer/src/model/store')
   let persist: typeof import('../renderer/src/model/persist')
+  let devDocId = ''
+  let devFrame = ''
+  let devWant: unknown
 
   beforeAll(async () => {
     h.base = mkdtempSync(join(tmpdir(), 'vellum-v010-roundtrip-'))
@@ -93,16 +96,30 @@ describe.each([
     }
     await persist.initPersistence()
     expect(Object.keys(store.getStore().docs).sort()).toEqual(originals.map((d) => d.id).sort())
+    // dev info (v6) set in the running app, before the final flush
+    const S = store.getStore()
+    devDocId = originals[3].id // the v4 variants doc
+    const dd = S.docs[devDocId]
+    devFrame = Object.values(dd.nodes).find((n) => n.type === 'frame' && n.parent === dd.pages[0].rootId)!.id
+    S.setDev(devDocId, [devFrame], { notes: 'Collapses under 640', role: 'region', states: { hover: { opacity: 0.8 } } })
+    expect(S.setScreen(devDocId, devFrame, { name: 'Home', bp: 'Desktop' })).toBe(true)
+    S.setReady(devDocId, [devFrame], 1)
+    devWant = JSON.parse(JSON.stringify(store.getStore().docs[devDocId].nodes[devFrame].dev))
     await persist.flushAndStop()
   })
 
   it('every saved doc loads back at the current version, equals the original apart from the version bump, and re-migrating changes nothing', async () => {
     type N = { type: string; style: Record<string, unknown> }
     for (const original of originals) {
-      const saved = await call<Raw & { nodes: Record<string, N> }>(IPC.loadDoc, original.id)
+      const saved = await call<Raw & { nodes: Record<string, N & { dev?: unknown }> }>(IPC.loadDoc, original.id)
       expect(saved.version).toBe(DOC_VERSION)
       const expected = JSON.parse(JSON.stringify(original))
       expected.version = DOC_VERSION
+      if (original.id === devDocId) {
+        // the one doc that got dev info above: only that field and the save time may differ (checked in the next test)
+        delete saved.nodes[devFrame].dev
+        expected.updatedAt = saved.updatedAt
+      }
       if (original.version === undefined) {
         // the Canvas-era doc: only text with no line height gains the old 20px
         for (const n of Object.values(expected.nodes as Record<string, N>)) {
@@ -117,6 +134,16 @@ describe.each([
       expect(rest).toEqual(restExpected)
       expect(migrateDoc(saved as never)).toBe(saved)
     }
+  })
+
+  it('dev info set in the renderer is saved through the vault and loads back unchanged (T61)', async () => {
+    const saved = await call<{ version: number; nodes: Record<string, { dev?: unknown }> }>(IPC.loadDoc, devDocId)
+    expect(saved.version).toBe(DOC_VERSION)
+    expect(devWant).toMatchObject({ notes: 'Collapses under 640', ready: { at: 1 }, screen: { name: 'Home', bp: 'Desktop' } })
+    expect(saved.nodes[devFrame].dev).toEqual(devWant)
+    const onDisk = readFileSync(join(storage.getVault().currentDir(), 'files', `${devDocId}.json`))
+    expect(isEncrypted(onDisk)).toBe(Boolean(password))
+    expect(migrateDoc(saved as never)).toBe(saved)
   })
 
   it('the index survives: tabs, prefs and the scratchpad id', async () => {

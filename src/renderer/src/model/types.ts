@@ -42,6 +42,27 @@ export interface CNode {
   srcId?: string
   /** text node: id of the Doc.textStyles entry this node follows (see model/textStyles.ts) */
   textStyle?: string
+  /** developer handoff info (v6, optional; see model/dev.ts). Not part of component sync or overrides. */
+  dev?: DevInfo
+}
+
+/** Developer-facing info on a node: spec, not conversation. All fields optional; an empty object is never stored. */
+export interface DevInfo {
+  /** frames: handoff version in which the frame was marked ready for dev */
+  ready?: { at: number }
+  /** dev notes: behaviour, data, edge cases (markdown-lite). Never appears in Share/Copy HTML. */
+  notes?: string
+  /** described (undrawn) states by state name, e.g. 'hover' */
+  states?: Record<string, StylePatch>
+  /** accessibility: ARIA role and accessible name (alt text stays in attrs.alt) */
+  role?: string
+  label?: string
+  /** focus order override (positive integer = explicit order) */
+  tab?: number
+  /** top-level frames only: which screen this frame belongs to and at which breakpoint */
+  screen?: { name: string; bp: string }
+  /** open question for the developer, listed in HANDOFF.md */
+  needsDecision?: string
 }
 
 /** CSS keys a text style owns. Colour and alignment are deliberately not part of it. */
@@ -154,6 +175,7 @@ export interface Doc {
    * v3: components and instances (additive, optional node fields).
    * v4: component sets and variants (additive, optional node fields).
    * v5: text styles (additive: Doc.textStyles, CNode.textStyle, NodeOverride.textStyle).
+   * v6: developer handoff info (additive: CNode.dev).
    */
   version?: number
   /** theme modes, e.g. ['Light', 'Dark']; [0] is the base mode (see model/modes.ts) */
