@@ -306,3 +306,42 @@ body.cv-hide-ui .ed-canvas {
   pointer-events: all;
   cursor: pointer;
 }
+
+/* Dev Mode redlines: screen-space, so lines stay 1px and labels keep their size at any zoom */
+.cv-redlines {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: visible;
+}
+
+.cv-redline-body,
+.cv-redline-tick {
+  position: absolute;
+  background: var(--color-redline);
+}
+
+.cv-redline-label {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  padding: 0 4px;
+  border-radius: 3px;
+  background: var(--color-redline);
+  color: #fff;
+  font-size: 11px;
+  line-height: 15px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.cv-redline-label--note {
+  background: var(--color-dev);
+}
+
+/* the hovered layer's size chip: same colour family, quieter than a distance */
+.cv-redline-label--size {
+  background: rgb(255 77 109 / 0.16);
+  color: var(--color-redline);
+  border: 1px solid var(--color-redline);
+  line-height: 13px;
+}

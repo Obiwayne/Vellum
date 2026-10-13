@@ -10,6 +10,9 @@ import { readFills } from '../inspector/fills'
 import { useGradientEdit } from './gradientEdit'
 import { GradientHandles, gradientBox, type Grad, type GradPart } from './GradientHandles'
 import { MIN_HANDLE_FRAME, SpacingHandles, type SpacingTarget } from './SpacingHandles'
+import { redlineScene, sceneExtraIds } from './redlineScene'
+import { RedlineLayer } from './RedlineLayer'
+import { sizeBadgeText } from './sizeLabel'
 
 export type Handle = 'nw' | 'n' | 'ne' | 'e' | 'se' | 's' | 'sw' | 'w'
 
@@ -57,21 +60,7 @@ const box = (r: WorldRect, extra: CSSProperties = {}): CSSProperties => ({
   ...extra
 })
 
-function dimLabel(v: string | number | undefined, measured: number): string {
-  const m = Math.round(measured * 100) / 100
-  const txt = Number.isInteger(m) ? String(m) : m.toFixed(1).replace(/\.0$/, '')
-  if (v === undefined || v === 'fit-content' || v === 'auto' || v === 'max-content' || v === 'min-content') return `Fit ${txt}`
-  if (v === '100%' || v === 'stretch') return `Fill ${txt}`
-  return txt
-}
-
-export function sizeBadgeText(nodes: CNode[], rect: WorldRect): string {
-  if (nodes.length === 1) {
-    const n = nodes[0]
-    return `${dimLabel(n.style.width, rect.width)} × ${dimLabel(n.style.height, rect.height)}`
-  }
-  return `${dimLabel(0, rect.width)} × ${dimLabel(0, rect.height)}`
-}
+export { sizeBadgeText }
 
 const HANDLE_CURSOR: Record<Handle, string> = {
   nw: 'nwse-resize',
@@ -139,6 +128,7 @@ export function Overlay({
     const ids = new Set<string>([...topLevel, ...selection, ...working])
     if (hovered) ids.add(hovered)
     if (transient.dropTarget) ids.add(transient.dropTarget)
+    for (const id of sceneExtraIds(doc, selection, ed?.devMode === true)) ids.add(id)
     const m = new Map<string, WorldRect>()
     for (const id of ids) {
       const r = measure(id, docId)
@@ -146,7 +136,7 @@ export function Overlay({
     }
     setRects(m)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [doc, selection, hovered, working, tick, page?.id, transient.dropTarget, ed?.editingTextId])
+  }, [doc, selection, hovered, working, tick, page?.id, transient.dropTarget, ed?.editingTextId, ed?.devMode])
 
   if (!doc || !ed || !page) return null
   const cam = ed.camera
@@ -187,6 +177,16 @@ export function Overlay({
     handleNode && !grad && handleNode.type === 'frame' && isFlowLayout(handleNode.style) && drag?.kind !== 'gradient'
       ? handleNode.id
       : null
+
+  const redlines = redlineScene({
+    doc,
+    selection,
+    hovered,
+    devMode: ed.devMode === true,
+    rects,
+    isRotated: (n) => !untransformed(n),
+    gesturing: transient.gesturing
+  })
 
   return (
     <div ref={root} className="cv-overlay">
@@ -274,6 +274,9 @@ export function Overlay({
           {sizeBadgeText(selNodes, selWorld)}
         </div>
       )}
+
+      {/* Dev Mode redlines: distances selection -> hovered layer and -> parent edges */}
+      {redlines && <RedlineLayer scene={redlines} cam={cam} />}
 
       {/* padding + gap handles */}
       {spacingId && (
