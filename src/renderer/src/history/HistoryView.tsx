@@ -16,7 +16,7 @@ import {
 } from 'lucide-react'
 import type { VersionMeta } from '@shared/api'
 import { diffDocs, summarize, summaryText, topmost, type ChangeAspect, type DocDiff, type NodeChange } from '@shared/docDiff'
-import { getStore, useStore } from '../model/store'
+import { canEdit, getStore, useStore } from '../model/store'
 import type { Doc } from '../model/types'
 import { Button, IconButton, Modal, Select, useContextMenu, type MenuEntry } from '../ui'
 import { InlineEdit } from '../editor/left/InlineEdit'
@@ -203,6 +203,10 @@ export function HistoryView({ docId }: { docId: string }): JSX.Element {
 
   const doRestore = async (v: VersionMeta): Promise<void> => {
     if (busy) return
+    if (!canEdit(docId)) {
+      toast('Dev Mode is read-only. Switch to Design to restore.')
+      return
+    }
     setBusy(true)
     try {
       const ok = await restoreVersion(docId, v)

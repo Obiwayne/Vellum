@@ -1,0 +1,55 @@
+
+> vellum@1.0.0 build
+> npm run typecheck && electron-vite build
+
+
+> vellum@1.0.0 typecheck
+> npm run typecheck:node && npm run typecheck:web
+
+
+> vellum@1.0.0 typecheck:node
+> tsc --noEmit -p tsconfig.node.json --composite false
+
+
+> vellum@1.0.0 typecheck:web
+> tsc --noEmit -p tsconfig.web.json --composite false
+
+(node:53468) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+vite v7.3.6 building ssr environment for production...
+transforming...
+✓ 17 modules transformed.
+rendering chunks...
+out/main/index.js  112.21 kB
+✓ built in 293ms
+vite v7.3.6 building ssr environment for production...
+transforming...
+✓ 2 modules transformed.
+rendering chunks...
+out/preload/index.js  7.17 kB
+✓ built in 18ms
+vite v7.3.6 building client environment for production...
+transforming...
+✓ 2061 modules transformed.
+rendering chunks...
+../../out/renderer/index.html                                                0.82 kB
+../../out/renderer/assets/dm-mono-latin-ext-500-normal-Dw3M13d8.woff         7.49 kB
+../../out/renderer/assets/dm-mono-latin-ext-400-normal-1aZr6b2b.woff         7.50 kB
+../../out/renderer/assets/dm-mono-latin-ext-400-normal-C2zvOubV.woff2        9.55 kB
+../../out/renderer/assets/dm-mono-latin-ext-500-normal-BtRyHRi6.woff2        9.62 kB
+../../out/renderer/assets/inter-vietnamese-wght-normal-CBcvBZtf.woff2       10.25 kB
+../../out/renderer/assets/dm-mono-latin-400-normal--0xN8mdc.woff            11.21 kB
+../../out/renderer/assets/inter-greek-ext-wght-normal-DlzME5K_.woff2        11.23 kB
+../../out/renderer/assets/dm-mono-latin-500-normal-CN8Miw6E.woff            11.25 kB
+../../out/renderer/assets/dm-mono-latin-400-normal-4GdczIuU.woff2           14.82 kB
+../../out/renderer/assets/dm-mono-latin-500-normal-DRMDZjhP.woff2           14.99 kB
+../../out/renderer/assets/inter-cyrillic-wght-normal-DqGufNeO.woff2         18.75 kB
+../../out/renderer/assets/inter-greek-wght-normal-CkhJZR-_.woff2            19.00 kB
+../../out/renderer/assets/inter-cyrillic-ext-wght-normal-BOeWTOD4.woff2     25.96 kB
+../../out/renderer/assets/inter-latin-wght-normal-Dx4kXJAl.woff2            48.26 kB
+../../out/renderer/assets/inter-latin-ext-wght-normal-DO1Apj_S.woff2        85.07 kB
+../../out/renderer/assets/index-3R1vAyqb.css                               112.57 kB
+../../out/renderer/assets/lucide-react-Ba4VKGHk.js                       1,040.30 kB
+../../out/renderer/assets/index-B9MbQGi2.js                              1,394.11 kB
+✓ built in 4.83s
+done
