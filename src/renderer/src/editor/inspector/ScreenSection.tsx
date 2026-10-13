@@ -39,18 +39,20 @@ export function ScreenSection({ docId, id }: { docId: string; id: string }): JSX
   return (
     <Section title="Screen">
       <div className="insp-scr__block" data-testid="screen-section">
-        <Field
-          label="Name"
-          type="text"
-          value={name}
-          placeholder={node.name}
-          title="Frames with the same screen name are exported as one screen with several breakpoints. Empty removes the tag."
-          onChange={(v) => {
-            const t = String(v)
-            setName(t)
-            write(t, tag?.bp ?? guess)
-          }}
-        />
+        <div className="insp-scr__field">
+          <span className="insp-scr__flabel">Name</span>
+          <Field
+            type="text"
+            value={name}
+            placeholder={node.name}
+            title="Frames with the same screen name are exported as one screen with several breakpoints. Empty removes the tag."
+            onChange={(v) => {
+              const t = String(v)
+              setName(t)
+              write(t, tag?.bp ?? guess)
+            }}
+          />
+        </div>
         <div className="insp-scr__field">
           <span className="insp-scr__flabel">Breakpoint</span>
           <Select<string>
