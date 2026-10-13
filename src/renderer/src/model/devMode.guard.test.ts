@@ -104,6 +104,7 @@ const NOT_DESIGN_EDITS = new Set([
   'setThumbnail',
   'setActivePage',
   'goToMain',
+  'recordHandoff', // bookkeeping of an export (which frames it carried), written in Dev Mode too, outside undo
   'addComment',
   'replyComment',
   'setCommentStatus',

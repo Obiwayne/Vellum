@@ -96,7 +96,7 @@ function paints(n: DevNodeSpec): string {
 }
 
 /** The properties of a layer worth comparing, as printable strings. Intent first. */
-function facts(n: DevNodeSpec): Array<[string, string]> {
+export function facts(n: DevNodeSpec): Array<[string, string]> {
   const out: Array<[string, string]> = [
     ['layout', n.layout.summary],
     ['size rule', sizingText(n.sizing.w, n.sizing.h)],

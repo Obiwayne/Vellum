@@ -23,7 +23,7 @@ export function handoffMd(spec: HandoffSpec, c: Collected, s: HandoffSummary, op
   o.push('')
 
   o.push('## Read order', '')
-  const order = ['HANDOFF.md', 'tokens/tokens.css', 'tokens/tokens.json', 'tokens/tailwind.css', ...c.components.map((x) => `components/${x.slug}.md`), ...c.screens.map((x) => `screens/${x.slug}.md`), 'fonts.md', 'spec.json']
+  const order = ['HANDOFF.md', 'CHANGES.md', 'tokens/tokens.css', 'tokens/tokens.json', 'tokens/tailwind.css', ...c.components.map((x) => `components/${x.slug}.md`), ...c.screens.map((x) => `screens/${x.slug}.md`), 'fonts.md', 'spec.json']
   o.push(...order.filter(has).map((p, i) => `${i + 1}. \`${p}\``), '')
 
   o.push('## Rules', '')

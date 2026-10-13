@@ -22,7 +22,8 @@ export function buildSpec(doc: Doc, options: HandoffOptions, c: Collected): Hand
     tokens: c.tokens,
     textStyles: c.textStyles,
     assets: c.assets,
-    fonts: c.fonts
+    fonts: c.fonts,
+    ...(options.changes ? { changes: options.changes } : {})
   }
 }
 
@@ -65,11 +66,34 @@ export const SPEC_SCHEMA: S = {
       tokens: arr(ref('Token')),
       textStyles: arr(ref('TextStyle')),
       assets: arr(ref('Asset')),
-      fonts: arr(ref('Font'))
+      fonts: arr(ref('Font')),
+      changes: ref('Changes')
     },
     ['schema', 'handoff', 'units', 'modes', 'screens', 'components', 'tokens', 'textStyles', 'assets', 'fonts']
   ),
   $defs: {
+    Changes: obj(
+      {
+        previous: int,
+        screens: arr(obj({ id: str, name: str, status: { enum: ['added', 'removed', 'changed', 'unchanged'] }, nodes: arr(ref('NodeChange')) }, ['id', 'name', 'status', 'nodes'])),
+        components: arr(obj({ ref: str, name: str, status: { enum: ['added', 'removed', 'changed', 'unchanged'] }, nodes: arr(ref('NodeChange')) }, ['ref', 'name', 'status', 'nodes'])),
+        tokens: arr(obj({ name: str, status: { enum: ['added', 'removed', 'changed'] }, text: str }, ['name', 'status', 'text'])),
+        assets: arr(obj({ path: str, status: { enum: ['added', 'removed', 'changed'] } }, ['path', 'status'])),
+        rebuild: arr(str),
+        counts: obj({ added: int, removed: int, changed: int, unchanged: int }, ['added', 'removed', 'changed', 'unchanged'])
+      },
+      ['previous', 'screens', 'components', 'tokens', 'assets', 'rebuild', 'counts']
+    ),
+    NodeChange: obj(
+      {
+        id: str,
+        path: str,
+        kind: { enum: ['added', 'removed', 'changed'] },
+        changes: arr(obj({ property: str, from: str, to: str }, ['property', 'from', 'to'])),
+        descendants: int
+      },
+      ['id', 'path', 'kind', 'changes']
+    ),
     Screen: obj({ id: str, name: str, slug: str, breakpoints: arr(ref('Breakpoint')) }, ['id', 'name', 'slug', 'breakpoints']),
     Delta: obj(
       {

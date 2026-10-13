@@ -188,6 +188,11 @@ export interface Doc {
   folderId?: string
   /** comment threads pinned to the canvas (not part of undo history) */
   comments?: CommentThread[]
+  /**
+   * The last hand-off exported from this file: its number and the top-level frames it carried. Written just before the
+   * named "Handoff vN" version is saved, so a later export can tell what the earlier one held (not part of undo history).
+   */
+  handoff?: { version: number; frames: string[] }
 }
 
 export interface CommentMessage {
