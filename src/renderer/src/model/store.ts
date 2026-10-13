@@ -764,7 +764,9 @@ export const useStore = create<Store>()((set, get) => {
     },
 
     setScreen(docId, id, screen) {
-      if (screen && !dev.isTopLevelFrame(get().docs[docId], id)) return false
+      const doc = get().docs[docId]
+      if (!doc) return false
+      if (screen && !dev.isTopLevelFrame(doc, id)) return false
       mutate(docId, screen ? 'Set screen' : 'Clear screen', (d) => void dev.setScreen(d, id, screen), { derived: true })
       return true
     },

@@ -63,6 +63,13 @@ describe('dev info store actions', () => {
     expect(node(top).dev).toBeUndefined()
   })
 
+  it('a missing document is ignored quietly by setDev, setScreen and setReady', () => {
+    expect(S().setScreen('missing', 'x', { name: 'Home', bp: 'Desktop' })).toBe(false)
+    expect(S().setScreen('missing', 'x', null)).toBe(false)
+    expect(() => S().setDev('missing', ['x'], { notes: 'n' })).not.toThrow()
+    expect(() => S().setReady('missing', ['x'], 1)).not.toThrow()
+  })
+
   it('setReady marks and clears frames, one undo each', () => {
     const f = S().createNode(id, { type: 'frame' }, root())
     S().setReady(id, [f], 1)
