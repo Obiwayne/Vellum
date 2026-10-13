@@ -10,7 +10,9 @@
     "build": "tsc -p tsconfig.json",
     "start": "node dist/index.js",
     "test:e2e": "node test/e2e.mjs",
-    "test:profiles": "node --experimental-strip-types --no-warnings test/profiles.mjs"
+    "test:profiles": "node --experimental-strip-types --no-warnings test/profiles.mjs",
+    "remote": "node dist/remote/index.js",
+    "test:remote": "node test/remote.mjs"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.17.0",

@@ -74,6 +74,11 @@ const api: CanvasApi = {
       return () => ipcRenderer.removeListener(IPC.invokeProgress, h)
     }
   },
+  remote: {
+    state: () => ipcRenderer.invoke(IPC.remoteState),
+    setEnabled: (on) => ipcRenderer.invoke(IPC.remoteSetEnabled, on),
+    act: (action) => ipcRenderer.invoke(IPC.remoteAct, action)
+  },
   mcpEntry: ipcRenderer.sendSync(IPC.mcpEntry) as McpEntry,
   agentDriven: (ipcRenderer.sendSync(IPC.agentDriven) as string | null) ?? null,
 

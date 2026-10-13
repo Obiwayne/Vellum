@@ -58,7 +58,7 @@ try {
     await dev.connect(new StdioClientTransport({ command: process.execPath, args: ['mcp/dist/index.js'], env, stderr: 'pipe' }))
     expected = (await dev.listTools()).tools.map((t) => t.name).sort()
   } else {
-    expected = [...readFileSync('mcp/src/index.ts', 'utf8').matchAll(/registerTool\(\s*'([^']+)'/g)].map((m) => m[1]).sort()
+    expected = [...readFileSync('mcp/src/server.ts', 'utf8').matchAll(/registerTool\(\s*'([^']+)'/g)].map((m) => m[1]).sort()
   }
   check(JSON.stringify(tools) === JSON.stringify(expected), `the tool list equals the dev server's (${expected.length} tools${tools.length === expected.length ? '' : `, bundle has ${tools.length}`})`)
 
