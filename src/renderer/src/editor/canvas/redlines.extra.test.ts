@@ -107,10 +107,8 @@ describe('scene: selection and hover edge cases', () => {
     expect(s).toBeNull()
   })
 
-  // FINDING T67-F1: only a layer's own transform is looked at. A layer inside a rotated or scaled ancestor is drawn as
-  // its bounding box, but is not flagged, so a developer gets distances that are not the layer's own edges.
-  // `it.fails` keeps the suite green; flip to `it` when the scene looks at ancestors too.
-  it.fails('a layer inside a rotated parent is treated as rotated: no distances, a "rotated" note', () => {
+  // T67-F1 (fixed): a layer inside a rotated or scaled ancestor is drawn as its bounding box, so it counts as rotated.
+  it('a layer inside a rotated parent is treated as rotated: no distances, a "rotated" note', () => {
     const t = tree()
     const s = redlineScene(input({ selection: [t.a], hovered: t.b, rects: t.rects, isRotated: (n) => n.id === t.frame }))
     expect(s?.skipped).toBe('rotated')
