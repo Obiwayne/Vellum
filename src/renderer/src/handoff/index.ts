@@ -65,7 +65,7 @@ export function buildHandoff(doc: Doc, options: HandoffOptions): HandoffResult {
     unmeasured: c.unmeasured
   }
 
-  const warnings = [...c.warnings]
+  const warnings = [...c.warnings, ...(options.warnings ?? [])]
   if (fractional) warnings.push(`${fractional} node${fractional === 1 ? ' has' : 's have'} a fractional size: build with the layout rule, not the number.`)
   for (const a of c.assets) if (!/^assets\//.test(a.path) && !/^screens\//.test(a.path)) warnings.push(`Asset path "${a.path}" is outside assets/ and screens/.`)
 
@@ -74,7 +74,7 @@ export function buildHandoff(doc: Doc, options: HandoffOptions): HandoffResult {
   files['CLAUDE.md'] = handoff
 
   // the planned PNG and asset paths are part of what the bundle will contain: they must be safe too
-  assertSafePaths(new Set([...Object.keys(files), ...c.screens.flatMap((s) => s.breakpoints.map((b) => b.png)), ...c.assets.map((a) => a.path)]))
+  assertSafePaths(new Set([...Object.keys(files), ...c.screens.flatMap((s) => s.breakpoints.map((b) => b.png)), ...c.assets.flatMap((a) => [a.path, ...(a.variants ?? []).map((v) => v.path)])]))
 
   const sorted: Record<string, string> = {}
   for (const k of Object.keys(files).sort()) sorted[k] = files[k]

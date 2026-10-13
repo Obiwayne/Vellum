@@ -104,7 +104,27 @@ export const SPEC_SCHEMA: S = {
     ),
     TextStyle: obj({ id: str, name: str, style: map(strOrNum) }, ['id', 'name', 'style']),
     Asset: obj(
-      { id: str, path: str, kind: { enum: ['image', 'icon', 'png'] }, nodeIds: arr(str), layerName: str },
+      {
+        id: str,
+        path: str,
+        kind: { enum: ['image', 'icon', 'png'] },
+        nodeIds: arr(str),
+        layerName: str,
+        mime: str,
+        bytes: int,
+        width: int,
+        height: int,
+        maxDensity: num,
+        variants: arr(obj({ path: str, density: num, width: int, height: int }, ['path', 'density', 'width', 'height'])),
+        source: { enum: ['data', 'external'] },
+        url: str,
+        sha256: str,
+        recoloured: bool,
+        was: str,
+        multiColour: bool,
+        animated: bool,
+        missing: bool
+      },
       ['id', 'path', 'kind', 'nodeIds']
     ),
     Font: obj(
