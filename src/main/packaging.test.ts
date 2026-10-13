@@ -318,6 +318,14 @@ describe('relaunch check decision (update test)', () => {
       else process.env.CI = prev
     }
   })
+  it('needs the long install path: an 8.3 TEMP path does not match the long path Windows reports for the process', async () => {
+    const { relaunchVerdict } = await load()
+    const short = win('C:', 'Users', 'RUNNER~1', 'AppData', 'Local', 'Temp', 'vellum-update-test-1', 'app')
+    const long = win('C:', 'Users', 'runneradmin', 'AppData', 'Local', 'Temp', 'vellum-update-test-1', 'app')
+    const proc = [{ pid: 7, path: win(long, 'VellumInstallTest.exe'), session: 1 }]
+    expect(relaunchVerdict({ processes: proc, installDir: short }).ok).toBe(false) // why test-update.mjs resolves with realpathSync.native
+    expect(relaunchVerdict({ processes: proc, installDir: long }).ok).toBe(true)
+  })
   it('is what test-update.mjs uses', () => {
     expect(read('scripts/test-update.mjs')).toContain('relaunchVerdict({ processes: productProcs(), installDir })')
   })

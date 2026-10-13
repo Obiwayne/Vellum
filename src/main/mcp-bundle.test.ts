@@ -64,7 +64,8 @@ describe.skipIf(!haveMcpDeps)('MCP server bundle', () => {
     } finally {
       try {
         rmSync(ud, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 })
-      } catch {
+      } catch (e) {
+        console.warn(`could not remove ${ud}: ${String(e)}`)
         // a runner's scanner can hold the temp folder for a moment (EBUSY); a leftover temp folder is not a test failure
       }
     }
