@@ -2,7 +2,7 @@
 import { useCallback, useEffect, useState, type ReactNode } from 'react'
 import { Diamond, Hand, ImagePlus, Shapes, MessageCirclePlus, MousePointer2, PenTool, Scan, Square, VectorSquare } from 'lucide-react'
 import { Button, IconButton, Modal } from '../../ui'
-import { useStore } from '../../model/store'
+import { DEV_MODE_TOOLS, useStore } from '../../model/store'
 import type { Tool } from '../../model/types'
 import { createImageFromFile, insertSvgMarkup } from '../canvas/actions'
 import { toolbarHooks } from '../shortcuts'
@@ -46,6 +46,7 @@ export const TOOL_GROUPS: ToolDef[][] = [
 export function Toolbar({ docId }: { docId: string }): JSX.Element {
   const tool = useStore((s) => s.editors[docId]?.tool ?? 'move')
   const setTool = useStore((s) => s.setTool)
+  const devMode = useStore((s) => s.editors[docId]?.devMode === true)
   const [svgOpen, setSvgOpen] = useState(false)
   const [iconsOpen, setIconsOpen] = useState(false)
 
@@ -65,6 +66,7 @@ export function Toolbar({ docId }: { docId: string }): JSX.Element {
   }, [createImage, createSvg, openIcons])
 
   const onTool = (t: Tool): void => {
+    if (devMode && !DEV_MODE_TOOLS.includes(t)) return
     if (t === 'image') createImage()
     else if (t === 'svg') createSvg()
     else if (t === 'icon') openIcons()
@@ -85,6 +87,7 @@ export function Toolbar({ docId }: { docId: string }): JSX.Element {
               shortcut={t.shortcut}
               tooltipSide="right"
               active={tool === t.tool}
+              disabled={devMode && !DEV_MODE_TOOLS.includes(t.tool)}
               onClick={() => onTool(t.tool)}
             />
           ))}

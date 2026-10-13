@@ -131,7 +131,7 @@ export function moveDocToFolder(docId: string, folderId: string | null): void {
       if (folderId) d.folderId = folderId
       else delete d.folderId
     },
-    { noHistory: true }
+    { noHistory: true, allowInDev: true }
   )
 }
 

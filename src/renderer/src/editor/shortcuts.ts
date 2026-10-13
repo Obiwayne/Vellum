@@ -47,6 +47,22 @@ export function installCanvasShortcuts(docId: string): () => void {
     const sel = ed.selection
     let handled = true
 
+    // D switches Design | Dev Mode in both directions
+    if (code === 'KeyD' && !ctrl && !alt && !shift) {
+      A.commitTextEditing()
+      s.setDevMode(docId, !ed.devMode)
+      e.preventDefault()
+      e.stopPropagation()
+      return
+    }
+    if (ed.devMode) {
+      if (devModeKey(docId, e)) {
+        e.preventDefault()
+        e.stopPropagation()
+      }
+      return
+    }
+
     if (textShortcut(docId, ctrl, shift, alt, code)) {
       e.preventDefault()
       e.stopPropagation()
@@ -131,6 +147,57 @@ export function installCanvasShortcuts(docId: string): () => void {
   }
   window.addEventListener('keydown', onKey, true)
   return () => window.removeEventListener('keydown', onKey, true)
+}
+
+/**
+ * Keys that still work in Dev Mode: selection, zoom, tools that do not draw, comments and copy as code.
+ * Everything else is left alone, so no edit shortcut (delete, nudge, group, paste, text formatting) runs.
+ */
+export function devModeKey(docId: string, e: Pick<KeyboardEvent, 'ctrlKey' | 'metaKey' | 'shiftKey' | 'altKey' | 'code' | 'key'>): boolean {
+  const s = getStore()
+  const ctrl = e.ctrlKey || e.metaKey
+  const { shiftKey: shift, altKey: alt, code, key } = e
+  if (ctrl && !alt) {
+    if (code === 'KeyC' && !shift) A.copyAs(docId, 'css')
+    else if (code === 'KeyA' && !shift) A.selectAll(docId)
+    else if (key === '=' || key === '+') zoomIn(docId)
+    else if (key === '-') zoomOut(docId)
+    else if (code === 'Digit0' && !shift) zoomTo100(docId)
+    else return false
+    return true
+  }
+  if (ctrl) return false
+  if (alt) {
+    if (code === 'KeyT' && !shift) A.copyAs(docId, 'tailwind')
+    else if (code === 'KeyR' && !shift) A.copyAs(docId, 'react')
+    else return false
+    return true
+  }
+  if (shift) {
+    if (code === 'KeyN') A.nextArtboard(docId, -1)
+    else if (code === 'Digit0') zoomTo100(docId)
+    else if (code === 'Digit1') zoomToFit(docId)
+    else if (code === 'Digit2') zoomToSelection(docId)
+    else if (code === 'KeyC') s.setPref('canvas.showComments', s.prefs['canvas.showComments'] === false)
+    else if (code === 'Tab') A.selectSibling(docId, -1)
+    else if (key === 'Enter') A.selectParent(docId)
+    else if (key === '+') zoomIn(docId)
+    else return false
+    return true
+  }
+  if (code === 'KeyV' || code === 'KeyH' || code === 'KeyC') s.setTool(docId, TOOL_KEYS[code])
+  else if (key === 'Escape') {
+    const ed = s.editors[docId]
+    if (ed && ed.tool !== 'move') s.setTool(docId, 'move')
+    else A.selectParent(docId)
+  } else if (key === 'Enter') A.selectChildren(docId)
+  else if (code === 'KeyN') A.nextArtboard(docId, 1)
+  else if (code === 'Tab') A.selectSibling(docId, 1)
+  else if (key === '.') A.toggleHideUI()
+  else if (key === '=' || key === '+') zoomIn(docId)
+  else if (key === '-') zoomOut(docId)
+  else return false
+  return true
 }
 
 /**

@@ -1,7 +1,7 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { ChevronDown, ChevronRight, Columns3, Component, Diamond, Eye, EyeOff, Frame, Grid2x2, Image, Lock, LockOpen, PenTool, Rows3, Square } from 'lucide-react'
 import { useContextMenu, type MenuEntry } from '../../ui'
-import { getStore, useStore } from '../../model/store'
+import { canEdit, getStore, useStore } from '../../model/store'
 import * as ops from '../../model/ops'
 import type { CNode, Doc } from '../../model/types'
 import { CANVAS_COMMAND_EVENT } from '../../shell/commands'
@@ -76,6 +76,15 @@ export function nodeMenu(docId: string, ids: string[], onRename?: () => void): M
   const s = getStore()
   const doc = s.docs[docId]
   if (!doc) return []
+  if (!canEdit(docId)) {
+    // Dev Mode: copy as code only
+    return [
+      { label: 'Copy as CSS', shortcut: 'Ctrl+C', onSelect: () => (s.select(docId, ids), A.copyAs(docId, 'css')) },
+      { label: 'Copy as Tailwind', shortcut: 'Alt+T', onSelect: () => (s.select(docId, ids), A.copyAs(docId, 'tailwind')) },
+      { label: 'Copy as React', shortcut: 'Alt+R', onSelect: () => (s.select(docId, ids), A.copyAs(docId, 'react')) },
+      { label: 'Copy as HTML', onSelect: () => (s.select(docId, ids), A.copyAs(docId, 'html')) }
+    ]
+  }
   const nodes = ids.map((id) => doc.nodes[id]).filter(Boolean)
   const allHidden = nodes.every((n) => !n.visible)
   const allLocked = nodes.every((n) => n.locked)
@@ -130,6 +139,7 @@ export function LayersTree({ docId }: { docId: string }): JSX.Element | null {
   const doc = useStore((s) => s.docs[docId])
   const pageId = useStore((s) => s.editors[docId]?.pageId)
   const selection = useStore((s) => s.editors[docId]?.selection)
+  const editable = useStore((s) => s.editors[docId]?.devMode !== true)
   const hovered = useStore((s) => s.editors[docId]?.hovered ?? null)
   const [, force] = useState(0)
   const [renaming, setRenaming] = useState<string | null>(null)
@@ -241,7 +251,7 @@ export function LayersTree({ docId }: { docId: string }): JSX.Element | null {
   /** Pointer-driven drag: starts after 4px, hit-tests rows under the cursor, drops on release. */
   const suppressClick = useRef(false)
   const onRowPointerDown = (e: React.PointerEvent, id: string): void => {
-    if (e.button !== 0 || renaming) return
+    if (e.button !== 0 || renaming || !editable) return
     const startY = e.clientY
     const startX = e.clientX
     let dragging = false
@@ -342,13 +352,14 @@ export function LayersTree({ docId }: { docId: string }): JSX.Element | null {
             renaming={renaming === r.id}
             onToggle={(deep) => toggle(r.id, deep)}
             onClick={(e) => onRowClick(e, r.id)}
-            onRename={() => setRenaming(r.id)}
+            onRename={() => editable && setRenaming(r.id)}
             onRenameDone={(v) => {
               if (v !== null) getStore().renameNode(docId, r.id, v)
               setRenaming(null)
             }}
             onHover={() => getStore().setHovered(docId, r.id)}
             onContextMenu={(e) => onContext(e, r.id)}
+            readOnly={!editable}
             onSetVisible={(v) => getStore().updateNode(docId, r.id, { visible: v })}
             onSetLocked={(v) => getStore().updateNode(docId, r.id, { locked: v })}
             onPointerDown={(e) => onRowPointerDown(e, r.id)}
@@ -377,6 +388,8 @@ interface LayerRowProps {
   onRenameDone: (v: string | null) => void
   onHover: () => void
   onContextMenu: (e: React.MouseEvent) => void
+  /** Dev Mode: the lock and eye toggles show state but do nothing */
+  readOnly: boolean
   onSetVisible: (v: boolean) => void
   onSetLocked: (v: boolean) => void
   onPointerDown: (e: React.PointerEvent) => void
@@ -434,6 +447,7 @@ const LayerRow = memo(function LayerRow(p: LayerRowProps): JSX.Element {
           type="button"
           className="lp-layer__toggle"
           aria-label={n.locked ? 'Unlock' : 'Lock'}
+          disabled={p.readOnly}
           onClick={(e) => {
             e.stopPropagation()
             p.onSetLocked(!n.locked)
@@ -448,6 +462,7 @@ const LayerRow = memo(function LayerRow(p: LayerRowProps): JSX.Element {
           type="button"
           className="lp-layer__toggle"
           aria-label={n.visible ? 'Hide' : 'Show'}
+          disabled={p.readOnly}
           onClick={(e) => {
             e.stopPropagation()
             p.onSetVisible(!n.visible)

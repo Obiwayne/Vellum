@@ -32,6 +32,8 @@ export interface MutateOptions {
   coalesce?: string
   /** skip history (e.g. thumbnails) */
   noHistory?: boolean
+  /** run even while the doc is in Dev Mode (comments and other non-design state); design edits never set this */
+  allowInDev?: boolean
   /** the recipe maintains instances itself: do not read its changes to instance nodes as user edits (see components.settleEdits) */
   derived?: boolean
 }
@@ -168,6 +170,8 @@ export interface Store {
   // editor (not undoable)
   select(docId: string, ids: string[], additive?: boolean): void
   setTool(docId: string, tool: Tool): void
+  /** switch Design | Dev Mode for a doc (editor state only) */
+  setDevMode(docId: string, on: boolean): void
   setCamera(docId: string, camera: Partial<Camera>): void
   setHovered(docId: string, id: string | null): void
   setEditingText(docId: string, id: string | null): void
@@ -210,9 +214,26 @@ export function defaultEditor(doc: Doc): EditorState {
     camera: { ...DEFAULT_CAMERA },
     pageCameras: {},
     editingTextId: null,
-    workingNodes: []
+    workingNodes: [],
+    devMode: false
   }
 }
+
+/** Tools that do not create or change anything: the only ones Dev Mode lets through. */
+export const DEV_MODE_TOOLS: readonly Tool[] = ['move', 'pan', 'comment']
+
+/** Called (once per refused edit) when Dev Mode blocks a change; the editor shows the "read-only" toast. */
+const editRefusedListeners = new Set<(docId: string) => void>()
+export function onEditRefused(fn: (docId: string) => void): () => void {
+  editRefusedListeners.add(fn)
+  return () => void editRefusedListeners.delete(fn)
+}
+
+/** Tell the editor an edit was refused (it shows the read-only toast). */
+export const notifyEditRefused = (docId: string): void => editRefusedListeners.forEach((fn) => fn(docId))
+
+/** One gate for "may this doc be edited": false in Dev Mode. UI uses it to disable controls, the store enforces it. */
+export const canEdit = (docId: string): boolean => !useStore.getState().editors[docId]?.devMode
 
 const touchRecents = (recents: string[], id: string): string[] => [id, ...recents.filter((r) => r !== id)]
 
@@ -228,6 +249,10 @@ export const useStore = create<Store>()((set, get) => {
   function mutate(docId: string, label: string, recipe: (d: Doc) => void, opts: MutateOptions = {}): boolean {
     const doc = get().docs[docId]
     if (!doc) return false
+    if (!opts.allowInDev && !canEdit(docId)) {
+      notifyEditRefused(docId)
+      return false
+    }
     let [next, patches, inverse] = produceWithPatches(doc, (d) => {
       recipe(d)
       // instance edits become overrides; structural ones throw; orphaned instances detach
@@ -934,7 +959,7 @@ export const useStore = create<Store>()((set, get) => {
             updatedAt: now
           })
         },
-        { noHistory: true }
+        { noHistory: true, allowInDev: true }
       )
       return ok ? id : null
     },
@@ -953,7 +978,7 @@ export const useStore = create<Store>()((set, get) => {
           th.messages.push({ id: nanoid(10), author: author.kind, authorName: author.name, body: text, createdAt: now })
           th.updatedAt = now
         },
-        { noHistory: true }
+        { noHistory: true, allowInDev: true }
       )
       return true
     },
@@ -969,7 +994,7 @@ export const useStore = create<Store>()((set, get) => {
           th.status = status
           th.updatedAt = Date.now()
         },
-        { noHistory: true }
+        { noHistory: true, allowInDev: true }
       )
       return true
     },
@@ -981,7 +1006,7 @@ export const useStore = create<Store>()((set, get) => {
         (d) => {
           if (d.comments) d.comments = d.comments.filter((c) => c.id !== threadId)
         },
-        { noHistory: true }
+        { noHistory: true, allowInDev: true }
       )
     },
 
@@ -1003,8 +1028,21 @@ export const useStore = create<Store>()((set, get) => {
     },
 
     setTool(docId, tool) {
+      if (!canEdit(docId) && !DEV_MODE_TOOLS.includes(tool)) {
+        notifyEditRefused(docId)
+        return
+      }
       editor(docId, (e) => {
         e.tool = tool
+      })
+    },
+
+    setDevMode(docId, on) {
+      editor(docId, (e) => {
+        if (e.devMode === on) return
+        e.devMode = on
+        e.editingTextId = null
+        if (on && !DEV_MODE_TOOLS.includes(e.tool)) e.tool = 'move'
       })
     },
 
@@ -1021,6 +1059,7 @@ export const useStore = create<Store>()((set, get) => {
     },
 
     setEditingText(docId, id) {
+      if (id && !canEdit(docId)) return
       editor(docId, (e) => {
         e.editingTextId = id
       })
@@ -1042,6 +1081,7 @@ export const useStore = create<Store>()((set, get) => {
     undo(docId) {
       const doc = get().docs[docId]
       if (!doc) return
+      if (!canEdit(docId)) return notifyEditRefused(docId)
       const next = history.undo(docId, doc)
       if (!next) return
       set((s) => ({ docs: { ...s.docs, [docId]: { ...next, updatedAt: Date.now() } }, historyTick: s.historyTick + 1 }))
@@ -1051,6 +1091,7 @@ export const useStore = create<Store>()((set, get) => {
     redo(docId) {
       const doc = get().docs[docId]
       if (!doc) return
+      if (!canEdit(docId)) return notifyEditRefused(docId)
       const next = history.redo(docId, doc)
       if (!next) return
       set((s) => ({ docs: { ...s.docs, [docId]: { ...next, updatedAt: Date.now() } }, historyTick: s.historyTick + 1 }))

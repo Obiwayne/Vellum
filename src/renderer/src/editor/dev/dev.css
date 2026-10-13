@@ -1,0 +1,166 @@
+/* Dev Mode Spec panel and mode switch. Prefix: .dev- */
+.dev-panel {
+  padding-bottom: 24px;
+}
+.dev-head {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 12px 12px 8px;
+  border-bottom: 1px solid var(--hairline);
+}
+.dev-head__name {
+  font-weight: var(--weight-medium);
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.dev-head__type {
+  margin-left: auto;
+  color: var(--color-dev);
+  font-size: 11px;
+  text-transform: capitalize;
+}
+.dev-sec {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--hairline);
+}
+.dev-sec__title {
+  margin: 0 0 6px;
+  font-size: 12px;
+  font-weight: var(--weight-medium);
+  color: var(--text);
+}
+.dev-sec--dev {
+  background: var(--color-dev-soft);
+}
+.dev-row__main {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+  min-height: 24px;
+  padding: 2px 6px;
+  margin: 0 -6px;
+  border-radius: var(--radius-sm);
+  text-align: left;
+  color: var(--text-2);
+}
+.dev-row__main:not(.dev-row__main--static):hover {
+  background: var(--control-hover);
+  cursor: pointer;
+}
+.dev-row__label {
+  color: var(--text-2);
+  flex-shrink: 0;
+}
+.dev-row__value {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  text-align: right;
+  word-break: break-word;
+}
+.dev-swatch {
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.2);
+  flex-shrink: 0;
+}
+.dev-token {
+  display: inline-block;
+  margin: 2px 0;
+  padding: 0 6px;
+  border-radius: var(--radius-xs);
+  background: var(--color-dev-soft);
+  color: var(--color-dev);
+  font-family: var(--font-mono);
+  font-size: 11px;
+}
+.dev-mode {
+  display: flex;
+  justify-content: space-between;
+  padding: 0 0 0 12px;
+  color: var(--text-2);
+  font-size: 11px;
+}
+.dev-code {
+  display: block;
+  width: 100%;
+  margin-top: 8px;
+  padding: 8px;
+  border-radius: var(--radius);
+  background: var(--bg-input-solid);
+  text-align: left;
+  cursor: pointer;
+}
+.dev-code pre {
+  margin: 0;
+  max-height: 260px;
+  overflow: auto;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  line-height: 16px;
+  color: var(--text);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.dev-notes {
+  margin: 0 0 6px;
+  color: var(--text);
+  white-space: pre-wrap;
+}
+.dev-muted {
+  margin: 0;
+  color: var(--text-2);
+  font-size: 11px;
+}
+.dev-pad {
+  padding: 8px 12px 0;
+}
+.dev-hint {
+  margin: 0;
+  padding: 12px;
+  color: var(--text-2);
+}
+.dev-screen {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  height: 28px;
+  padding: 0 6px;
+  margin: 0 -6px;
+  border-radius: var(--radius-sm);
+  text-align: left;
+}
+.dev-screen:hover {
+  background: var(--control-hover);
+}
+.dev-screen__name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text);
+}
+.dev-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--hairline-strong);
+  flex-shrink: 0;
+}
+.dev-dot--ready {
+  background: var(--color-ready);
+}
+/* mode switch in the inspector top bar */
+.insp-top--dev {
+  box-shadow: inset 0 -2px 0 var(--color-dev);
+}

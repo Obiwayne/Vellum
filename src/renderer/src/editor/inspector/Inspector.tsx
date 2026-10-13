@@ -27,6 +27,7 @@ import {
 import { StrokeSection, TextSection, UnderlineSection } from './TextSection'
 import { SelectionColorsSection } from './SelectionColorsSection'
 import { OtherStylesSection } from './OtherStylesSection'
+import { SpecPanel } from '../dev/SpecPanel'
 import './inspector.css'
 
 const EMPTY: string[] = []
@@ -113,11 +114,13 @@ export function Inspector({ docId }: { docId: string }): JSX.Element {
   watchBridgeActivity()
   const selection = useStore((s) => s.editors[docId]?.selection ?? EMPTY)
   const hasDoc = useStore((s) => Boolean(s.docs[docId]))
+  const devMode = useStore((s) => s.editors[docId]?.devMode === true)
   return (
     <div className="insp">
       <TopBar docId={docId} />
       <div className="insp-scroll">
-        {hasDoc && (selection.length ? <SelectionInspector docId={docId} ids={selection} /> : <PageInspector docId={docId} />)}
+        {hasDoc && devMode && <SpecPanel docId={docId} />}
+        {hasDoc && !devMode && (selection.length ? <SelectionInspector docId={docId} ids={selection} /> : <PageInspector docId={docId} />)}
       </div>
     </div>
   )

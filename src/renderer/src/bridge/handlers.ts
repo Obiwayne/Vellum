@@ -3,7 +3,7 @@
 // register themselves with registerHandler() (see docs/MCP.md for the full list).
 import type { BridgeRequest } from '@shared/api'
 import { handlers, settle } from './registry'
-import { getStore } from '../model/store'
+import { getStore, onEditRefused } from '../model/store'
 import { markActivity } from '../profile/profile'
 import './tools-files'
 import './tools-read'
@@ -25,6 +25,11 @@ export function installBridge(): void {
   const api = window.canvasApi
   if (installed || !api) return
   installed = true
+  // a file in Dev Mode refuses edits: tell the agent instead of reporting a write that did not happen
+  let refusedInCall = false
+  onEditRefused(() => {
+    if (inBridgeCall) refusedInCall = true
+  })
   // run requests one at a time so each tool sees the previous tool's result (and its render)
   let chain: Promise<void> = Promise.resolve()
   api.onBridgeRequest((req: BridgeRequest) => {
@@ -45,12 +50,14 @@ export function installBridge(): void {
         await settle()
         await settle()
         inBridgeCall = true
+        refusedInCall = false
         let result: unknown
         try {
           result = await fn(req.args ?? {})
         } finally {
           inBridgeCall = false
         }
+        if (refusedInCall) throw new Error('This file is in Dev Mode (read-only). Ask the user to switch to Design mode, then try again.')
         api.bridgeRespond({ id: req.id, result: result === undefined ? null : JSON.parse(JSON.stringify(result)) })
       } catch (err) {
         api.bridgeRespond({ id: req.id, error: err instanceof Error ? err.message : String(err) })

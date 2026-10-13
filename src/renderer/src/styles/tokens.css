@@ -42,6 +42,13 @@
   --agent-blue-bright: rgb(120, 180, 255);
   --danger: #E5484D;
 
+  /* Dev Mode and handoff (T58 design: dev violet, redline red, ready green, changed amber) */
+  --color-dev: #8B7CF6;
+  --color-dev-soft: rgb(139 124 246 / 0.16);
+  --color-redline: #FF4D6D;
+  --color-ready: #3FB950;
+  --color-changed: #E3A008;
+
   /* primary (white) button */
   --primary-bg: #F2F2F2;
   --primary-bg-hover: #FFFFFF;
