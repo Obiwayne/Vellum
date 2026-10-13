@@ -140,6 +140,16 @@ async function main() {
   const jsxInline = await call('get_jsx', { nodeId: cardId, format: 'inline-styles' })
   ok(jsxInline.body.includes('style={{'), 'get_jsx inline-styles')
 
+  // developer hand-off tools: read-only, the bundle comes back inline
+  const devSpec = await call('get_dev_spec', { nodeId: cardId, depth: 0 })
+  ok(devSpec.body.specs?.[0]?.id === cardId && devSpec.body.specs[0].children.length === 0 && typeof devSpec.body.specs[0].layout?.summary === 'string', 'get_dev_spec returns the NodeSpec with layout intent')
+  const handoff = await call('export_handoff', { frames: [artboardId], projectLabel: 'MCP test' })
+  ok(handoff.body.files?.['HANDOFF.md']?.includes('quick start') && handoff.body.files['CLAUDE.md'] === handoff.body.files['HANDOFF.md'], 'export_handoff returns HANDOFF.md and CLAUDE.md inline')
+  ok(JSON.parse(handoff.body.files['spec.json']).handoff.fileName === 'MCP test', 'export_handoff uses the project label, not the file name')
+  ok(Array.isArray(handoff.body.omitted) && Array.isArray(handoff.body.skippedBinary), 'export_handoff lists omitted and skipped-binary paths')
+  const capped = await call('export_handoff', { frames: [artboardId], maxBytes: 3000 })
+  ok(capped.body.omitted.length > 0 && capped.body.inlineBytes <= 3000, 'export_handoff applies the size cap')
+
   const cs = await call('get_computed_styles', { nodeIds: [artboardId, titleId] })
   ok(cs.body.styles?.[titleId]?.fontSize === '28px', 'get_computed_styles')
 
