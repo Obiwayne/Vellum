@@ -890,3 +890,16 @@ button.db-account__btn:hover {
   padding: 0;
   justify-content: center;
 }
+
+.db-link {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--accent, var(--text));
+  font: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+}
+.db-link:hover {
+  color: var(--text);
+}

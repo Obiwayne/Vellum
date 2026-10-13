@@ -24,6 +24,9 @@ export interface ExportRequest {
   /** include dev notes (default on); off strips them before building */
   devNotes: boolean
   kind: 'folder' | 'zip'
+  /** MCP only: a label for the project and the theme mode to resolve tokens in (the dialog sets neither) */
+  projectLabel?: string
+  mode?: string
 }
 
 export interface ExportDeps {
@@ -160,12 +163,33 @@ async function assemble(doc: Doc, req: ExportRequest, deps: ExportDeps, version:
     exportedAt: deps.now(),
     vellum: deps.vellum,
     rem: req.rem,
+    ...(req.projectLabel !== undefined ? { projectLabel: req.projectLabel } : {}),
+    ...(req.mode !== undefined ? { mode: req.mode } : {}),
     ...(deps.measure ? { measure: deps.measure } : {}),
     ...(deps.fontSource ? { fontSource: deps.fontSource } : {}),
     assets: plan.records,
     warnings: [...plan.warnings, ...(warning ? [warning] : [])]
   })
   return { source, plan, built, changes }
+}
+
+/**
+ * The bundle's text files for a request, built exactly as the dialog's Export builds them (same frame selection,
+ * number, asset plan, comparison with the previous handoff and options). The MCP `export_handoff` tool calls this
+ * too, so the two cannot drift. `requested` undefined means the frames marked ready; `version` defaults to the next
+ * free number.
+ */
+export async function buildExportBundle(doc: Doc, req: Omit<ExportRequest, 'frames'> & { frames?: string[] }, deps: ExportDeps, version?: number) {
+  const selected = selectFrames(doc, req.frames)
+  let versions: Awaited<ReturnType<ExportDeps['listVersions']>> = []
+  try {
+    versions = await deps.listVersions()
+  } catch {
+    /* unreadable history: built like a first export */
+  }
+  const number = version ?? nextHandoffNumber(versions)
+  const out = await assemble(doc, { ...req, frames: selected.ids }, deps, number, versions)
+  return { ...out, frames: selected.ids, version: number, selectionWarnings: selected.warnings }
 }
 
 /** Everything the dialog shows before anything is written. Cheap enough to run on every change of the options. */

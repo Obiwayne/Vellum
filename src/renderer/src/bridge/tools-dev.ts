@@ -2,7 +2,11 @@
 // tokens, component reference, dev notes) and `export_handoff` (the bundle of src/renderer/src/handoff/ as a file
 // map returned inline). Both only read the document, so Dev Mode does not block them. Nothing is written to disk
 // here: the app's Export handoff action owns writing (T65), so there is one writer.
-import { buildHandoff, type HandoffResult } from '../handoff'
+import type { HandoffResult } from '../handoff'
+import { buildExportBundle, type ExportDeps } from '../handoff/exportFlow'
+import { fontSourceFor } from '../handoff/assets/fonts'
+import { listVersions, loadVersionDoc } from '../history/versions'
+import { GOOGLE_FONTS } from '../editor/inspector/fonts'
 import { nodeSpec, type NodeSpec } from '../model/devSpec'
 import { version as APP_VERSION } from '../../../../package.json'
 import { measureOffscreen } from './measure'
@@ -33,22 +37,27 @@ registerHandler('get_dev_spec', (args) => {
   return scoped(docId, { specs })
 })
 
-registerHandler('export_handoff', (args) => {
+registerHandler('export_handoff', async (args) => {
   const docId = resolveDocId(args)
   const doc = getDoc(docId)
   const frames = Array.isArray(args.frames) ? arr<unknown>(args.frames).filter((x): x is string => typeof x === 'string') : undefined
-  const version = typeof args.version === 'number' && Number.isInteger(args.version) && args.version >= 1 ? args.version : 1
+  const version = typeof args.version === 'number' && Number.isInteger(args.version) && args.version >= 1 ? args.version : undefined
   const cap = Math.min(typeof args.maxBytes === 'number' && args.maxBytes > 0 ? Math.floor(args.maxBytes) : DEFAULT_MAX_BYTES, MAX_BYTES_LIMIT)
-  const built: HandoffResult = buildHandoff(doc, {
-    ...(frames ? { frames } : {}),
-    version,
-    exportedAt: new Date().toISOString(),
+  // the same pipeline as the Export handoff dialog (frames, number, assets, comparison, fonts), so the text files match
+  // it byte for byte apart from exportedAt; the number is the next free one unless `version` is given
+  const deps: ExportDeps = {
+    measure: (x) => measureOffscreen(doc, x),
+    engine: { resize: async () => new Uint8Array(), renderPng: async () => new Uint8Array() },
+    write: async () => ({ ok: false, error: 'export_handoff writes nothing' }),
+    saveVersion: async () => undefined,
+    listVersions: () => listVersions(docId),
+    loadVersion: (id) => loadVersionDoc(docId, id),
+    now: () => new Date().toISOString(),
     vellum: APP_VERSION,
-    ...(str(args.projectLabel) !== undefined ? { projectLabel: str(args.projectLabel) } : {}),
-    ...(args.rem === true ? { rem: true } : {}),
-    ...(typeof args.mode === 'string' ? { mode: args.mode } : {}),
-    measure: (x) => measureOffscreen(doc, x)
-  })
+    fontSource: fontSourceFor({ google: GOOGLE_FONTS })
+  }
+  const bundle = await buildExportBundle(doc, { ...(frames ? { frames } : {}), retina: false, rem: args.rem === true, devNotes: true, kind: 'folder', ...(str(args.projectLabel) !== undefined ? { projectLabel: str(args.projectLabel) } : {}), ...(typeof args.mode === 'string' ? { mode: args.mode } : {}) }, deps, version)
+  const built: HandoffResult = { ...bundle.built, warnings: [...new Set([...bundle.selectionWarnings, ...bundle.built.warnings])] }
 
   // inline up to the cap, most useful files first; the identical CLAUDE.md copy goes last
   const order = (p: string): number =>

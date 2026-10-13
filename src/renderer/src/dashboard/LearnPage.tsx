@@ -1,6 +1,9 @@
 import { formatShortcut } from '../ui'
 import { ConnectAgentBody } from './ConnectAgentModal'
 
+/** The developer handoff guide in the repository. */
+export const HANDOFF_DOC_URL = 'https://github.com/Obiwayne/Vellum/blob/master/docs/HANDOFF.md'
+
 const GROUPS: { title: string; items: [string, string][] }[] = [
   {
     title: 'Tools',
@@ -130,6 +133,26 @@ export function LearnPage(): JSX.Element {
       <h2 className="db-h2">Connect Claude</h2>
       <div className="db-card-panel">
         <ConnectAgentBody />
+      </div>
+      <h2 className="db-h2 db-learn__section-title">Developer handoff and Dev Mode</h2>
+      <div className="db-card-panel" data-learn="handoff">
+        <p>
+          <b>Dev Mode</b> is the <b>Dev</b> switch at the top of the inspector (or press <b>D</b>). The file becomes read-only: select a layer to see its layout rule
+          (Fixed, Fit or Fill), measured size, tokens and notes, and copy it as code. Nothing can be edited by accident. On the dashboard, a file&apos;s menu has
+          <b> Open in Dev Mode</b> to open it straight into this view.
+        </p>
+        <p>
+          To hand a design to a developer, mark the finished frames with <b>Mark ready for dev</b> in the Layers menu, then use <b>Export handoff…</b> next to
+          <b> Share</b>. Choose <b>Export folder…</b> or <b>Save as zip…</b>: you get the rules, tokens, components, assets and a PNG per screen as plain files.
+          Export again after edits and the new folder carries <b>CHANGES.md</b> with what to rebuild. Claude can do the same through the MCP tools{' '}
+          <code>get_dev_spec</code> and <code>export_handoff</code>.
+        </p>
+        <p>
+          The full guide, with the folder layout and the rules the files follow, is <code>docs/HANDOFF.md</code>:{' '}
+          <button type="button" className="db-link" onClick={() => window.canvasApi?.openExternal?.(HANDOFF_DOC_URL)}>
+            Read docs/HANDOFF.md
+          </button>
+        </p>
       </div>
       <h2 className="db-h2 db-learn__updates-title">Updates</h2>
       <div className="db-card-panel" data-learn="updates">
