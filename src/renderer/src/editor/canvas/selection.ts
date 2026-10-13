@@ -53,6 +53,15 @@ export function pickNode(doc: Doc, deepest: string, selection: string[], deep = 
   return chain[idx]
 }
 
+/**
+ * The layer a hover lands on. Normally the same pick as a click (siblings of the selection first, Ctrl for the deepest).
+ * In Dev Mode, Alt measures to any layer: the deepest one under the pointer, even a locked one or one inside another frame.
+ */
+export function hoverPick(doc: Doc, deepest: string, selection: string[], opts: { deep: boolean; alt: boolean; devMode: boolean }): string | null {
+  if (opts.devMode && opts.alt) return doc.nodes[deepest] ? deepest : null
+  return pickNode(doc, deepest, selection, opts.deep)
+}
+
 /** Double-click drill: the node one level below the selected ancestor of `deepest`. */
 export function drillNode(doc: Doc, deepest: string, selection: string[]): string | null {
   const chain = chainTopDown(doc, deepest)
