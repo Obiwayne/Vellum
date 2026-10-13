@@ -3,7 +3,7 @@ import type { CNode, DevInfo, Doc, StylePatch } from './types'
 
 /** A change to a node's dev info: a key set to `null` is removed; `states` entries merge per state name (null removes a state). */
 export type DevPatch = {
-  [K in keyof DevInfo]?: DevInfo[K] | null
+  [K in Exclude<keyof DevInfo, 'states'>]?: DevInfo[K] | null
 } & { states?: Record<string, StylePatch | null> | null }
 
 const DEV_KEYS: (keyof DevInfo)[] = ['ready', 'notes', 'states', 'role', 'label', 'tab', 'screen', 'needsDecision']
