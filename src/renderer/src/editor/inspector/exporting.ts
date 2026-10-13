@@ -29,7 +29,9 @@ function downloadBlob(name: string, blob: Blob): void {
   setTimeout(() => URL.revokeObjectURL(url), 2000)
 }
 
-const BASE_CSS = 'body{margin:0;font-family:system-ui,sans-serif;font-size:16px;line-height:20px;color:#000}'
+// Same defaults as the canvas (editor/canvas/contentDefaults.ts): `line-height: normal`. A 20px base here made every export
+// (PNG, HTML, SVG, PDF) lay text out tighter than the canvas it was drawn on (found by the T73 dogfood run).
+const BASE_CSS = 'body{margin:0;font-family:system-ui,sans-serif;font-size:16px;line-height:normal;color:#000}'
 
 export function htmlDocument(doc: Doc, id: string): string {
   const n = doc.nodes[id]
@@ -56,7 +58,7 @@ export function svgDocument(doc: Doc, id: string): string {
   const xhtml = html.replace(/<(img|br|hr|input|meta|link)([^>]*?)(?<!\/)>/g, '<$1$2 />')
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}">
 <foreignObject x="0" y="0" width="${w}" height="${h}">
-<div xmlns="http://www.w3.org/1999/xhtml" style="font-family:system-ui,sans-serif;font-size:16px;line-height:20px;color:#000">
+<div xmlns="http://www.w3.org/1999/xhtml" style="font-family:system-ui,sans-serif;font-size:16px;line-height:normal;color:#000">
 <style>${tokensCss(doc)}</style>
 ${xhtml}
 </div>

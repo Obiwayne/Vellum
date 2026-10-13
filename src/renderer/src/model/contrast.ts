@@ -104,7 +104,8 @@ export function textContrast(doc: Doc, id: string): ContrastOutcome {
     // background: ancestors outward until an opaque colour
     const layers: RGBA[] = []
     let base: RGBA | null = null
-    for (let cur = n.parent, i = 0; cur && i < 64; i++) {
+    // starting at the layer itself: a text layer can carry its own background (a button label imported from HTML)
+    for (let cur: string | null = n.id, i = 0; cur && i < 64; i++) {
       const a: CNode | undefined = doc.nodes[cur]
       if (!a) break
       const img = String(a.style.backgroundImage ?? '')

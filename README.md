@@ -90,9 +90,15 @@ its design system, component sheets and every screen and dialog (85 artboards), 
   components of every page with live thumbnails and expandable sets; drag one onto the canvas to place it. See
   `docs/COMPONENTS.md`.
 - **Text & colour styles** — save typography as a **text style** (family, size, weight, line height, letter spacing, decoration, case) and apply it from the Text section or the Styles view of the Theme tab; editing the style updates every layer that follows it (bigger text grows Fit containers), a manual typography change detaches a layer. **Colour styles** are your `--color-*` tokens: pick one in any colour field, Detach writes the literal of the active Light/Dark mode. See `docs/INSPECTOR.md` and `docs/LEFT_DASHBOARD.md`.
-- **MCP server** — 47 tools (`write_html`, `update_styles`, `get_screenshot`, `get_jsx` (instances export as
+- **Developer handoff** — tag top-level frames as **screens with breakpoints**, mark them **ready for dev**, add
+  notes, state rules and accessibility info, then **Export handoff…** (next to Share) writes a folder or zip a
+  developer's own Claude Code can build from: layout rules first, tokens per mode, components with states, assets,
+  fonts, a PNG reference per breakpoint and a delta table between breakpoints. **Dev Mode** (`D`) is a read-only
+  inspector with a Spec panel, copy-as-code and **redlines**. Nothing hidden leaks and nothing is uploaded. See
+  `docs/HANDOFF.md` (a sample bundle is in `docs/handoff-sample/`).
+- **MCP server** — 49 tools (`write_html`, `update_styles`, `get_screenshot`, `get_jsx` (instances export as
   component usage plus definitions), components, variants and properties, text styles, tokens and theme
-  modes, comments, pages, export to PNG/JPG/WebP/SVG/PDF/HTML/JSX…). Works with Claude Code, Codex and other MCP clients. Layers an agent is
+  modes, comments, pages, `get_dev_spec` and `export_handoff` for developer handoff, export to PNG/JPG/WebP/SVG/PDF/HTML/JSX…). Works with Claude Code, Codex and other MCP clients. Layers an agent is
   working on are outlined live on the canvas with a tag.
 
 ### Profiles & privacy
@@ -260,4 +266,4 @@ Built with Electron, electron-vite, React, TypeScript, zustand and immer.
 
 - [Architecture](docs/ARCHITECTURE.md) · [Foundation / store API](docs/FOUNDATION.md)
 - [Canvas](docs/CANVAS.md) · [Inspector](docs/INSPECTOR.md) · [Left panel & dashboard](docs/LEFT_DASHBOARD.md)
-- [MCP server](docs/MCP.md) · [Security review](docs/SECURITY.md) · [Bug log](docs/BUGS.md)
+- [MCP server](docs/MCP.md) · [Developer handoff](docs/HANDOFF.md) · [Security review](docs/SECURITY.md) · [Bug log](docs/BUGS.md)

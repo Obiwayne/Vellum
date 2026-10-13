@@ -71,3 +71,16 @@ Shown for a single selected layer in Design mode (Dev Mode shows the same data r
 - **Dev notes**: free text for the developer, plus an open question that HANDOFF.md lists as needs-decision.
 - **States**: drawn states (a `State` / `Status` variant property, compared with the default variant), described rules (`hover`, `pressed`, `focus`, `focus-visible`, `disabled`, ... with a property and a value, colour values use the token picker) and the core states still missing on a component. **Make State property** turns a lone main into a set with `State = default | hover`, or names a set's only variant property `State`. In the bundle each state maps to its CSS pseudo-class or ARIA attribute and lists what it changes.
 - **Accessibility**: role (an inferred one is shown but not stored), label, focus order (0 goes back to reading order), contrast of a text layer per theme mode (WCAG, AA/AAA, large text rules; gradients and images are "not computed") and a warning for images with no alt text (an empty alt is a decision, "Mark decorative").
+
+## Screen, size limits and the Ready row (developer handoff)
+
+- **Ready for dev** (top of a top-level frame's inspector): a switch that marks the frame for the next handoff
+  export; *Marked at vN* shows the version it was marked in and an amber *Changed since vN* appears after an edit.
+  One undo step; the same mark is in the Layers context menu.
+- **Screen** (top-level frames only, `ScreenSection.tsx`): a name and a breakpoint (Mobile 390, Tablet 768,
+  Desktop 1280 or a custom width label). Frames with the same name are listed as one screen with several
+  breakpoints and exported together; the widest is the base. Stored as `CNode.dev.screen` through `setScreen`
+  (one undo step); only top-level frames can be tagged.
+- **Min / Max** width and height (Layout section): write `minWidth`, `maxWidth`, `minHeight`, `maxHeight`; *None* or
+  `0` removes the property, a mixed selection shows *Mixed*. The handoff reads them as the size rule's min and max.
+- All of these are edited in Design mode only; Dev Mode shows the same data read-only. See [HANDOFF.md](HANDOFF.md).

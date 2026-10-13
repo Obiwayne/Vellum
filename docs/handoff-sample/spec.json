@@ -1,0 +1,2893 @@
+{
+  "schema": "vellum.handoff/1",
+  "handoff": {
+    "version": 1,
+    "exportedAt": "2026-10-13T19:02:33.061Z",
+    "vellum": "1.0.0",
+    "fileId": "eBdBblZnQvb0",
+    "fileName": "Scratchpad"
+  },
+  "units": {
+    "length": "px",
+    "remBase": 16,
+    "precision": 2
+  },
+  "modes": [],
+  "screens": [
+    {
+      "id": "2-0",
+      "name": "Checkout",
+      "slug": "checkout",
+      "breakpoints": [
+        {
+          "bp": "Tablet",
+          "frameId": "2-0",
+          "width": 720,
+          "height": 371,
+          "png": "screens/checkout.tablet.png",
+          "root": {
+            "id": "2-0",
+            "name": "Frame",
+            "type": "frame",
+            "sizing": {
+              "w": {
+                "mode": "fixed",
+                "value": 720
+              },
+              "h": {
+                "mode": "fit"
+              }
+            },
+            "layout": {
+              "kind": "flex",
+              "padding": [
+                32,
+                32,
+                32,
+                32
+              ],
+              "summary": "Column, gap 24, padding 32",
+              "direction": "column",
+              "wrap": false,
+              "gap": 24,
+              "overflow": "visible"
+            },
+            "style": {
+              "authored": {
+                "width": 720,
+                "display": "flex",
+                "flexDirection": "column",
+                "gap": "24px",
+                "padding": "32px",
+                "background": "#F8FAFC",
+                "color": "#0F172A",
+                "fontFamily": "system-ui,'Segoe UI',Arial,sans-serif"
+              },
+              "resolved": {
+                "width": "720px",
+                "display": "flex",
+                "flexDirection": "column",
+                "gap": "24px",
+                "padding": "32px",
+                "background": "#F8FAFC",
+                "color": "#0F172A",
+                "fontFamily": "system-ui,'Segoe UI',Arial,sans-serif"
+              }
+            },
+            "paints": [
+              {
+                "kind": "fill",
+                "type": "solid",
+                "color": {
+                  "value": "#F8FAFC",
+                  "hex8": "#F8FAFCFF",
+                  "opacity": 1
+                }
+              }
+            ],
+            "effects": [],
+            "box": {
+              "width": 720,
+              "height": 371,
+              "relTo": "artboard",
+              "measured": true,
+              "x": 0,
+              "y": 0
+            },
+            "tokens": [],
+            "children": [
+              {
+                "id": "3-0",
+                "name": "Frame",
+                "type": "frame",
+                "sizing": {
+                  "w": {
+                    "mode": "fill"
+                  },
+                  "h": {
+                    "mode": "fit"
+                  }
+                },
+                "layout": {
+                  "kind": "flex",
+                  "padding": [
+                    0,
+                    0,
+                    0,
+                    0
+                  ],
+                  "summary": "Row",
+                  "direction": "row",
+                  "wrap": false,
+                  "align": "center",
+                  "justify": "space-between",
+                  "overflow": "visible"
+                },
+                "style": {
+                  "authored": {
+                    "display": "flex",
+                    "justifyContent": "space-between",
+                    "alignItems": "center"
+                  },
+                  "resolved": {
+                    "display": "flex",
+                    "justifyContent": "space-between",
+                    "alignItems": "center"
+                  }
+                },
+                "paints": [],
+                "effects": [],
+                "flowIndex": 0,
+                "box": {
+                  "width": 656,
+                  "height": 32,
+                  "relTo": "parent",
+                  "measured": true
+                },
+                "tokens": [],
+                "children": [
+                  {
+                    "id": "4-0",
+                    "name": "Checkout",
+                    "type": "text",
+                    "sizing": {
+                      "w": {
+                        "mode": "fit"
+                      },
+                      "h": {
+                        "mode": "fit"
+                      }
+                    },
+                    "layout": {
+                      "kind": "block",
+                      "padding": [
+                        0,
+                        0,
+                        0,
+                        0
+                      ],
+                      "summary": "Block",
+                      "overflow": "visible"
+                    },
+                    "style": {
+                      "authored": {
+                        "fontSize": "24px",
+                        "fontWeight": 700
+                      },
+                      "resolved": {
+                        "fontSize": "24px",
+                        "fontWeight": "700"
+                      }
+                    },
+                    "paints": [
+                      {
+                        "kind": "text",
+                        "type": "solid",
+                        "color": {
+                          "value": "#0F172A",
+                          "hex8": "#0F172AFF",
+                          "opacity": 1
+                        }
+                      }
+                    ],
+                    "effects": [],
+                    "flowIndex": 0,
+                    "text": {
+                      "content": "Checkout",
+                      "fontSize": 24,
+                      "fontWeight": 700,
+                      "lineHeightPx": 32,
+                      "lineHeightRatio": 1.3333,
+                      "lineHeightSource": "estimated",
+                      "letterSpacingPx": 0,
+                      "letterSpacingEm": 0,
+                      "fontFamily": "system-ui,'Segoe UI',Arial,sans-serif"
+                    },
+                    "box": {
+                      "width": 105.55,
+                      "height": 32,
+                      "relTo": "parent",
+                      "measured": true
+                    },
+                    "tokens": [],
+                    "children": [],
+                    "contrast": [
+                      {
+                        "mode": "base",
+                        "ratio": 17.06,
+                        "fg": "#0F172A",
+                        "bg": "#F8FAFC",
+                        "large": true,
+                        "aa": true,
+                        "aaa": true
+                      }
+                    ]
+                  },
+                  {
+                    "id": "5-0",
+                    "name": "Step 2 of 3",
+                    "type": "text",
+                    "sizing": {
+                      "w": {
+                        "mode": "fit"
+                      },
+                      "h": {
+                        "mode": "fit"
+                      }
+                    },
+                    "layout": {
+                      "kind": "block",
+                      "padding": [
+                        0,
+                        0,
+                        0,
+                        0
+                      ],
+                      "summary": "Block",
+                      "overflow": "visible"
+                    },
+                    "style": {
+                      "authored": {
+                        "fontSize": "14px",
+                        "color": "#475569"
+                      },
+                      "resolved": {
+                        "fontSize": "14px",
+                        "color": "#475569"
+                      }
+                    },
+                    "paints": [
+                      {
+                        "kind": "text",
+                        "type": "solid",
+                        "color": {
+                          "value": "#475569",
+                          "hex8": "#475569FF",
+                          "opacity": 1
+                        }
+                      }
+                    ],
+                    "effects": [],
+                    "flowIndex": 1,
+                    "text": {
+                      "content": "Step 2 of 3",
+                      "fontSize": 14,
+                      "fontWeight": 400,
+                      "lineHeightPx": 19,
+                      "lineHeightRatio": 1.3571,
+                      "lineHeightSource": "estimated",
+                      "letterSpacingPx": 0,
+                      "letterSpacingEm": 0,
+                      "fontFamily": "system-ui,'Segoe UI',Arial,sans-serif"
+                    },
+                    "box": {
+                      "width": 66.47,
+                      "height": 19,
+                      "relTo": "parent",
+                      "measured": true
+                    },
+                    "tokens": [],
+                    "children": [],
+                    "contrast": [
+                      {
+                        "mode": "base",
+                        "ratio": 7.24,
+                        "fg": "#475569",
+                        "bg": "#F8FAFC",
+                        "large": false,
+                        "aa": true,
+                        "aaa": true
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "id": "6-0",
+                "name": "Frame",
+                "type": "frame",
+                "sizing": {
+                  "w": {
+                    "mode": "fill"
+                  },
+                  "h": {
+                    "mode": "fit"
+                  }
+                },
+                "layout": {
+                  "kind": "flex",
+                  "padding": [
+                    20,
+                    20,
+                    20,
+                    20
+                  ],
+                  "summary": "Column, gap 12, padding 20",
+                  "direction": "column",
+                  "wrap": false,
+                  "gap": 12,
+                  "overflow": "visible"
+                },
+                "style": {
+                  "authored": {
+                    "display": "flex",
+                    "flexDirection": "column",
+                    "gap": "12px",
+                    "padding": "20px",
+                    "background": "#FFFFFF",
+                    "border": "1px solid #E2E8F0",
+                    "borderRadius": "12px"
+                  },
+                  "resolved": {
+                    "display": "flex",
+                    "flexDirection": "column",
+                    "gap": "12px",
+                    "padding": "20px",
+                    "background": "#FFFFFF",
+                    "border": "1px solid #E2E8F0",
+                    "borderRadius": "12px"
+                  }
+                },
+                "paints": [
+                  {
+                    "kind": "fill",
+                    "type": "solid",
+                    "color": {
+                      "value": "#FFFFFF",
+                      "hex8": "#FFFFFFFF",
+                      "opacity": 1
+                    }
+                  },
+                  {
+                    "kind": "stroke",
+                    "type": "solid",
+                    "width": 1,
+                    "style": "solid",
+                    "color": {
+                      "value": "#E2E8F0",
+                      "hex8": "#E2E8F0FF",
+                      "opacity": 1
+                    }
+                  }
+                ],
+                "effects": [],
+                "flowIndex": 1,
+                "radius": 12,
+                "box": {
+                  "width": 656,
+                  "height": 178,
+                  "relTo": "parent",
+                  "measured": true
+                },
+                "tokens": [],
+                "children": [
+                  {
+                    "id": "7-0",
+                    "name": "Frame",
+                    "type": "frame",
+                    "sizing": {
+                      "w": {
+                        "mode": "fill"
+                      },
+                      "h": {
+                        "mode": "fit"
+                      }
+                    },
+                    "layout": {
+                      "kind": "flex",
+                      "padding": [
+                        0,
+                        0,
+                        0,
+                        0
+                      ],
+                      "summary": "Row",
+                      "direction": "row",
+                      "wrap": false,
+                      "justify": "space-between",
+                      "overflow": "visible"
+                    },
+                    "style": {
+                      "authored": {
+                        "display": "flex",
+                        "justifyContent": "space-between",
+                        "fontSize": "16px"
+                      },
+                      "resolved": {
+                        "display": "flex",
+                        "justifyContent": "space-between",
+                        "fontSize": "16px"
+                      }
+                    },
+                    "paints": [],
+                    "effects": [],
+                    "flowIndex": 0,
+                    "box": {
+                      "width": 614,
+                      "height": 21,
+                      "relTo": "parent",
+                      "measured": true
+                    },
+                    "tokens": [],
+                    "children": [
+                      {
+                        "id": "8-0",
+                        "name": "Wireless keyboard",
+                        "type": "text",
+                        "sizing": {
+                          "w": {
+                            "mode": "fit"
+                          },
+                          "h": {
+                            "mode": "fit"
+                          }
+                        },
+                        "layout": {
+                          "kind": "block",
+                          "padding": [
+                            0,
+                            0,
+                            0,
+                            0
+                          ],
+                          "summary": "Block",
+                          "overflow": "visible"
+                        },
+                        "style": {
+                          "authored": {},
+                          "resolved": {}
+                        },
+                        "paints": [
+                          {
+                            "kind": "text",
+                            "type": "solid",
+                            "color": {
+                              "value": "#0F172A",
+                              "hex8": "#0F172AFF",
+                              "opacity": 1
+                            }
+                          }
+                        ],
+                        "effects": [],
+                        "flowIndex": 0,
+                        "text": {
+                          "content": "Wireless keyboard",
+                          "fontSize": 16,
+                          "fontWeight": 400,
+                          "lineHeightPx": 21,
+                          "lineHeightRatio": 1.3125,
+                          "lineHeightSource": "estimated",
+                          "letterSpacingPx": 0,
+                          "letterSpacingEm": 0,
+                          "fontFamily": "system-ui,'Segoe UI',Arial,sans-serif"
+                        },
+                        "box": {
+                          "width": 128.92,
+                          "height": 21,
+                          "relTo": "parent",
+                          "measured": true
+                        },
+                        "tokens": [],
+                        "children": [],
+                        "contrast": [
+                          {
+                            "mode": "base",
+                            "ratio": 17.85,
+                            "fg": "#0F172A",
+                            "bg": "#FFFFFF",
+                            "large": false,
+                            "aa": true,
+                            "aaa": true
+                          }
+                        ]
+                      },
+                      {
+                        "id": "9-0",
+                        "name": "$89.00",
+                        "type": "text",
+                        "sizing": {
+                          "w": {
+                            "mode": "fit"
+                          },
+                          "h": {
+                            "mode": "fit"
+                          }
+                        },
+                        "layout": {
+                          "kind": "block",
+                          "padding": [
+                            0,
+                            0,
+                            0,
+                            0
+                          ],
+                          "summary": "Block",
+                          "overflow": "visible"
+                        },
+                        "style": {
+                          "authored": {},
+                          "resolved": {}
+                        },
+                        "paints": [
+                          {
+                            "kind": "text",
+                            "type": "solid",
+                            "color": {
+                              "value": "#0F172A",
+                              "hex8": "#0F172AFF",
+                              "opacity": 1
+                            }
+                          }
+                        ],
+                        "effects": [],
+                        "flowIndex": 1,
+                        "text": {
+                          "content": "$89.00",
+                          "fontSize": 16,
+                          "fontWeight": 400,
+                          "lineHeightPx": 21,
+                          "lineHeightRatio": 1.3125,
+                          "lineHeightSource": "estimated",
+                          "letterSpacingPx": 0,
+                          "letterSpacingEm": 0,
+                          "fontFamily": "system-ui,'Segoe UI',Arial,sans-serif"
+                        },
+                        "box": {
+                          "width": 46.59,
+                          "height": 21,
+                          "relTo": "parent",
+                          "measured": true
+                        },
+                        "tokens": [],
+                        "children": [],
+                        "contrast": [
+                          {
+                            "mode": "base",
+                            "ratio": 17.85,
+                            "fg": "#0F172A",
+                            "bg": "#FFFFFF",
+                            "large": false,
+                            "aa": true,
+                            "aaa": true
+                          }
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "id": "10-0",
+                    "name": "Frame",
+                    "type": "frame",
+                    "sizing": {
+                      "w": {
+                        "mode": "fill"
+                      },
+                      "h": {
+                        "mode": "fit"
+                      }
+                    },
+                    "layout": {
+                      "kind": "flex",
+                      "padding": [
+                        0,
+                        0,
+                        0,
+                        0
+                      ],
+                      "summary": "Row",
+                      "direction": "row",
+                      "wrap": false,
+                      "justify": "space-between",
+                      "overflow": "visible"
+                    },
+                    "style": {
+                      "authored": {
+                        "display": "flex",
+                        "justifyContent": "space-between",
+                        "fontSize": "16px"
+                      },
+                      "resolved": {
+                        "display": "flex",
+                        "justifyContent": "space-between",
+                        "fontSize": "16px"
+                      }
+                    },
+                    "paints": [],
+                    "effects": [],
+                    "flowIndex": 1,
+                    "box": {
+                      "width": 614,
+                      "height": 21,
+                      "relTo": "parent",
+                      "measured": true
+                    },
+                    "tokens": [],
+                    "children": [
+                      {
+                        "id": "11-0",
+                        "name": "USB-C cable",
+                        "type": "text",
+                        "sizing": {
+                          "w": {
+                            "mode": "fit"
+                          },
+                          "h": {
+                            "mode": "fit"
+                          }
+                        },
+                        "layout": {
+                          "kind": "block",
+                          "padding": [
+                            0,
+                            0,
+                            0,
+                            0
+                          ],
+                          "summary": "Block",
+                          "overflow": "visible"
+                        },
+                        "style": {
+                          "authored": {},
+                          "resolved": {}
+                        },
+                        "paints": [
+                          {
+                            "kind": "text",
+                            "type": "solid",
+                            "color": {
+                              "value": "#0F172A",
+                              "hex8": "#0F172AFF",
+                              "opacity": 1
+                            }
+                          }
+                        ],
+                        "effects": [],
+                        "flowIndex": 0,
+                        "text": {
+                          "content": "USB-C cable",
+                          "fontSize": 16,
+                          "fontWeight": 400,
+                          "lineHeightPx": 21,
+                          "lineHeightRatio": 1.3125,
+                          "lineHeightSource": "estimated",
+                          "letterSpacingPx": 0,
+                          "letterSpacingEm": 0,
+                          "fontFamily": "system-ui,'Segoe UI',Arial,sans-serif"
+                        },
+                        "box": {
+                          "width": 86.53,
+                          "height": 21,
+                          "relTo": "parent",
+                          "measured": true
+                        },
+                        "tokens": [],
+                        "children": [],
+                        "contrast": [
+                          {
+                            "mode": "base",
+                            "ratio": 17.85,
+                            "fg": "#0F172A",
+                            "bg": "#FFFFFF",
+                            "large": false,
+                            "aa": true,
+                            "aaa": true
+                          }
+                        ]
+                      },
+                      {
+                        "id": "12-0",
+                        "name": "$12.00",
+                        "type": "text",
+                        "sizing": {
+                          "w": {
+                            "mode": "fit"
+                          },
+                          "h": {
+                            "mode": "fit"
+                          }
+                        },
+                        "layout": {
+                          "kind": "block",
+                          "padding": [
+                            0,
+                            0,
+                            0,
+                            0
+                          ],
+                          "summary": "Block",
+                          "overflow": "visible"
+                        },
+                        "style": {
+                          "authored": {},
+                          "resolved": {}
+                        },
+                        "paints": [
+                          {
+                            "kind": "text",
+                            "type": "solid",
+                            "color": {
+                              "value": "#0F172A",
+                              "hex8": "#0F172AFF",
+                              "opacity": 1
+                            }
+                          }
+                        ],
+                        "effects": [],
+                        "flowIndex": 1,
+                        "text": {
+                          "content": "$12.00",
+                          "fontSize": 16,
+                          "fontWeight": 400,
+                          "lineHeightPx": 21,
+                          "lineHeightRatio": 1.3125,
+                          "lineHeightSource": "estimated",
+                          "letterSpacingPx": 0,
+                          "letterSpacingEm": 0,
+                          "fontFamily": "system-ui,'Segoe UI',Arial,sans-serif"
+                        },
+                        "box": {
+                          "width": 46.59,
+                          "height": 21,
+                          "relTo": "parent",
+                          "measured": true
+                        },
+                        "tokens": [],
+                        "children": [],
+                        "contrast": [
+                          {
+                            "mode": "base",
+                            "ratio": 17.85,
+                            "fg": "#0F172A",
+                            "bg": "#FFFFFF",
+                            "large": false,
+                            "aa": true,
+                            "aaa": true
+                          }
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "id": "13-0",
+                    "name": "Frame",
+                    "type": "frame",
+                    "sizing": {
+                      "w": {
+                        "mode": "fill"
+                      },
+                      "h": {
+                        "mode": "fit"
+                      }
+                    },
+                    "layout": {
+                      "kind": "flex",
+                      "padding": [
+                        0,
+                        0,
+                        0,
+                        0
+                      ],
+                      "summary": "Row",
+                      "direction": "row",
+                      "wrap": false,
+                      "justify": "space-between",
+                      "overflow": "visible"
+                    },
+                    "style": {
+                      "authored": {
+                        "display": "flex",
+                        "justifyContent": "space-between",
+                        "fontSize": "16px"
+                      },
+                      "resolved": {
+                        "display": "flex",
+                        "justifyContent": "space-between",
+                        "fontSize": "16px"
+                      }
+                    },
+                    "paints": [],
+                    "effects": [],
+                    "flowIndex": 2,
+                    "box": {
+                      "width": 614,
+                      "height": 21,
+                      "relTo": "parent",
+                      "measured": true
+                    },
+                    "tokens": [],
+                    "children": [
+                      {
+                        "id": "14-0",
+                        "name": "Delivery",
+                        "type": "text",
+                        "sizing": {
+                          "w": {
+                            "mode": "fit"
+                          },
+                          "h": {
+                            "mode": "fit"
+                          }
+                        },
+                        "layout": {
+                          "kind": "block",
+                          "padding": [
+                            0,
+                            0,
+                            0,
+                            0
+                          ],
+                          "summary": "Block",
+                          "overflow": "visible"
+                        },
+                        "style": {
+                          "authored": {},
+                          "resolved": {}
+                        },
+                        "paints": [
+                          {
+                            "kind": "text",
+                            "type": "solid",
+                            "color": {
+                              "value": "#0F172A",
+                              "hex8": "#0F172AFF",
+                              "opacity": 1
+                            }
+                          }
+                        ],
+                        "effects": [],
+                        "flowIndex": 0,
+                        "text": {
+                          "content": "Delivery",
+                          "fontSize": 16,
+                          "fontWeight": 400,
+                          "lineHeightPx": 21,
+                          "lineHeightRatio": 1.3125,
+                          "lineHeightSource": "estimated",
+                          "letterSpacingPx": 0,
+                          "letterSpacingEm": 0,
+                          "fontFamily": "system-ui,'Segoe UI',Arial,sans-serif"
+                        },
+                        "box": {
+                          "width": 56.67,
+                          "height": 21,
+                          "relTo": "parent",
+                          "measured": true
+                        },
+                        "tokens": [],
+                        "children": [],
+                        "contrast": [
+                          {
+                            "mode": "base",
+                            "ratio": 17.85,
+                            "fg": "#0F172A",
+                            "bg": "#FFFFFF",
+                            "large": false,
+                            "aa": true,
+                            "aaa": true
+                          }
+                        ]
+                      },
+                      {
+                        "id": "15-0",
+                        "name": "$4.00",
+                        "type": "text",
+                        "sizing": {
+                          "w": {
+                            "mode": "fit"
+                          },
+                          "h": {
+                            "mode": "fit"
+                          }
+                        },
+                        "layout": {
+                          "kind": "block",
+                          "padding": [
+                            0,
+                            0,
+                            0,
+                            0
+                          ],
+                          "summary": "Block",
+                          "overflow": "visible"
+                        },
+                        "style": {
+                          "authored": {},
+                          "resolved": {}
+                        },
+                        "paints": [
+                          {
+                            "kind": "text",
+                            "type": "solid",
+                            "color": {
+                              "value": "#0F172A",
+                              "hex8": "#0F172AFF",
+                              "opacity": 1
+                            }
+                          }
+                        ],
+                        "effects": [],
+                        "flowIndex": 1,
+                        "text": {
+                          "content": "$4.00",
+                          "fontSize": 16,
+                          "fontWeight": 400,
+                          "lineHeightPx": 21,
+                          "lineHeightRatio": 1.3125,
+                          "lineHeightSource": "estimated",
+                          "letterSpacingPx": 0,
+                          "letterSpacingEm": 0,
+                          "fontFamily": "system-ui,'Segoe UI',Arial,sans-serif"
+                        },
+                        "box": {
+                          "width": 37.97,
+                          "height": 21,
+                          "relTo": "parent",
+                          "measured": true
+                        },
+                        "tokens": [],
+                        "children": [],
+                        "contrast": [
+                          {
+                            "mode": "base",
+                            "ratio": 17.85,
+                            "fg": "#0F172A",
+                            "bg": "#FFFFFF",
+                            "large": false,
+                            "aa": true,
+                            "aaa": true
+                          }
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "id": "16-0",
+                    "name": "Frame",
+                    "type": "frame",
+                    "sizing": {
+                      "w": {
+                        "mode": "fill"
+                      },
+                      "h": {
+                        "mode": "fit"
+                      }
+                    },
+                    "layout": {
+                      "kind": "flex",
+                      "padding": [
+                        12,
+                        0,
+                        0,
+                        0
+                      ],
+                      "summary": "Row, padding 12 0 0 0",
+                      "direction": "row",
+                      "wrap": false,
+                      "justify": "space-between",
+                      "overflow": "visible"
+                    },
+                    "style": {
+                      "authored": {
+                        "display": "flex",
+                        "justifyContent": "space-between",
+                        "fontSize": "18px",
+                        "fontWeight": 700,
+                        "paddingTop": "12px",
+                        "borderTop": "1px solid #E2E8F0"
+                      },
+                      "resolved": {
+                        "display": "flex",
+                        "justifyContent": "space-between",
+                        "fontSize": "18px",
+                        "fontWeight": "700",
+                        "paddingTop": "12px",
+                        "borderTop": "1px solid #E2E8F0"
+                      }
+                    },
+                    "paints": [
+                      {
+                        "kind": "stroke",
+                        "type": "solid",
+                        "width": [
+                          1,
+                          0,
+                          0,
+                          0
+                        ],
+                        "style": "solid",
+                        "color": {
+                          "value": "#E2E8F0",
+                          "hex8": "#E2E8F0FF",
+                          "opacity": 1
+                        }
+                      }
+                    ],
+                    "effects": [],
+                    "flowIndex": 3,
+                    "box": {
+                      "width": 614,
+                      "height": 37,
+                      "relTo": "parent",
+                      "measured": true
+                    },
+                    "tokens": [],
+                    "children": [
+                      {
+                        "id": "17-0",
+                        "name": "Total",
+                        "type": "text",
+                        "sizing": {
+                          "w": {
+                            "mode": "fit"
+                          },
+                          "h": {
+                            "mode": "fit"
+                          }
+                        },
+                        "layout": {
+                          "kind": "block",
+                          "padding": [
+                            0,
+                            0,
+                            0,
+                            0
+                          ],
+                          "summary": "Block",
+                          "overflow": "visible"
+                        },
+                        "style": {
+                          "authored": {},
+                          "resolved": {}
+                        },
+                        "paints": [
+                          {
+                            "kind": "text",
+                            "type": "solid",
+                            "color": {
+                              "value": "#0F172A",
+                              "hex8": "#0F172AFF",
+                              "opacity": 1
+                            }
+                          }
+                        ],
+                        "effects": [],
+                        "flowIndex": 0,
+                        "text": {
+                          "content": "Total",
+                          "fontSize": 18,
+                          "fontWeight": 700,
+                          "lineHeightPx": 24,
+                          "lineHeightRatio": 1.3333,
+                          "lineHeightSource": "estimated",
+                          "letterSpacingPx": 0,
+                          "letterSpacingEm": 0,
+                          "fontFamily": "system-ui,'Segoe UI',Arial,sans-serif"
+                        },
+                        "box": {
+                          "width": 41.75,
+                          "height": 24,
+                          "relTo": "parent",
+                          "measured": true
+                        },
+                        "tokens": [],
+                        "children": [],
+                        "contrast": [
+                          {
+                            "mode": "base",
+                            "ratio": 17.85,
+                            "fg": "#0F172A",
+                            "bg": "#FFFFFF",
+                            "large": false,
+                            "aa": true,
+                            "aaa": true
+                          }
+                        ]
+                      },
+                      {
+                        "id": "18-0",
+                        "name": "$105.00",
+                        "type": "text",
+                        "sizing": {
+                          "w": {
+                            "mode": "fit"
+                          },
+                          "h": {
+                            "mode": "fit"
+                          }
+                        },
+                        "layout": {
+                          "kind": "block",
+                          "padding": [
+                            0,
+                            0,
+                            0,
+                            0
+                          ],
+                          "summary": "Block",
+                          "overflow": "visible"
+                        },
+                        "style": {
+                          "authored": {},
+                          "resolved": {}
+                        },
+                        "paints": [
+                          {
+                            "kind": "text",
+                            "type": "solid",
+                            "color": {
+                              "value": "#0F172A",
+                              "hex8": "#0F172AFF",
+                              "opacity": 1
+                            }
+                          }
+                        ],
+                        "effects": [],
+                        "flowIndex": 1,
+                        "text": {
+                          "content": "$105.00",
+                          "fontSize": 18,
+                          "fontWeight": 700,
+                          "lineHeightPx": 24,
+                          "lineHeightRatio": 1.3333,
+                          "lineHeightSource": "estimated",
+                          "letterSpacingPx": 0,
+                          "letterSpacingEm": 0,
+                          "fontFamily": "system-ui,'Segoe UI',Arial,sans-serif"
+                        },
+                        "box": {
+                          "width": 67,
+                          "height": 24,
+                          "relTo": "parent",
+                          "measured": true
+                        },
+                        "tokens": [],
+                        "children": [],
+                        "contrast": [
+                          {
+                            "mode": "base",
+                            "ratio": 17.85,
+                            "fg": "#0F172A",
+                            "bg": "#FFFFFF",
+                            "large": false,
+                            "aa": true,
+                            "aaa": true
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "id": "20-0",
+                "name": "Frame",
+                "type": "frame",
+                "sizing": {
+                  "w": {
+                    "mode": "fill"
+                  },
+                  "h": {
+                    "mode": "fit"
+                  }
+                },
+                "layout": {
+                  "kind": "flex",
+                  "padding": [
+                    0,
+                    0,
+                    0,
+                    0
+                  ],
+                  "summary": "Row, gap 16",
+                  "direction": "row",
+                  "wrap": false,
+                  "gap": 16,
+                  "overflow": "visible"
+                },
+                "style": {
+                  "authored": {
+                    "display": "flex",
+                    "gap": "16px"
+                  },
+                  "resolved": {
+                    "display": "flex",
+                    "gap": "16px"
+                  }
+                },
+                "paints": [],
+                "effects": [],
+                "flowIndex": 2,
+                "box": {
+                  "width": 656,
+                  "height": 49,
+                  "relTo": "parent",
+                  "measured": true
+                },
+                "tokens": [],
+                "children": [
+                  {
+                    "id": "21-0",
+                    "name": "Pay $105.00",
+                    "type": "text",
+                    "sizing": {
+                      "w": {
+                        "mode": "fit"
+                      },
+                      "h": {
+                        "mode": "fit"
+                      }
+                    },
+                    "layout": {
+                      "kind": "block",
+                      "padding": [
+                        14,
+                        28,
+                        14,
+                        28
+                      ],
+                      "summary": "padding 14 28 14 28",
+                      "overflow": "visible"
+                    },
+                    "style": {
+                      "authored": {
+                        "padding": "14px 28px",
+                        "background": "#2563EB",
+                        "borderRadius": "8px",
+                        "color": "#FFFFFF",
+                        "fontSize": "16px",
+                        "fontWeight": 600
+                      },
+                      "resolved": {
+                        "padding": "14px 28px",
+                        "background": "#2563EB",
+                        "borderRadius": "8px",
+                        "color": "#FFFFFF",
+                        "fontSize": "16px",
+                        "fontWeight": "600"
+                      }
+                    },
+                    "paints": [
+                      {
+                        "kind": "fill",
+                        "type": "solid",
+                        "color": {
+                          "value": "#2563EB",
+                          "hex8": "#2563EBFF",
+                          "opacity": 1
+                        }
+                      },
+                      {
+                        "kind": "text",
+                        "type": "solid",
+                        "color": {
+                          "value": "#FFFFFF",
+                          "hex8": "#FFFFFFFF",
+                          "opacity": 1
+                        }
+                      }
+                    ],
+                    "effects": [],
+                    "flowIndex": 0,
+                    "radius": 8,
+                    "text": {
+                      "content": "Pay $105.00",
+                      "fontSize": 16,
+                      "fontWeight": 600,
+                      "lineHeightPx": 21,
+                      "lineHeightRatio": 1.3125,
+                      "lineHeightSource": "estimated",
+                      "letterSpacingPx": 0,
+                      "letterSpacingEm": 0,
+                      "fontFamily": "system-ui,'Segoe UI',Arial,sans-serif"
+                    },
+                    "box": {
+                      "width": 142.94,
+                      "height": 49,
+                      "relTo": "parent",
+                      "measured": true
+                    },
+                    "tokens": [],
+                    "children": [],
+                    "contrast": [
+                      {
+                        "mode": "base",
+                        "ratio": 5.17,
+                        "fg": "#FFFFFF",
+                        "bg": "#2563EB",
+                        "large": false,
+                        "aa": true,
+                        "aaa": false
+                      }
+                    ]
+                  },
+                  {
+                    "id": "22-0",
+                    "name": "Back to cart",
+                    "type": "text",
+                    "sizing": {
+                      "w": {
+                        "mode": "fit"
+                      },
+                      "h": {
+                        "mode": "fit"
+                      }
+                    },
+                    "layout": {
+                      "kind": "block",
+                      "padding": [
+                        14,
+                        28,
+                        14,
+                        28
+                      ],
+                      "summary": "padding 14 28 14 28",
+                      "overflow": "visible"
+                    },
+                    "style": {
+                      "authored": {
+                        "padding": "14px 28px",
+                        "background": "#E2E8F0",
+                        "borderRadius": "8px",
+                        "color": "#0F172A",
+                        "fontSize": "16px",
+                        "fontWeight": 600
+                      },
+                      "resolved": {
+                        "padding": "14px 28px",
+                        "background": "#E2E8F0",
+                        "borderRadius": "8px",
+                        "color": "#0F172A",
+                        "fontSize": "16px",
+                        "fontWeight": "600"
+                      }
+                    },
+                    "paints": [
+                      {
+                        "kind": "fill",
+                        "type": "solid",
+                        "color": {
+                          "value": "#E2E8F0",
+                          "hex8": "#E2E8F0FF",
+                          "opacity": 1
+                        }
+                      },
+                      {
+                        "kind": "text",
+                        "type": "solid",
+                        "color": {
+                          "value": "#0F172A",
+                          "hex8": "#0F172AFF",
+                          "opacity": 1
+                        }
+                      }
+                    ],
+                    "effects": [],
+                    "flowIndex": 1,
+                    "radius": 8,
+                    "text": {
+                      "content": "Back to cart",
+                      "fontSize": 16,
+                      "fontWeight": 600,
+                      "lineHeightPx": 21,
+                      "lineHeightRatio": 1.3125,
+                      "lineHeightSource": "estimated",
+                      "letterSpacingPx": 0,
+                      "letterSpacingEm": 0,
+                      "fontFamily": "system-ui,'Segoe UI',Arial,sans-serif"
+                    },
+                    "box": {
+                      "width": 142.02,
+                      "height": 49,
+                      "relTo": "parent",
+                      "measured": true
+                    },
+                    "tokens": [],
+                    "children": [],
+                    "contrast": [
+                      {
+                        "mode": "base",
+                        "ratio": 14.48,
+                        "fg": "#0F172A",
+                        "bg": "#E2E8F0",
+                        "large": false,
+                        "aa": true,
+                        "aaa": true
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          },
+          "ready": {
+            "at": 1
+          }
+        },
+        {
+          "bp": "Mobile",
+          "frameId": "23-0",
+          "width": 360,
+          "height": 305,
+          "png": "screens/checkout.mobile.png",
+          "root": {
+            "id": "23-0",
+            "name": "Frame",
+            "type": "frame",
+            "sizing": {
+              "w": {
+                "mode": "fixed",
+                "value": 360
+              },
+              "h": {
+                "mode": "fit"
+              }
+            },
+            "layout": {
+              "kind": "flex",
+              "padding": [
+                20,
+                20,
+                20,
+                20
+              ],
+              "summary": "Column, gap 16, padding 20",
+              "direction": "column",
+              "wrap": false,
+              "gap": 16,
+              "overflow": "visible"
+            },
+            "style": {
+              "authored": {
+                "width": 360,
+                "display": "flex",
+                "flexDirection": "column",
+                "gap": "16px",
+                "padding": "20px",
+                "background": "#F8FAFC",
+                "color": "#0F172A",
+                "fontFamily": "system-ui,'Segoe UI',Arial,sans-serif"
+              },
+              "resolved": {
+                "width": "360px",
+                "display": "flex",
+                "flexDirection": "column",
+                "gap": "16px",
+                "padding": "20px",
+                "background": "#F8FAFC",
+                "color": "#0F172A",
+                "fontFamily": "system-ui,'Segoe UI',Arial,sans-serif"
+              }
+            },
+            "paints": [
+              {
+                "kind": "fill",
+                "type": "solid",
+                "color": {
+                  "value": "#F8FAFC",
+                  "hex8": "#F8FAFCFF",
+                  "opacity": 1
+                }
+              }
+            ],
+            "effects": [],
+            "box": {
+              "width": 360,
+              "height": 305,
+              "relTo": "artboard",
+              "measured": true,
+              "x": 0,
+              "y": 0
+            },
+            "tokens": [],
+            "children": [
+              {
+                "id": "24-0",
+                "name": "Frame",
+                "type": "frame",
+                "sizing": {
+                  "w": {
+                    "mode": "fill"
+                  },
+                  "h": {
+                    "mode": "fit"
+                  }
+                },
+                "layout": {
+                  "kind": "flex",
+                  "padding": [
+                    0,
+                    0,
+                    0,
+                    0
+                  ],
+                  "summary": "Row",
+                  "direction": "row",
+                  "wrap": false,
+                  "align": "center",
+                  "justify": "space-between",
+                  "overflow": "visible"
+                },
+                "style": {
+                  "authored": {
+                    "display": "flex",
+                    "justifyContent": "space-between",
+                    "alignItems": "center"
+                  },
+                  "resolved": {
+                    "display": "flex",
+                    "justifyContent": "space-between",
+                    "alignItems": "center"
+                  }
+                },
+                "paints": [],
+                "effects": [],
+                "flowIndex": 0,
+                "box": {
+                  "width": 320,
+                  "height": 27,
+                  "relTo": "parent",
+                  "measured": true
+                },
+                "tokens": [],
+                "children": [
+                  {
+                    "id": "25-0",
+                    "name": "Checkout",
+                    "type": "text",
+                    "sizing": {
+                      "w": {
+                        "mode": "fit"
+                      },
+                      "h": {
+                        "mode": "fit"
+                      }
+                    },
+                    "layout": {
+                      "kind": "block",
+                      "padding": [
+                        0,
+                        0,
+                        0,
+                        0
+                      ],
+                      "summary": "Block",
+                      "overflow": "visible"
+                    },
+                    "style": {
+                      "authored": {
+                        "fontSize": "20px",
+                        "fontWeight": 700
+                      },
+                      "resolved": {
+                        "fontSize": "20px",
+                        "fontWeight": "700"
+                      }
+                    },
+                    "paints": [
+                      {
+                        "kind": "text",
+                        "type": "solid",
+                        "color": {
+                          "value": "#0F172A",
+                          "hex8": "#0F172AFF",
+                          "opacity": 1
+                        }
+                      }
+                    ],
+                    "effects": [],
+                    "flowIndex": 0,
+                    "text": {
+                      "content": "Checkout",
+                      "fontSize": 20,
+                      "fontWeight": 700,
+                      "lineHeightPx": 27,
+                      "lineHeightRatio": 1.35,
+                      "lineHeightSource": "estimated",
+                      "letterSpacingPx": 0,
+                      "letterSpacingEm": 0,
+                      "fontFamily": "system-ui,'Segoe UI',Arial,sans-serif"
+                    },
+                    "box": {
+                      "width": 87.95,
+                      "height": 27,
+                      "relTo": "parent",
+                      "measured": true
+                    },
+                    "tokens": [],
+                    "children": [],
+                    "contrast": [
+                      {
+                        "mode": "base",
+                        "ratio": 17.06,
+                        "fg": "#0F172A",
+                        "bg": "#F8FAFC",
+                        "large": true,
+                        "aa": true,
+                        "aaa": true
+                      }
+                    ]
+                  },
+                  {
+                    "id": "26-0",
+                    "name": "2 of 3",
+                    "type": "text",
+                    "sizing": {
+                      "w": {
+                        "mode": "fit"
+                      },
+                      "h": {
+                        "mode": "fit"
+                      }
+                    },
+                    "layout": {
+                      "kind": "block",
+                      "padding": [
+                        0,
+                        0,
+                        0,
+                        0
+                      ],
+                      "summary": "Block",
+                      "overflow": "visible"
+                    },
+                    "style": {
+                      "authored": {
+                        "fontSize": "13px",
+                        "color": "#475569"
+                      },
+                      "resolved": {
+                        "fontSize": "13px",
+                        "color": "#475569"
+                      }
+                    },
+                    "paints": [
+                      {
+                        "kind": "text",
+                        "type": "solid",
+                        "color": {
+                          "value": "#475569",
+                          "hex8": "#475569FF",
+                          "opacity": 1
+                        }
+                      }
+                    ],
+                    "effects": [],
+                    "flowIndex": 1,
+                    "text": {
+                      "content": "2 of 3",
+                      "fontSize": 13,
+                      "fontWeight": 400,
+                      "lineHeightPx": 17,
+                      "lineHeightRatio": 1.3077,
+                      "lineHeightSource": "estimated",
+                      "letterSpacingPx": 0,
+                      "letterSpacingEm": 0,
+                      "fontFamily": "system-ui,'Segoe UI',Arial,sans-serif"
+                    },
+                    "box": {
+                      "width": 32.83,
+                      "height": 17,
+                      "relTo": "parent",
+                      "measured": true
+                    },
+                    "tokens": [],
+                    "children": [],
+                    "contrast": [
+                      {
+                        "mode": "base",
+                        "ratio": 7.24,
+                        "fg": "#475569",
+                        "bg": "#F8FAFC",
+                        "large": false,
+                        "aa": true,
+                        "aaa": true
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "id": "27-0",
+                "name": "Frame",
+                "type": "frame",
+                "sizing": {
+                  "w": {
+                    "mode": "fill"
+                  },
+                  "h": {
+                    "mode": "fit"
+                  }
+                },
+                "layout": {
+                  "kind": "flex",
+                  "padding": [
+                    16,
+                    16,
+                    16,
+                    16
+                  ],
+                  "summary": "Column, gap 10, padding 16",
+                  "direction": "column",
+                  "wrap": false,
+                  "gap": 10,
+                  "overflow": "visible"
+                },
+                "style": {
+                  "authored": {
+                    "display": "flex",
+                    "flexDirection": "column",
+                    "gap": "10px",
+                    "padding": "16px",
+                    "background": "#FFFFFF",
+                    "border": "1px solid #E2E8F0",
+                    "borderRadius": "12px"
+                  },
+                  "resolved": {
+                    "display": "flex",
+                    "flexDirection": "column",
+                    "gap": "10px",
+                    "padding": "16px",
+                    "background": "#FFFFFF",
+                    "border": "1px solid #E2E8F0",
+                    "borderRadius": "12px"
+                  }
+                },
+                "paints": [
+                  {
+                    "kind": "fill",
+                    "type": "solid",
+                    "color": {
+                      "value": "#FFFFFF",
+                      "hex8": "#FFFFFFFF",
+                      "opacity": 1
+                    }
+                  },
+                  {
+                    "kind": "stroke",
+                    "type": "solid",
+                    "width": 1,
+                    "style": "solid",
+                    "color": {
+                      "value": "#E2E8F0",
+                      "hex8": "#E2E8F0FF",
+                      "opacity": 1
+                    }
+                  }
+                ],
+                "effects": [],
+                "flowIndex": 1,
+                "radius": 12,
+                "box": {
+                  "width": 320,
+                  "height": 157,
+                  "relTo": "parent",
+                  "measured": true
+                },
+                "tokens": [],
+                "children": [
+                  {
+                    "id": "28-0",
+                    "name": "Frame",
+                    "type": "frame",
+                    "sizing": {
+                      "w": {
+                        "mode": "fill"
+                      },
+                      "h": {
+                        "mode": "fit"
+                      }
+                    },
+                    "layout": {
+                      "kind": "flex",
+                      "padding": [
+                        0,
+                        0,
+                        0,
+                        0
+                      ],
+                      "summary": "Row",
+                      "direction": "row",
+                      "wrap": false,
+                      "justify": "space-between",
+                      "overflow": "visible"
+                    },
+                    "style": {
+                      "authored": {
+                        "display": "flex",
+                        "justifyContent": "space-between",
+                        "fontSize": "15px"
+                      },
+                      "resolved": {
+                        "display": "flex",
+                        "justifyContent": "space-between",
+                        "fontSize": "15px"
+                      }
+                    },
+                    "paints": [],
+                    "effects": [],
+                    "flowIndex": 0,
+                    "box": {
+                      "width": 286,
+                      "height": 20,
+                      "relTo": "parent",
+                      "measured": true
+                    },
+                    "tokens": [],
+                    "children": [
+                      {
+                        "id": "29-0",
+                        "name": "Wireless keyboard",
+                        "type": "text",
+                        "sizing": {
+                          "w": {
+                            "mode": "fit"
+                          },
+                          "h": {
+                            "mode": "fit"
+                          }
+                        },
+                        "layout": {
+                          "kind": "block",
+                          "padding": [
+                            0,
+                            0,
+                            0,
+                            0
+                          ],
+                          "summary": "Block",
+                          "overflow": "visible"
+                        },
+                        "style": {
+                          "authored": {},
+                          "resolved": {}
+                        },
+                        "paints": [
+                          {
+                            "kind": "text",
+                            "type": "solid",
+                            "color": {
+                              "value": "#0F172A",
+                              "hex8": "#0F172AFF",
+                              "opacity": 1
+                            }
+                          }
+                        ],
+                        "effects": [],
+                        "flowIndex": 0,
+                        "text": {
+                          "content": "Wireless keyboard",
+                          "fontSize": 15,
+                          "fontWeight": 400,
+                          "lineHeightPx": 20,
+                          "lineHeightRatio": 1.3333,
+                          "lineHeightSource": "estimated",
+                          "letterSpacingPx": 0,
+                          "letterSpacingEm": 0,
+                          "fontFamily": "system-ui,'Segoe UI',Arial,sans-serif"
+                        },
+                        "box": {
+                          "width": 120.88,
+                          "height": 20,
+                          "relTo": "parent",
+                          "measured": true
+                        },
+                        "tokens": [],
+                        "children": [],
+                        "contrast": [
+                          {
+                            "mode": "base",
+                            "ratio": 17.85,
+                            "fg": "#0F172A",
+                            "bg": "#FFFFFF",
+                            "large": false,
+                            "aa": true,
+                            "aaa": true
+                          }
+                        ]
+                      },
+                      {
+                        "id": "30-0",
+                        "name": "$89.00",
+                        "type": "text",
+                        "sizing": {
+                          "w": {
+                            "mode": "fit"
+                          },
+                          "h": {
+                            "mode": "fit"
+                          }
+                        },
+                        "layout": {
+                          "kind": "block",
+                          "padding": [
+                            0,
+                            0,
+                            0,
+                            0
+                          ],
+                          "summary": "Block",
+                          "overflow": "visible"
+                        },
+                        "style": {
+                          "authored": {},
+                          "resolved": {}
+                        },
+                        "paints": [
+                          {
+                            "kind": "text",
+                            "type": "solid",
+                            "color": {
+                              "value": "#0F172A",
+                              "hex8": "#0F172AFF",
+                              "opacity": 1
+                            }
+                          }
+                        ],
+                        "effects": [],
+                        "flowIndex": 1,
+                        "text": {
+                          "content": "$89.00",
+                          "fontSize": 15,
+                          "fontWeight": 400,
+                          "lineHeightPx": 20,
+                          "lineHeightRatio": 1.3333,
+                          "lineHeightSource": "estimated",
+                          "letterSpacingPx": 0,
+                          "letterSpacingEm": 0,
+                          "fontFamily": "system-ui,'Segoe UI',Arial,sans-serif"
+                        },
+                        "box": {
+                          "width": 43.69,
+                          "height": 20,
+                          "relTo": "parent",
+                          "measured": true
+                        },
+                        "tokens": [],
+                        "children": [],
+                        "contrast": [
+                          {
+                            "mode": "base",
+                            "ratio": 17.85,
+                            "fg": "#0F172A",
+                            "bg": "#FFFFFF",
+                            "large": false,
+                            "aa": true,
+                            "aaa": true
+                          }
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "id": "31-0",
+                    "name": "Frame",
+                    "type": "frame",
+                    "sizing": {
+                      "w": {
+                        "mode": "fill"
+                      },
+                      "h": {
+                        "mode": "fit"
+                      }
+                    },
+                    "layout": {
+                      "kind": "flex",
+                      "padding": [
+                        0,
+                        0,
+                        0,
+                        0
+                      ],
+                      "summary": "Row",
+                      "direction": "row",
+                      "wrap": false,
+                      "justify": "space-between",
+                      "overflow": "visible"
+                    },
+                    "style": {
+                      "authored": {
+                        "display": "flex",
+                        "justifyContent": "space-between",
+                        "fontSize": "15px"
+                      },
+                      "resolved": {
+                        "display": "flex",
+                        "justifyContent": "space-between",
+                        "fontSize": "15px"
+                      }
+                    },
+                    "paints": [],
+                    "effects": [],
+                    "flowIndex": 1,
+                    "box": {
+                      "width": 286,
+                      "height": 20,
+                      "relTo": "parent",
+                      "measured": true
+                    },
+                    "tokens": [],
+                    "children": [
+                      {
+                        "id": "32-0",
+                        "name": "USB-C cable",
+                        "type": "text",
+                        "sizing": {
+                          "w": {
+                            "mode": "fit"
+                          },
+                          "h": {
+                            "mode": "fit"
+                          }
+                        },
+                        "layout": {
+                          "kind": "block",
+                          "padding": [
+                            0,
+                            0,
+                            0,
+                            0
+                          ],
+                          "summary": "Block",
+                          "overflow": "visible"
+                        },
+                        "style": {
+                          "authored": {},
+                          "resolved": {}
+                        },
+                        "paints": [
+                          {
+                            "kind": "text",
+                            "type": "solid",
+                            "color": {
+                              "value": "#0F172A",
+                              "hex8": "#0F172AFF",
+                              "opacity": 1
+                            }
+                          }
+                        ],
+                        "effects": [],
+                        "flowIndex": 0,
+                        "text": {
+                          "content": "USB-C cable",
+                          "fontSize": 15,
+                          "fontWeight": 400,
+                          "lineHeightPx": 20,
+                          "lineHeightRatio": 1.3333,
+                          "lineHeightSource": "estimated",
+                          "letterSpacingPx": 0,
+                          "letterSpacingEm": 0,
+                          "fontFamily": "system-ui,'Segoe UI',Arial,sans-serif"
+                        },
+                        "box": {
+                          "width": 81.13,
+                          "height": 20,
+                          "relTo": "parent",
+                          "measured": true
+                        },
+                        "tokens": [],
+                        "children": [],
+                        "contrast": [
+                          {
+                            "mode": "base",
+                            "ratio": 17.85,
+                            "fg": "#0F172A",
+                            "bg": "#FFFFFF",
+                            "large": false,
+                            "aa": true,
+                            "aaa": true
+                          }
+                        ]
+                      },
+                      {
+                        "id": "33-0",
+                        "name": "$12.00",
+                        "type": "text",
+                        "sizing": {
+                          "w": {
+                            "mode": "fit"
+                          },
+                          "h": {
+                            "mode": "fit"
+                          }
+                        },
+                        "layout": {
+                          "kind": "block",
+                          "padding": [
+                            0,
+                            0,
+                            0,
+                            0
+                          ],
+                          "summary": "Block",
+                          "overflow": "visible"
+                        },
+                        "style": {
+                          "authored": {},
+                          "resolved": {}
+                        },
+                        "paints": [
+                          {
+                            "kind": "text",
+                            "type": "solid",
+                            "color": {
+                              "value": "#0F172A",
+                              "hex8": "#0F172AFF",
+                              "opacity": 1
+                            }
+                          }
+                        ],
+                        "effects": [],
+                        "flowIndex": 1,
+                        "text": {
+                          "content": "$12.00",
+                          "fontSize": 15,
+                          "fontWeight": 400,
+                          "lineHeightPx": 20,
+                          "lineHeightRatio": 1.3333,
+                          "lineHeightSource": "estimated",
+                          "letterSpacingPx": 0,
+                          "letterSpacingEm": 0,
+                          "fontFamily": "system-ui,'Segoe UI',Arial,sans-serif"
+                        },
+                        "box": {
+                          "width": 43.69,
+                          "height": 20,
+                          "relTo": "parent",
+                          "measured": true
+                        },
+                        "tokens": [],
+                        "children": [],
+                        "contrast": [
+                          {
+                            "mode": "base",
+                            "ratio": 17.85,
+                            "fg": "#0F172A",
+                            "bg": "#FFFFFF",
+                            "large": false,
+                            "aa": true,
+                            "aaa": true
+                          }
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "id": "34-0",
+                    "name": "Frame",
+                    "type": "frame",
+                    "sizing": {
+                      "w": {
+                        "mode": "fill"
+                      },
+                      "h": {
+                        "mode": "fit"
+                      }
+                    },
+                    "layout": {
+                      "kind": "flex",
+                      "padding": [
+                        0,
+                        0,
+                        0,
+                        0
+                      ],
+                      "summary": "Row",
+                      "direction": "row",
+                      "wrap": false,
+                      "justify": "space-between",
+                      "overflow": "visible"
+                    },
+                    "style": {
+                      "authored": {
+                        "display": "flex",
+                        "justifyContent": "space-between",
+                        "fontSize": "15px"
+                      },
+                      "resolved": {
+                        "display": "flex",
+                        "justifyContent": "space-between",
+                        "fontSize": "15px"
+                      }
+                    },
+                    "paints": [],
+                    "effects": [],
+                    "flowIndex": 2,
+                    "box": {
+                      "width": 286,
+                      "height": 20,
+                      "relTo": "parent",
+                      "measured": true
+                    },
+                    "tokens": [],
+                    "children": [
+                      {
+                        "id": "35-0",
+                        "name": "Delivery",
+                        "type": "text",
+                        "sizing": {
+                          "w": {
+                            "mode": "fit"
+                          },
+                          "h": {
+                            "mode": "fit"
+                          }
+                        },
+                        "layout": {
+                          "kind": "block",
+                          "padding": [
+                            0,
+                            0,
+                            0,
+                            0
+                          ],
+                          "summary": "Block",
+                          "overflow": "visible"
+                        },
+                        "style": {
+                          "authored": {},
+                          "resolved": {}
+                        },
+                        "paints": [
+                          {
+                            "kind": "text",
+                            "type": "solid",
+                            "color": {
+                              "value": "#0F172A",
+                              "hex8": "#0F172AFF",
+                              "opacity": 1
+                            }
+                          }
+                        ],
+                        "effects": [],
+                        "flowIndex": 0,
+                        "text": {
+                          "content": "Delivery",
+                          "fontSize": 15,
+                          "fontWeight": 400,
+                          "lineHeightPx": 20,
+                          "lineHeightRatio": 1.3333,
+                          "lineHeightSource": "estimated",
+                          "letterSpacingPx": 0,
+                          "letterSpacingEm": 0,
+                          "fontFamily": "system-ui,'Segoe UI',Arial,sans-serif"
+                        },
+                        "box": {
+                          "width": 53.14,
+                          "height": 20,
+                          "relTo": "parent",
+                          "measured": true
+                        },
+                        "tokens": [],
+                        "children": [],
+                        "contrast": [
+                          {
+                            "mode": "base",
+                            "ratio": 17.85,
+                            "fg": "#0F172A",
+                            "bg": "#FFFFFF",
+                            "large": false,
+                            "aa": true,
+                            "aaa": true
+                          }
+                        ]
+                      },
+                      {
+                        "id": "36-0",
+                        "name": "$4.00",
+                        "type": "text",
+                        "sizing": {
+                          "w": {
+                            "mode": "fit"
+                          },
+                          "h": {
+                            "mode": "fit"
+                          }
+                        },
+                        "layout": {
+                          "kind": "block",
+                          "padding": [
+                            0,
+                            0,
+                            0,
+                            0
+                          ],
+                          "summary": "Block",
+                          "overflow": "visible"
+                        },
+                        "style": {
+                          "authored": {},
+                          "resolved": {}
+                        },
+                        "paints": [
+                          {
+                            "kind": "text",
+                            "type": "solid",
+                            "color": {
+                              "value": "#0F172A",
+                              "hex8": "#0F172AFF",
+                              "opacity": 1
+                            }
+                          }
+                        ],
+                        "effects": [],
+                        "flowIndex": 1,
+                        "text": {
+                          "content": "$4.00",
+                          "fontSize": 15,
+                          "fontWeight": 400,
+                          "lineHeightPx": 20,
+                          "lineHeightRatio": 1.3333,
+                          "lineHeightSource": "estimated",
+                          "letterSpacingPx": 0,
+                          "letterSpacingEm": 0,
+                          "fontFamily": "system-ui,'Segoe UI',Arial,sans-serif"
+                        },
+                        "box": {
+                          "width": 35.61,
+                          "height": 20,
+                          "relTo": "parent",
+                          "measured": true
+                        },
+                        "tokens": [],
+                        "children": [],
+                        "contrast": [
+                          {
+                            "mode": "base",
+                            "ratio": 17.85,
+                            "fg": "#0F172A",
+                            "bg": "#FFFFFF",
+                            "large": false,
+                            "aa": true,
+                            "aaa": true
+                          }
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "id": "37-0",
+                    "name": "Frame",
+                    "type": "frame",
+                    "sizing": {
+                      "w": {
+                        "mode": "fill"
+                      },
+                      "h": {
+                        "mode": "fit"
+                      }
+                    },
+                    "layout": {
+                      "kind": "flex",
+                      "padding": [
+                        10,
+                        0,
+                        0,
+                        0
+                      ],
+                      "summary": "Row, padding 10 0 0 0",
+                      "direction": "row",
+                      "wrap": false,
+                      "justify": "space-between",
+                      "overflow": "visible"
+                    },
+                    "style": {
+                      "authored": {
+                        "display": "flex",
+                        "justifyContent": "space-between",
+                        "fontSize": "17px",
+                        "fontWeight": 700,
+                        "paddingTop": "10px",
+                        "borderTop": "1px solid #E2E8F0"
+                      },
+                      "resolved": {
+                        "display": "flex",
+                        "justifyContent": "space-between",
+                        "fontSize": "17px",
+                        "fontWeight": "700",
+                        "paddingTop": "10px",
+                        "borderTop": "1px solid #E2E8F0"
+                      }
+                    },
+                    "paints": [
+                      {
+                        "kind": "stroke",
+                        "type": "solid",
+                        "width": [
+                          1,
+                          0,
+                          0,
+                          0
+                        ],
+                        "style": "solid",
+                        "color": {
+                          "value": "#E2E8F0",
+                          "hex8": "#E2E8F0FF",
+                          "opacity": 1
+                        }
+                      }
+                    ],
+                    "effects": [],
+                    "flowIndex": 3,
+                    "box": {
+                      "width": 286,
+                      "height": 33,
+                      "relTo": "parent",
+                      "measured": true
+                    },
+                    "tokens": [],
+                    "children": [
+                      {
+                        "id": "38-0",
+                        "name": "Total",
+                        "type": "text",
+                        "sizing": {
+                          "w": {
+                            "mode": "fit"
+                          },
+                          "h": {
+                            "mode": "fit"
+                          }
+                        },
+                        "layout": {
+                          "kind": "block",
+                          "padding": [
+                            0,
+                            0,
+                            0,
+                            0
+                          ],
+                          "summary": "Block",
+                          "overflow": "visible"
+                        },
+                        "style": {
+                          "authored": {},
+                          "resolved": {}
+                        },
+                        "paints": [
+                          {
+                            "kind": "text",
+                            "type": "solid",
+                            "color": {
+                              "value": "#0F172A",
+                              "hex8": "#0F172AFF",
+                              "opacity": 1
+                            }
+                          }
+                        ],
+                        "effects": [],
+                        "flowIndex": 0,
+                        "text": {
+                          "content": "Total",
+                          "fontSize": 17,
+                          "fontWeight": 700,
+                          "lineHeightPx": 22,
+                          "lineHeightRatio": 1.2941,
+                          "lineHeightSource": "estimated",
+                          "letterSpacingPx": 0,
+                          "letterSpacingEm": 0,
+                          "fontFamily": "system-ui,'Segoe UI',Arial,sans-serif"
+                        },
+                        "box": {
+                          "width": 39.42,
+                          "height": 22,
+                          "relTo": "parent",
+                          "measured": true
+                        },
+                        "tokens": [],
+                        "children": [],
+                        "contrast": [
+                          {
+                            "mode": "base",
+                            "ratio": 17.85,
+                            "fg": "#0F172A",
+                            "bg": "#FFFFFF",
+                            "large": false,
+                            "aa": true,
+                            "aaa": true
+                          }
+                        ]
+                      },
+                      {
+                        "id": "39-0",
+                        "name": "$105.00",
+                        "type": "text",
+                        "sizing": {
+                          "w": {
+                            "mode": "fit"
+                          },
+                          "h": {
+                            "mode": "fit"
+                          }
+                        },
+                        "layout": {
+                          "kind": "block",
+                          "padding": [
+                            0,
+                            0,
+                            0,
+                            0
+                          ],
+                          "summary": "Block",
+                          "overflow": "visible"
+                        },
+                        "style": {
+                          "authored": {},
+                          "resolved": {}
+                        },
+                        "paints": [
+                          {
+                            "kind": "text",
+                            "type": "solid",
+                            "color": {
+                              "value": "#0F172A",
+                              "hex8": "#0F172AFF",
+                              "opacity": 1
+                            }
+                          }
+                        ],
+                        "effects": [],
+                        "flowIndex": 1,
+                        "text": {
+                          "content": "$105.00",
+                          "fontSize": 17,
+                          "fontWeight": 700,
+                          "lineHeightPx": 22,
+                          "lineHeightRatio": 1.2941,
+                          "lineHeightSource": "estimated",
+                          "letterSpacingPx": 0,
+                          "letterSpacingEm": 0,
+                          "fontFamily": "system-ui,'Segoe UI',Arial,sans-serif"
+                        },
+                        "box": {
+                          "width": 63.28,
+                          "height": 22,
+                          "relTo": "parent",
+                          "measured": true
+                        },
+                        "tokens": [],
+                        "children": [],
+                        "contrast": [
+                          {
+                            "mode": "base",
+                            "ratio": 17.85,
+                            "fg": "#0F172A",
+                            "bg": "#FFFFFF",
+                            "large": false,
+                            "aa": true,
+                            "aaa": true
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "id": "40-0",
+                "name": "Pay $105.00",
+                "type": "text",
+                "sizing": {
+                  "w": {
+                    "mode": "fit"
+                  },
+                  "h": {
+                    "mode": "fit"
+                  }
+                },
+                "layout": {
+                  "kind": "block",
+                  "padding": [
+                    14,
+                    20,
+                    14,
+                    20
+                  ],
+                  "summary": "padding 14 20 14 20",
+                  "overflow": "visible"
+                },
+                "style": {
+                  "authored": {
+                    "padding": "14px 20px",
+                    "background": "#2563EB",
+                    "borderRadius": "8px",
+                    "color": "#FFFFFF",
+                    "fontSize": "16px",
+                    "fontWeight": 600,
+                    "textAlign": "center"
+                  },
+                  "resolved": {
+                    "padding": "14px 20px",
+                    "background": "#2563EB",
+                    "borderRadius": "8px",
+                    "color": "#FFFFFF",
+                    "fontSize": "16px",
+                    "fontWeight": "600",
+                    "textAlign": "center"
+                  }
+                },
+                "paints": [
+                  {
+                    "kind": "fill",
+                    "type": "solid",
+                    "color": {
+                      "value": "#2563EB",
+                      "hex8": "#2563EBFF",
+                      "opacity": 1
+                    }
+                  },
+                  {
+                    "kind": "text",
+                    "type": "solid",
+                    "color": {
+                      "value": "#FFFFFF",
+                      "hex8": "#FFFFFFFF",
+                      "opacity": 1
+                    }
+                  }
+                ],
+                "effects": [],
+                "flowIndex": 2,
+                "radius": 8,
+                "text": {
+                  "content": "Pay $105.00",
+                  "fontSize": 16,
+                  "fontWeight": 600,
+                  "lineHeightPx": 21,
+                  "lineHeightRatio": 1.3125,
+                  "lineHeightSource": "estimated",
+                  "letterSpacingPx": 0,
+                  "letterSpacingEm": 0,
+                  "fontFamily": "system-ui,'Segoe UI',Arial,sans-serif",
+                  "textAlign": "center"
+                },
+                "box": {
+                  "width": 320,
+                  "height": 49,
+                  "relTo": "parent",
+                  "measured": true
+                },
+                "tokens": [],
+                "children": [],
+                "contrast": [
+                  {
+                    "mode": "base",
+                    "ratio": 5.17,
+                    "fg": "#FFFFFF",
+                    "bg": "#2563EB",
+                    "large": false,
+                    "aa": true,
+                    "aaa": false
+                  }
+                ]
+              }
+            ]
+          },
+          "ready": {
+            "at": 1
+          },
+          "delta": {
+            "base": "Tablet",
+            "changes": [
+              {
+                "path": "",
+                "changes": [
+                  {
+                    "property": "layout",
+                    "from": "Column, gap 24, padding 32",
+                    "to": "Column, gap 16, padding 20"
+                  }
+                ]
+              },
+              {
+                "path": "Frame › Checkout",
+                "changes": [
+                  {
+                    "property": "font size",
+                    "from": "24px",
+                    "to": "20px"
+                  },
+                  {
+                    "property": "line height",
+                    "from": "32px",
+                    "to": "27px"
+                  }
+                ]
+              },
+              {
+                "path": "Frame (2)",
+                "changes": [
+                  {
+                    "property": "layout",
+                    "from": "Column, gap 12, padding 20",
+                    "to": "Column, gap 10, padding 16"
+                  }
+                ]
+              },
+              {
+                "path": "Frame (2) › Frame › Wireless keyboard",
+                "changes": [
+                  {
+                    "property": "font size",
+                    "from": "16px",
+                    "to": "15px"
+                  },
+                  {
+                    "property": "line height",
+                    "from": "21px",
+                    "to": "20px"
+                  }
+                ]
+              },
+              {
+                "path": "Frame (2) › Frame › $89.00",
+                "changes": [
+                  {
+                    "property": "font size",
+                    "from": "16px",
+                    "to": "15px"
+                  },
+                  {
+                    "property": "line height",
+                    "from": "21px",
+                    "to": "20px"
+                  }
+                ]
+              },
+              {
+                "path": "Frame (2) › Frame (2) › USB-C cable",
+                "changes": [
+                  {
+                    "property": "font size",
+                    "from": "16px",
+                    "to": "15px"
+                  },
+                  {
+                    "property": "line height",
+                    "from": "21px",
+                    "to": "20px"
+                  }
+                ]
+              },
+              {
+                "path": "Frame (2) › Frame (2) › $12.00",
+                "changes": [
+                  {
+                    "property": "font size",
+                    "from": "16px",
+                    "to": "15px"
+                  },
+                  {
+                    "property": "line height",
+                    "from": "21px",
+                    "to": "20px"
+                  }
+                ]
+              },
+              {
+                "path": "Frame (2) › Frame (3) › Delivery",
+                "changes": [
+                  {
+                    "property": "font size",
+                    "from": "16px",
+                    "to": "15px"
+                  },
+                  {
+                    "property": "line height",
+                    "from": "21px",
+                    "to": "20px"
+                  }
+                ]
+              },
+              {
+                "path": "Frame (2) › Frame (3) › $4.00",
+                "changes": [
+                  {
+                    "property": "font size",
+                    "from": "16px",
+                    "to": "15px"
+                  },
+                  {
+                    "property": "line height",
+                    "from": "21px",
+                    "to": "20px"
+                  }
+                ]
+              },
+              {
+                "path": "Frame (2) › Frame (4)",
+                "changes": [
+                  {
+                    "property": "layout",
+                    "from": "Row, padding 12 0 0 0",
+                    "to": "Row, padding 10 0 0 0"
+                  }
+                ]
+              },
+              {
+                "path": "Frame (2) › Frame (4) › Total",
+                "changes": [
+                  {
+                    "property": "font size",
+                    "from": "18px",
+                    "to": "17px"
+                  },
+                  {
+                    "property": "line height",
+                    "from": "24px",
+                    "to": "22px"
+                  }
+                ]
+              },
+              {
+                "path": "Frame (2) › Frame (4) › $105.00",
+                "changes": [
+                  {
+                    "property": "font size",
+                    "from": "18px",
+                    "to": "17px"
+                  },
+                  {
+                    "property": "line height",
+                    "from": "24px",
+                    "to": "22px"
+                  }
+                ]
+              }
+            ],
+            "onlyHere": [
+              "Frame › 2 of 3",
+              "Pay $105.00"
+            ],
+            "notHere": [
+              "Frame › Step 2 of 3",
+              "Frame (3)"
+            ],
+            "hiddenHere": [],
+            "ambiguous": [
+              "Frame",
+              "Frame (2) › Frame"
+            ]
+          }
+        }
+      ]
+    }
+  ],
+  "components": [],
+  "tokens": [],
+  "textStyles": [],
+  "assets": [],
+  "fonts": [
+    {
+      "family": "system-ui",
+      "weights": [
+        400,
+        600,
+        700
+      ],
+      "italic": false,
+      "source": "system",
+      "stack": "system-ui,'Segoe UI',Arial,sans-serif",
+      "usedBy": 23
+    }
+  ]
+}

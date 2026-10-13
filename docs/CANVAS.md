@@ -119,6 +119,14 @@ The zoom menu can toggle these through `setPref`.
 - **One gate.** `store.mutate` refuses every edit unless the call passes `allowInDev` (comments, folder moves); `undo`, `redo`, drawing tools and text editing are refused too. Each refusal calls the `onEditRefused` listeners; the editor shows "Dev Mode is read-only". `canEdit(docId)` is the one check the UI uses to disable handles, drags, drops, menus and Layers rename/reorder/lock/hide. MCP writes to a file in Dev Mode answer with an error.
 - **Guard test.** `model/devMode.guard.test.ts` lists every store action as a design edit or not; an action in neither list fails the test.
 - **Still works:** select, hover, zoom, pan, comments, page switching, Copy as CSS (Ctrl+C), Tailwind (Alt+T), React (Alt+R).
+- **Redlines** (`model/redlines.ts` geometry, `editor/canvas/redlineScene.ts` + `RedlineLayer.tsx` overlay): the
+  distances from the selection to the hovered layer (`Alt` measures to any layer) and to its parent's edges, the
+  padding and gaps of a selected flex/grid frame, and a size chip for the hovered layer. Drawn in screen space (1px
+  lines, labels keep their size at any zoom) in `--color-redline`; a layer that is, or sits inside, a rotated or
+  scaled ancestor says "rotated" instead of showing distances. Pressing or releasing `Alt` re-evaluates the hover
+  without a pointer move (`hoverKeys.ts`). No resize, padding/gap or gradient handles are drawn in Dev Mode.
+- **Ready marks and export**: Layers rows show a green dot for frames marked ready (amber when changed since), and the
+  export button next to Share opens the Export handoff dialog (`editor/handoff/`), which reads only.
 - **Spec panel** (`editor/dev/SpecPanel.tsx`, rows in `specView.ts`) shows `nodeSpec()` of the selection: box, layout intent, typography, fills and strokes with token and per-mode values, tokens used, component, the Dev notes read-only, and CSS | Tailwind | React | HTML tabs (click to copy). With nothing selected it shows a page summary with ready marks.
 
 ## Known gaps

@@ -1,0 +1,1185 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "vellum.handoff/1",
+  "title": "Vellum handoff",
+  "type": "object",
+  "properties": {
+    "schema": {
+      "const": "vellum.handoff/1"
+    },
+    "handoff": {
+      "type": "object",
+      "properties": {
+        "version": {
+          "type": "integer"
+        },
+        "exportedAt": {
+          "type": "string"
+        },
+        "vellum": {
+          "type": "string"
+        },
+        "fileId": {
+          "type": "string"
+        },
+        "fileName": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "version",
+        "exportedAt",
+        "vellum",
+        "fileId",
+        "fileName"
+      ],
+      "additionalProperties": false
+    },
+    "units": {
+      "type": "object",
+      "properties": {
+        "length": {
+          "const": "px"
+        },
+        "remBase": {
+          "type": "number"
+        },
+        "precision": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "length",
+        "remBase",
+        "precision"
+      ],
+      "additionalProperties": false
+    },
+    "modes": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "screens": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/Screen"
+      }
+    },
+    "components": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/Component"
+      }
+    },
+    "tokens": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/Token"
+      }
+    },
+    "textStyles": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/TextStyle"
+      }
+    },
+    "assets": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/Asset"
+      }
+    },
+    "fonts": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/Font"
+      }
+    }
+  },
+  "required": [
+    "schema",
+    "handoff",
+    "units",
+    "modes",
+    "screens",
+    "components",
+    "tokens",
+    "textStyles",
+    "assets",
+    "fonts"
+  ],
+  "additionalProperties": false,
+  "$defs": {
+    "Screen": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "slug": {
+          "type": "string"
+        },
+        "breakpoints": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Breakpoint"
+          }
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "slug",
+        "breakpoints"
+      ],
+      "additionalProperties": false
+    },
+    "Delta": {
+      "type": "object",
+      "properties": {
+        "base": {
+          "type": "string"
+        },
+        "changes": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "path": {
+                "type": "string"
+              },
+              "changes": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "property": {
+                      "type": "string"
+                    },
+                    "from": {
+                      "type": "string"
+                    },
+                    "to": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "property",
+                    "from",
+                    "to"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            },
+            "required": [
+              "path",
+              "changes"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "onlyHere": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "notHere": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "hiddenHere": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "ambiguous": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "base",
+        "changes",
+        "onlyHere",
+        "notHere",
+        "hiddenHere",
+        "ambiguous"
+      ],
+      "additionalProperties": false
+    },
+    "Breakpoint": {
+      "type": "object",
+      "properties": {
+        "bp": {
+          "type": "string"
+        },
+        "frameId": {
+          "type": "string"
+        },
+        "width": {
+          "type": "number"
+        },
+        "height": {
+          "type": "number"
+        },
+        "ready": {
+          "type": "object",
+          "properties": {
+            "at": {
+              "type": "integer"
+            }
+          },
+          "required": [
+            "at"
+          ],
+          "additionalProperties": false
+        },
+        "png": {
+          "type": "string"
+        },
+        "delta": {
+          "$ref": "#/$defs/Delta"
+        },
+        "root": {
+          "$ref": "#/$defs/Node"
+        }
+      },
+      "required": [
+        "bp",
+        "frameId",
+        "png",
+        "root"
+      ],
+      "additionalProperties": false
+    },
+    "Component": {
+      "type": "object",
+      "properties": {
+        "ref": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "slug": {
+          "type": "string"
+        },
+        "isSet": {
+          "type": "boolean"
+        },
+        "props": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/PropDef"
+          }
+        },
+        "variants": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "ref": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              },
+              "values": {
+                "type": "object",
+                "additionalProperties": {
+                  "type": "string"
+                }
+              },
+              "root": {
+                "$ref": "#/$defs/Node"
+              }
+            },
+            "required": [
+              "ref",
+              "name",
+              "values",
+              "root"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "usedBy": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "notes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "states": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "state": {
+                "type": "string"
+              },
+              "badge": {
+                "enum": [
+                  "drawn",
+                  "described",
+                  "missing"
+                ]
+              },
+              "target": {
+                "type": "string"
+              },
+              "changes": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            },
+            "required": [
+              "state",
+              "badge"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "interactive": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "ref",
+        "name",
+        "slug",
+        "isSet",
+        "props",
+        "variants",
+        "usedBy",
+        "notes",
+        "states",
+        "interactive"
+      ],
+      "additionalProperties": false
+    },
+    "PropDef": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "type": {
+          "enum": [
+            "variant",
+            "boolean",
+            "text",
+            "swap"
+          ]
+        },
+        "default": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "boolean"
+            }
+          ]
+        },
+        "options": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "type",
+        "default"
+      ],
+      "additionalProperties": false
+    },
+    "Token": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "type": {
+          "enum": [
+            "color",
+            "length",
+            "number",
+            "other"
+          ]
+        },
+        "values": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "object",
+            "properties": {
+              "value": {
+                "type": "string"
+              },
+              "hex8": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "value"
+            ],
+            "additionalProperties": false
+          }
+        }
+      },
+      "required": [
+        "name",
+        "type",
+        "values"
+      ],
+      "additionalProperties": false
+    },
+    "TextStyle": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "style": {
+          "type": "object",
+          "additionalProperties": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "number"
+              }
+            ]
+          }
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "style"
+      ],
+      "additionalProperties": false
+    },
+    "Asset": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "path": {
+          "type": "string"
+        },
+        "kind": {
+          "enum": [
+            "image",
+            "icon",
+            "png"
+          ]
+        },
+        "nodeIds": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "layerName": {
+          "type": "string"
+        },
+        "mime": {
+          "type": "string"
+        },
+        "bytes": {
+          "type": "integer"
+        },
+        "width": {
+          "type": "integer"
+        },
+        "height": {
+          "type": "integer"
+        },
+        "maxDensity": {
+          "type": "number"
+        },
+        "variants": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "path": {
+                "type": "string"
+              },
+              "density": {
+                "type": "number"
+              },
+              "width": {
+                "type": "integer"
+              },
+              "height": {
+                "type": "integer"
+              }
+            },
+            "required": [
+              "path",
+              "density",
+              "width",
+              "height"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "source": {
+          "enum": [
+            "data",
+            "external"
+          ]
+        },
+        "url": {
+          "type": "string"
+        },
+        "sha256": {
+          "type": "string"
+        },
+        "recoloured": {
+          "type": "boolean"
+        },
+        "was": {
+          "type": "string"
+        },
+        "multiColour": {
+          "type": "boolean"
+        },
+        "animated": {
+          "type": "boolean"
+        },
+        "missing": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "id",
+        "path",
+        "kind",
+        "nodeIds"
+      ],
+      "additionalProperties": false
+    },
+    "Font": {
+      "type": "object",
+      "properties": {
+        "family": {
+          "type": "string"
+        },
+        "weights": {
+          "type": "array",
+          "items": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "number"
+              }
+            ]
+          }
+        },
+        "italic": {
+          "type": "boolean"
+        },
+        "source": {
+          "enum": [
+            "google",
+            "local",
+            "system",
+            "unknown"
+          ]
+        },
+        "stack": {
+          "type": "string"
+        },
+        "usedBy": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "family",
+        "weights",
+        "italic",
+        "source",
+        "stack",
+        "usedBy"
+      ],
+      "additionalProperties": false
+    },
+    "Color": {
+      "type": "object",
+      "properties": {
+        "value": {
+          "type": "string"
+        },
+        "hex8": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "opacity": {
+          "type": "number"
+        },
+        "oklch": {
+          "type": "string"
+        },
+        "token": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "value",
+        "hex8",
+        "opacity"
+      ],
+      "additionalProperties": false
+    },
+    "Paint": {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "enum": [
+            "fill",
+            "stroke",
+            "text"
+          ]
+        },
+        "type": {
+          "enum": [
+            "solid",
+            "gradient",
+            "image"
+          ]
+        },
+        "color": {
+          "$ref": "#/$defs/Color"
+        },
+        "value": {
+          "type": "string"
+        },
+        "width": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "array",
+              "items": {
+                "type": "number"
+              }
+            }
+          ]
+        },
+        "style": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "type"
+      ],
+      "additionalProperties": false
+    },
+    "Effect": {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "enum": [
+            "shadow",
+            "inner-shadow",
+            "blur",
+            "backdrop-blur"
+          ]
+        },
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        },
+        "blur": {
+          "type": "number"
+        },
+        "spread": {
+          "type": "number"
+        },
+        "color": {
+          "$ref": "#/$defs/Color"
+        }
+      },
+      "required": [
+        "kind",
+        "blur"
+      ],
+      "additionalProperties": false
+    },
+    "Text": {
+      "type": "object",
+      "properties": {
+        "content": {
+          "type": "string"
+        },
+        "fontFamily": {
+          "type": "string"
+        },
+        "fontSize": {
+          "type": "number"
+        },
+        "fontWeight": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "number"
+            }
+          ]
+        },
+        "fontStyle": {
+          "type": "string"
+        },
+        "lineHeightPx": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "lineHeightRatio": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "lineHeightSource": {
+          "enum": [
+            "authored",
+            "measured",
+            "estimated",
+            "unknown"
+          ]
+        },
+        "letterSpacingPx": {
+          "type": "number"
+        },
+        "letterSpacingEm": {
+          "type": "number"
+        },
+        "textAlign": {
+          "type": "string"
+        },
+        "textTransform": {
+          "type": "string"
+        },
+        "textDecoration": {
+          "type": "string"
+        },
+        "textStyle": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "content",
+        "fontSize",
+        "fontWeight",
+        "lineHeightPx",
+        "lineHeightRatio",
+        "lineHeightSource",
+        "letterSpacingPx",
+        "letterSpacingEm"
+      ],
+      "additionalProperties": false
+    },
+    "SizeRule": {
+      "type": "object",
+      "properties": {
+        "mode": {
+          "enum": [
+            "fixed",
+            "fit",
+            "fill",
+            "percent"
+          ]
+        },
+        "value": {
+          "type": "number"
+        },
+        "weight": {
+          "type": "number"
+        },
+        "min": {
+          "type": "number"
+        },
+        "max": {
+          "type": "number"
+        },
+        "aspect": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "mode"
+      ]
+    },
+    "Node": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "type": {
+          "enum": [
+            "frame",
+            "rect",
+            "text",
+            "image",
+            "svg"
+          ]
+        },
+        "tag": {
+          "type": "string"
+        },
+        "box": {
+          "type": "object",
+          "properties": {
+            "x": {
+              "type": "number"
+            },
+            "y": {
+              "type": "number"
+            },
+            "width": {
+              "type": "number"
+            },
+            "height": {
+              "type": "number"
+            },
+            "relTo": {
+              "enum": [
+                "parent",
+                "artboard"
+              ]
+            },
+            "measured": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "relTo",
+            "measured"
+          ],
+          "additionalProperties": false
+        },
+        "artboardBox": {
+          "type": "object",
+          "properties": {
+            "x": {
+              "type": "number"
+            },
+            "y": {
+              "type": "number"
+            }
+          },
+          "required": [
+            "x",
+            "y"
+          ],
+          "additionalProperties": false
+        },
+        "flowIndex": {
+          "type": "integer"
+        },
+        "sizing": {
+          "type": "object",
+          "properties": {
+            "w": {
+              "$ref": "#/$defs/SizeRule"
+            },
+            "h": {
+              "$ref": "#/$defs/SizeRule"
+            }
+          },
+          "required": [
+            "w",
+            "h"
+          ],
+          "additionalProperties": false
+        },
+        "layout": {
+          "type": "object",
+          "required": [
+            "kind",
+            "padding",
+            "summary"
+          ]
+        },
+        "style": {
+          "type": "object",
+          "properties": {
+            "authored": {
+              "type": "object",
+              "additionalProperties": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "number"
+                  }
+                ]
+              }
+            },
+            "resolved": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "string"
+              }
+            }
+          },
+          "required": [
+            "authored",
+            "resolved"
+          ],
+          "additionalProperties": false
+        },
+        "rotation": {
+          "type": "number"
+        },
+        "opacity": {
+          "type": "number"
+        },
+        "radius": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "string"
+            },
+            {
+              "type": "array",
+              "items": {
+                "type": "number"
+              }
+            }
+          ]
+        },
+        "text": {
+          "$ref": "#/$defs/Text"
+        },
+        "paints": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Paint"
+          }
+        },
+        "effects": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Effect"
+          }
+        },
+        "tokens": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "component": {
+          "type": "object",
+          "properties": {
+            "ref": {
+              "type": "string"
+            },
+            "name": {
+              "type": "string"
+            },
+            "variant": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "string"
+              }
+            },
+            "props": {
+              "type": "object",
+              "additionalProperties": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "boolean"
+                  }
+                ]
+              }
+            },
+            "overrides": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          "required": [
+            "ref"
+          ],
+          "additionalProperties": false
+        },
+        "image": {
+          "type": "object",
+          "properties": {
+            "alt": {
+              "type": "string"
+            },
+            "objectFit": {
+              "type": "string"
+            }
+          },
+          "required": [],
+          "additionalProperties": false
+        },
+        "notes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "a11y": {
+          "type": "object",
+          "properties": {
+            "role": {
+              "type": "string"
+            },
+            "label": {
+              "type": "string"
+            },
+            "tab": {
+              "type": "integer"
+            }
+          },
+          "required": [],
+          "additionalProperties": false
+        },
+        "contrast": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "mode": {
+                "type": "string"
+              },
+              "ratio": {
+                "type": "number"
+              },
+              "fg": {
+                "type": "string"
+              },
+              "bg": {
+                "type": "string"
+              },
+              "large": {
+                "type": "boolean"
+              },
+              "aa": {
+                "type": "boolean"
+              },
+              "aaa": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "mode",
+              "ratio",
+              "fg",
+              "bg",
+              "large",
+              "aa",
+              "aaa"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "contrastNote": {
+          "type": "string"
+        },
+        "states": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "object"
+          }
+        },
+        "needsDecision": {
+          "type": "string"
+        },
+        "children": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Node"
+          }
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "type",
+        "box",
+        "sizing",
+        "layout",
+        "style",
+        "paints",
+        "effects",
+        "tokens",
+        "children"
+      ],
+      "additionalProperties": false
+    }
+  }
+}
