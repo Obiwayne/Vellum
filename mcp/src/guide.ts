@@ -67,7 +67,7 @@ Unless the user gave a detailed design system, post a short brief in chat BEFORE
 4. **Structure**: get_tree_summary for a cheap indented overview; get_children / get_node_info for details; find_nodes to search by name, text, type or style.
 5. **Visuals**: get_screenshot renders a node to PNG (scale 1 is enough for layout; use 2 to read small text).
 6. **Code**: get_jsx (tailwind or inline-styles) and get_computed_styles give exact values. Never read values from screenshots.
-7. **Hand-off**: get_dev_spec returns a layer's measured box with its layout intent, tokens per mode and component reference. export_handoff returns the hand-off bundle of the ready frames (HANDOFF.md first) as a file map; save the files where the developer wants them. Both are read-only and work in Dev Mode.
+7. **Hand-off**: get_dev_spec returns a layer's measured box with its layout intent, tokens per mode and component reference. export_handoff returns the hand-off bundle of the ready frames (HANDOFF.md first, CHANGES.md after an earlier export) as a file map, the same files the app's Export handoff dialog writes; save the files where the developer wants them. Both are read-only and work in Dev Mode.
 
 ### Writing new designs
 1. Post the brief.

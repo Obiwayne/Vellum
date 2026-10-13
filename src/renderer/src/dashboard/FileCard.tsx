@@ -41,6 +41,14 @@ export function fileMenu(doc: Doc, actions: { rename: () => void; askDelete: () 
   return [
     { label: 'Open', onSelect: () => s.openDoc(doc.id) },
     {
+      label: 'Open in Dev Mode',
+      onSelect: () => {
+        // straight into read-only Dev Mode: the file is inspected, nothing in it can be edited by accident
+        s.openDoc(doc.id)
+        s.setDevMode(doc.id, true)
+      }
+    },
+    {
       label: 'Open in new tab',
       onSelect: () => {
         s.openDoc(doc.id)

@@ -1,5 +1,12 @@
 # Developer handoff
 
+> ## Andy's quick start
+> 1. Drop the exported folder next to your repo (outside it is fine; nothing in it runs).
+> 2. Tell Claude Code: "build screens/<screen>.md from this handoff".
+> 3. Verify the result against the PNGs in screens/.
+>
+> Every export folder opens with a box of these same three steps in its own `HANDOFF.md`, with the real screen name filled in.
+
 Vellum can hand a finished design to a developer (or to their AI) as a folder of plain files: the layout **rules**
 first, then the numbers, the tokens, the components and states, the assets and PNG references to check the build
 against. The developer does not need Vellum and nothing is uploaded.

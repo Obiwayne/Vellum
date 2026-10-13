@@ -803,7 +803,8 @@ export function createVellumServer(opts: ServerOptions = {}): McpServer {
     {
       description: `Build the developer hand-off bundle for the frames marked ready for dev (or the frames you list) and return it inline as a file map: { files: { path: text }, summary, warnings, omitted, skippedBinary }. The files are the ones the app's Export handoff action writes: HANDOFF.md / CLAUDE.md (read first), tokens/ (css, DTCG json, tailwind), components/*.md, screens/*.md, fonts.md, spec.json with spec.schema.json, .handoff.json. This tool writes nothing to disk: save the files where you want them, or use Export handoff in the app for the bundle with images and PNG references.
   - frames: top-level frame ids. Default: every frame marked ready for dev.
-  - version: handoff number printed in the bundle (default 1). projectLabel replaces the file name. rem adds rem beside px.
+  - version: handoff number printed in the bundle (default: the next Handoff vN, what the app's dialog would use). projectLabel replaces the file name. rem adds rem beside px. devNotes: false leaves dev notes out (default true).
+  - The bundle is built by the same code as the app's dialog, so the text files are the same; after an earlier export it includes CHANGES.md. The result also has version and changes (counts, or null for a first export). Nothing is saved to version history.
   - maxBytes: size cap for the inline files (default 1,000,000, at most 8,000,000). Files past the cap are listed in "omitted" and in warnings; image and PNG paths are listed in "skippedBinary", never returned.
   Hidden layers, comments and other pages are never included. Read-only; works in Dev Mode.`,
       inputSchema: {
@@ -812,6 +813,7 @@ export function createVellumServer(opts: ServerOptions = {}): McpServer {
         version: z.number().int().min(1).max(100000).optional(),
         projectLabel: z.string().max(200).optional(),
         rem: z.boolean().optional(),
+        devNotes: z.boolean().optional().describe('Include dev notes (default true)'),
         mode: z.string().optional(),
         maxBytes: z.number().int().min(1000).max(8000000).optional()
       }
