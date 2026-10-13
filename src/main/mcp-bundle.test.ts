@@ -62,7 +62,11 @@ describe.skipIf(!haveMcpDeps)('MCP server bundle', () => {
       await exited // the child runs with the temp folder as cwd: release it before deleting
       expect(tools).toEqual(expected)
     } finally {
-      rmSync(ud, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 })
+      try {
+        rmSync(ud, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 })
+      } catch {
+        // a runner's scanner can hold the temp folder for a moment (EBUSY); a leftover temp folder is not a test failure
+      }
     }
   }, 60_000)
 })

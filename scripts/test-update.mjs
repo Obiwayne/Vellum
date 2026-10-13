@@ -13,7 +13,7 @@ import { _electron as electron } from 'playwright'
 import { spawnSync } from 'node:child_process'
 import http from 'node:http'
 import { createHash } from 'node:crypto'
-import { createReadStream, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs'
+import { createReadStream, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, realpathSync, rmSync, statSync, writeFileSync } from 'node:fs'
 import { createServer } from 'node:net'
 import { tmpdir } from 'node:os'
 import { join, parse, resolve } from 'node:path'
@@ -67,7 +67,9 @@ if (!newSetupName || !newVersion || !oldVersion || newVersion === oldVersion) {
   finish(2)
 }
 
-const work = mkdtempSync(join(tmpdir(), 'vellum-update-test-'))
+// The runner's %TEMP% is an 8.3 short path (C:\Users\RUNNER~1\...) but Windows reports process and uninstall paths in the long form:
+// resolve it once so the install folder compares equal to both.
+const work = realpathSync.native(mkdtempSync(join(tmpdir(), 'vellum-update-test-')))
 const installDir = join(work, 'app')
 const exe = join(installDir, `${PRODUCT}.exe`)
 // The installer relaunches the new version through the shell, without our environment, so a temp VELLUM_USER_DATA cannot carry

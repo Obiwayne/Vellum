@@ -308,6 +308,9 @@ describe('relaunch check decision (update test)', () => {
   it('is what test-update.mjs uses', () => {
     expect(read('scripts/test-update.mjs')).toContain('relaunchVerdict({ started: installedProcs()')
   })
+  it('compares against the long form of the temp install folder (the runner TEMP is an 8.3 path)', () => {
+    expect(read('scripts/test-update.mjs')).toContain("const work = realpathSync.native(mkdtempSync(join(tmpdir(), 'vellum-update-test-')))")
+  })
 })
 
 // A global ~/.npmrc with legacy-peer-deps=true makes `npm install` drop electron-builder's optional peers from the
