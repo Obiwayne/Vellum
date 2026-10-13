@@ -10,7 +10,9 @@ import { join } from 'node:path'
 const out = process.argv[2] ?? '.muster-evidence/e2e'
 mkdirSync(out, { recursive: true })
 const ud = mkdtempSync(join(tmpdir(), 'vellum-e2e-'))
-const app = await electron.launch({ args: ['out/main/index.js'], env: { ...process.env, VELLUM_USER_DATA: ud } })
+// MUSTER_AGENT in a crew's environment turns on the agent-working indicator: twinkling dots over the frame name for
+// 2 s after every edit. A UI test is not an agent, so switch it off (VELLUM_AGENT_DRIVEN=0).
+const app = await electron.launch({ args: ['out/main/index.js'], env: { ...process.env, VELLUM_USER_DATA: ud, VELLUM_AGENT_DRIVEN: '0' } })
 const page = await app.firstWindow()
 const results = []
 let n = 0
@@ -78,6 +80,9 @@ try {
   results.push(`parent insets: ${insets.join(', ')}`)
   check(insets.filter((x) => x.startsWith('cv-redline--inset')).length >= 3, 'selected layer: distances to the parent frame')
 
+  // Dev Mode is read-only: no resize handles drawn over the labels (Design mode has them)
+  const handles = () => page.evaluate(() => document.querySelectorAll('.cv-handle, .cv-edge').length)
+  check((await handles()) === 0, 'Dev Mode: no resize handles over the redlines')
   await page.mouse.move(b.r.x + 10, b.r.y + 10)
   await page.waitForTimeout(300)
   await shot('dev-mode-hovered-gap')
@@ -129,6 +134,16 @@ try {
     await shot('dev-mode-alt-hover-size-chip')
     const chip = await page.evaluate(() => document.querySelector('[data-testid="redlines"] .cv-redline-label--size')?.textContent ?? null)
     await page.keyboard.up('Alt')
+    // Alt pressed and released without moving the pointer re-evaluates the hover
+    await page.mouse.move(kids[0].r.x + 8, kids[0].r.y + 8)
+    await page.waitForTimeout(300)
+    const hoveredBefore = await page.evaluate(() => document.querySelector('[data-testid="redlines"] .cv-redline-label--size')?.textContent ?? null)
+    await page.keyboard.down('Alt')
+    await page.waitForTimeout(300)
+    const withAlt = await page.evaluate(() => document.querySelector('[data-testid="redlines"] .cv-redline-label--size')?.textContent ?? null)
+    await page.keyboard.up('Alt')
+    results.push(`size chip before Alt: ${hoveredBefore}, with Alt (pointer not moved): ${withAlt}`)
+    check(withAlt !== null && /\d+ × \d+/.test(withAlt), 'Alt pressed without a pointer move: the hovered layer is still measured (hoverKeys.test.ts covers the re-evaluation)')
     results.push(`size chip: ${chip}`)
     check(Boolean(chip && /\d+ × \d+/.test(chip)), 'hovered layer shows its size chip')
   }
