@@ -69,7 +69,15 @@ Rules: relative paths only; ids in `spec.json` equal Vellum node ids so a later 
 
 ### 3.2 `HANDOFF.md` (also `CLAUDE.md`)
 
-Short, written for Claude Code. Fixed template filled with the file's facts:
+Short, written for Claude Code. The file opens with a quick-start box for Andy, then a fixed template filled with the file's facts.
+
+```
+> ## Andy's quick start
+> 1. Drop this folder next to your repo (outside it is fine; nothing here runs).
+> 2. Tell Claude Code: "build screens/checkout.md from this handoff".
+> 3. Verify the result against the PNGs in screens/. Handoff v4, 3 screens.
+```
+
 1. Read order: `HANDOFF.md` → `tokens/` → `components/` → each `screens/*.md`; `spec.json` for exact data.
 2. Stack-neutral rules: build with the project's framework; map tokens to the project's theme (tokens.css values are the truth, names are suggestions); reuse existing components before creating new ones; never hard-code a value that has a token.
 3. Layout rules: honour the **layout intent** (flex/grid/sizing rules, section 4); never convert intent to absolute pixel positions; px values in `spec.json` describe the design-time size.
@@ -282,13 +290,17 @@ Parallel: H1 ∥ H2; after H3, H4 ∥ H7 ∥ H8; H9 can start after H1.
 
 ## 15. Milestone placement (item 12)
 
-Proposal: a **post-1.0 milestone "Handoff"**, running **before Live collaboration**, because Andy needs it first and collaboration changes the document model (dev info should land on the pre-collab model once). Dates are proposals from today (2026-10-13) and assume v1.0.0 (T55, waiting on Obi's signing decision) ships first; shift the whole block if it slips.
+Proposal: a **post-1.0 milestone "Handoff"**, running **before Live collaboration**, because Andy needs it first and collaboration changes the document model (dev info should land on the pre-collab model once).
 
-| Phase | Window | Goal | Exit criteria |
+Timing is relative, not calendar: v1.0.0 is built and waits only on Obi's release/signing decision (T55), so Handoff does not anchor on a month. **Week 1 starts the day Obi approves this plan** (the Captain can post H1 and H2 immediately; they don't touch the release).
+
+| Phase | Weeks | Goal | Exit criteria |
 |---|---|---|---|
-| H-A "One screen" | 2026-11-02 → 2026-11-20 | H1–H5: a bundle with spec, tokens, assets, PNGs, HANDOFF.md from chosen ready frames | A fresh-repo Claude Code build of one real screen from the bundle matches the PNG within ±0.5px layout; safety fixture passes; v0.1.0–v5 files open unchanged |
-| H-B "Stays in sync" | 2026-11-23 → 2026-12-11 | H6–H8: versioning, states, notes, a11y, breakpoints | Second export's `CHANGES.md` lists exactly the edited nodes in a test file (no false positives on 20 unedited screens); a three-breakpoint screen exports with deltas; every interactive component shows a states badge |
-| H-C "Review in the app" | 2026-12-14 → 2026-12-23 | H9–H12: Dev Mode, redlines, MCP tools, docs, dogfood | Read-only open works; guard test shows no edit path in Dev; `export_handoff` via MCP matches the dialog output byte-for-byte; docs + sample bundle merged |
+| H-A "One screen" | 1–3 | Tasks 1–6: a bundle with spec, tokens, assets, PNGs, HANDOFF.md from chosen ready frames | A fresh-repo Claude Code build of one real screen from the bundle matches the PNG within ±0.5px layout; safety fixture passes; v0.1.0–v5 files open unchanged |
+| H-B "Stays in sync" | 4–6 | Tasks 7–9: versioning, states, notes, a11y, breakpoints | Second export's `CHANGES.md` lists exactly the edited nodes in a test file (no false positives on 20 unedited screens); a three-breakpoint screen exports with deltas; every interactive component shows a states badge |
+| H-C "Review in the app" | 7–8 | Tasks 10–14: Dev Mode, redlines, MCP tools, docs, dogfood | Read-only open works; guard test shows no edit path in Dev; `export_handoff` via MCP matches the dialog output byte-for-byte; docs + sample bundle merged |
+
+**Effect on the roadmap:** Handoff is about 8 calendar weeks of crew time (about 28 crew-days with parallel work, see slices). Live collaboration, and anything after it, **moves back by the same 8 weeks**; the Captain can trim by shipping H-A and H-B first (6 weeks) and deferring H-C, since H-C is the review surface for people with Vellum, not what Andy needs.
 
 Goals to register with the Captain (names are mine): G14 Handoff export; G15 Handoff versioning; G16 Dev Mode in app. The Captain owns the roadmap; this is a proposal.
 
@@ -305,6 +317,12 @@ Goals to register with the Captain (names are mine): G14 Handoff export; G15 Han
 9. **Default export scope** = ready frames only; hidden layers never; comments off.
 10. **Milestone** placement and dates in section 15 (Captain/Obi to confirm).
 11. Naming: UI "Dev Mode" and "Export handoff"; schema id `vellum.handoff/1`.
+
+### Open questions for Obi
+
+1. **What stack does Andy use: React and Tailwind, or something else?** The bundle stays stack-neutral either way (CSS, tokens, markdown, layout intent). The answer decides only the Code tab's default (Tailwind vs CSS vs React) and which token file `HANDOFF.md` points to first (`tailwind.css` vs `tokens.css`).
+2. Is the developer ever someone who receives only a zip by email or chat? (The bundle works for that; the zip option exists for it.)
+3. px only, or a rem toggle? The plan ships px with an optional rem column.
 
 ## 17. Risks
 
@@ -352,3 +370,49 @@ State coverage per surface: Export dialog: filled (D02), empty, loading, error, 
 - Status colours (ready green, changed amber, dev violet, redline red) are new tokens in this file, `--color-dev`, `--color-dev-soft`, `--color-redline`, `--color-ready`, `--color-changed`; they need adding to the app's UI tokens, and redline red must be distinct from the canvas selection colour.
 - Layout, spacing and type come from the app's UI tokens as used in the Live collaboration file (Inter 11–16px, DM Mono for values, 6px radius controls, 12px dialogs). No separate "design framework" file exists in Vellum; that file was the closest reference.
 - Not drawn: top-bar Design | Dev control, read-only open prompt, Make State property, breakpoint tagging control, Layers badges in context.
+
+## Plan station: approach, order, tests
+
+### Approach (structure)
+Following the service-layer split in this codebase (pure model functions, store actions that orchestrate, thin UI):
+- **Mechanics, pure and shared** (`src/shared` or `renderer/src/model`, no React, no DOM except an injected `measure` callback): `devSpec` (NodeSpec, layout intent, precision), `handoffBundle` (Doc + options to file map), `devSpecDiff`, `redlines`. The export dialog, the MCP `export_handoff` tool and `get_dev_spec` all call these; no caller builds files or specs by itself.
+- **Orchestration** stays in store actions and the main process: ready marks, handoff snapshot, write to disk (temp folder then move), dialogs.
+- **Existing generators are reused, not copied** (`styleToCss`, `nodeToTailwindJsx`, `jsx-components`, `docDiff`); the one existing bug (canvas copy ignoring components) is fixed in its own task.
+- Each task below adds one capability block and leaves Design mode unchanged.
+
+### Order of work
+1. Tasks 1 and 2 first, in parallel (no dependencies, no conflict with the release).
+2. Task 3 (bundle writer) after both; then 4 and 5; 6 closes H-A.
+3. Tasks 7, 8, 9 can run in parallel after 6.
+4. Task 10 after 1 and 2, then 11; 12 any time; 13 after 3; 14 last.
+
+### How it is tested
+- **Unit (vitest, `npm test`)**: `devSpec` on fixtures (Fit/Fill/fixed, min/max, flex, grid, constraints, subpixel, oklch, modes, components, rotated); bundle writer with snapshot tests of every generated file for a fixed fixture doc; safety fixture with canaries (hidden layer, locked layer, other page, comment, profile name) asserting none appear; `devSpecDiff` vs `docDiff` agreement; precision rounding table; naming and de-dup; migration v5 to v6 on the T46/T47 fixtures.
+- **Integration**: export through the main-process writer into a temp dir; assert the file tree, `spec.json` validates against `spec.schema.json`, no absolute paths, a failed write leaves nothing behind.
+- **End to end (`npm run e2e`)**: tag screens, mark ready, export, edit, re-export, assert `CHANGES.md`; Dev Mode attempts every edit path and asserts the undo stack and doc are unchanged.
+- **Dogfood (task 14)**: Claude Code builds one real screen from a bundle in a throwaway repo; its screenshot is compared to `screens/*.png` with the stated tolerance; result recorded as evidence.
+- **MCP**: `get_dev_spec` / `export_handoff` covered by the `test:mcp` run and the bundle tool-list test.
+
+## Task breakdown (for the Captain to post)
+
+Lines: `feature` (model/logic), `ui` (panels, dialogs, canvas), `bugfix`. H = slice in section 14.
+
+| # | Title | Acceptance criteria | Line | Needs |
+|---|---|---|---|---|
+| 1 | Spec model: NodeSpec, layout intent, precision (H1) | `model/devSpec.ts` exports `nodeSpec`, `layoutIntent`, `round`; given a doc and injected measured rects it returns box (parent- and artboard-relative), sizing rule (fixed/fit/fill/percent + min/max), flex/grid/constraints, resolved + authored style, tokens with per-mode values, component ref; values trimmed to 2 decimals, never rounded to integers silently; subpixel list; tests cover every case in "How it is tested"; `npm test` and typecheck pass; no UI change | feature | none |
+| 2 | Dev info on the document: CNode.dev, v6 migration, store actions (H2) | `CNode.dev` optional with ready/notes/states/role/label/tab/screen/needsDecision; `DOC_VERSION` 6, migration only bumps the version; v0.1.0 and v5 fixtures open with no data loss; `setDev` actions are one undo step each and coalesce; docDiff reports a `dev` aspect; tests for undo, persistence, migration | feature | none |
+| 3 | Handoff bundle writer: spec.json, markdown, tokens, HANDOFF.md (H3) | Pure `buildHandoff(doc, options)` returns a path to content map: `spec.json` + `spec.schema.json` (`vellum.handoff/1`), `screens/*.md`, `components/*.md`, `tokens/{tokens.css,tokens.json (DTCG),tailwind.css}`, `HANDOFF.md` and identical `CLAUDE.md` starting with the quick-start box; layout intent printed first per node; only chosen frames, no hidden layers, no other pages; canary test passes; snapshot tests for a fixture; output deterministic | feature | 1, 2 |
+| 4 | Assets pipeline: images, SVG icons, fonts, PNG renders (H4) | Images exported at original bytes, `@2x/@3x` only when the source has the pixels, never upscaled; identical bytes de-duplicated by SHA-256; names kebab-case ASCII with `-2` collision suffix; SVG optimised and recoloured to `currentColor` when single-colour (golden tests; `svgo` dependency approved); `fonts.md` lists family, weights, source google/local/system and the licence note, no font files by default; PNG reference per screen/breakpoint at 1x (2x optional) via offscreen render; only assets used by emitted nodes | feature | 3 |
+| 5 | Export handoff dialog and writer (H5) | Menu/top-bar entry opens the dialog (D02): screen list with ready/changed/not-ready, options, review counts, "pulls in" list, tree preview; "Export folder" and "Save as zip" write through the main process to a temp folder then move; failure leaves nothing (D05 failed state); empty, exporting and done states match D05; nothing sent over the network; text says the copy is decrypted | ui | 3, 4 |
+| 6 | Ready for dev marks (H5) | Mark/unmark per top-level frame in the inspector and Layers (dots as D01/D02); "Changed since ready" computed from a stored content hash and shown in Layers, inspector and dialog; export defaults to ready frames and warns on unready/changed; marks survive save/reload; undoable | ui | 2 |
+| 7 | Versioning: Handoff snapshots and CHANGES.md (H6) | Each export saves a named history version "Handoff vN" and `.handoff.json` (per-screen hashes) in the bundle; `devSpecDiff(old, new)` returns per node property old to new, restricted to exported frames, plus token and asset changes; `CHANGES.md` lists rebuild / tokens / assets / unchanged as D04; `spec.json.changes` mirrors it; no false positives on a 20-screen unedited fixture; first export has no CHANGES.md | feature | 3, 6 |
+| 8 | States, dev notes and accessibility (H7) | Inspector "Dev" section (D03) edits notes, undrawn state rules (with token picker), role/label/focus order; `State` variant property maps to hover/pressed/focus/disabled deltas against default; component markdown prints the State table with drawn/described/missing; notes never appear in Copy HTML or comments; contrast ratio computed per text node per mode and listed; images without alt listed; tests for mapping and contrast maths | ui | 2, 3 |
+| 9 | Screens and breakpoints (H8) | Top-level frames can be tagged screen name + breakpoint (Desktop/Tablet/Mobile/custom width); export groups them into one screen with per-breakpoint PNG and a delta table matched by layer-name path, listing unmatched nodes; Layout section gets Min/Max W/H fields writing `minWidth` etc.; tests for matching and ambiguity | ui | 3 |
+| 10 | Dev Mode: read-only gating and Spec panel (H9) | `devMode` editor state (not in the file, not undoable), `D` key and top-bar switch; select/hover/zoom/pan/comment work, every edit path is refused with the toast (D06) and a guard test enumerates entry points; Layers rename/reorder/hide/lock disabled; Spec panel shows box, layout intent, typography, paints with token + per-mode values, assets, code tabs (D01) with click-to-copy; Ctrl+C copies CSS; page summary when nothing is selected (D06); Dev section read-only here | ui | 1, 2 |
+| 11 | Redlines on the canvas (H10) | Pure `redlines(sel, other)` (overlap, containment, adjacent, rotated skipped) with tests; overlay shows distances selected to hovered and to parent edges, labels at constant screen size, colour distinct from selection; hidden outside Dev Mode | ui | 1, 10 |
+| 12 | Canvas "Copy as React / Tailwind" uses component output | Copying an instance gives `<Button size="lg" />` plus definition like `get_jsx`; plain nodes unchanged; COMPONENTS.md known-gap note removed; tests compare to `get_jsx` output | bugfix | none |
+| 13 | MCP: get_dev_spec and export_handoff (H11) | `get_dev_spec({nodeId, depth})` returns NodeSpec[]; `export_handoff({frames, options, to})` writes the same bytes as the dialog to a local path and returns the file list; docs/MCP.md and guide updated; bundle tool-list test updated; passes `npm run test:mcp` | feature | 3 |
+| 14 | End-to-end, docs and dogfood (H12) | e2e covers tag, ready, export, edit, re-export, `CHANGES.md`, and Dev Mode edit attempts; `docs/HANDOFF.md` plus README/CANVAS/INSPECTOR/MCP updates; sample bundle checked in under `docs/`; a Claude Code build from the sample bundle in a throwaway repo matches the PNG within tolerance, comparison saved as evidence | feature | 5 to 11, 13 |
+
+### What I want approved
+Section 16 decisions 1 to 11, plus: the three open questions (stack, zip-only recipient, rem), the task split and order, and the relative-weeks milestone. Left out on purpose: static browser viewer, compare-with-build overlay, status workflows, cloud links, bundled licensed fonts, per-breakpoint token overrides, anything touching Live collaboration.
