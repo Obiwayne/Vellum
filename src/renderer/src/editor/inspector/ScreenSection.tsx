@@ -11,14 +11,14 @@ import './screen.css'
 const CUSTOM = '__custom__'
 
 export function ScreenSection({ docId, id }: { docId: string; id: string }): JSX.Element | null {
-  const doc = useStore((s) => s.docs[id ? docId : ''])
+  const doc = useStore((s) => s.docs[docId])
   const setScreen = useStore((s) => s.setScreen)
   const node = doc?.nodes[id]
   const tag = node?.dev?.screen
   const [name, setName] = useState(tag?.name ?? '')
   const [custom, setCustom] = useState(tag && !BREAKPOINT_NAMES.includes(tag.bp as never) ? tag.bp : '')
   useEffect(() => setName(tag?.name ?? ''), [id, tag?.name])
-  useEffect(() => setCustom(tag && !BREAKPOINT_NAMES.includes(tag.bp as never) ? tag.bp : ''), [id, tag?.bp, tag])
+  useEffect(() => setCustom(tag && !BREAKPOINT_NAMES.includes(tag.bp as never) ? tag.bp : ''), [id, tag?.bp]) // eslint-disable-line react-hooks/exhaustive-deps -- `tag` is read only through its bp here
   const siblings = useMemo(() => (doc ? screensOf(doc).find((s) => s.name.toLowerCase() === (tag?.name ?? '').trim().toLowerCase()) : undefined), [doc, tag?.name])
   if (!doc || !node || !isTopLevelFrame(doc, id)) return null
 
