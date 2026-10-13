@@ -89,6 +89,13 @@ describe('saveDoc / loadDoc / listDocs over IPC', () => {
     expect(await call(IPC.loadDoc, 'd2')).toEqual(d)
   })
 
+  it('keeps dev info through save and load (v6)', async () => {
+    const dev = { notes: 'Behaviour', states: { hover: { opacity: 0.8 } }, screen: { name: 'Home', bp: 'Desktop' }, ready: { at: 2 }, tab: 1, role: 'button', label: 'Buy', needsDecision: 'Copy?' }
+    const d = doc('d3', 'Dev info', { version: 6, nodes: { '1-0': { id: '1-0', type: 'frame', style: {}, dev } } })
+    await call(IPC.saveDoc, d)
+    expect(await call(IPC.loadDoc, 'd3')).toEqual(d)
+  })
+
   it('loads an old (v1) doc as stored; version migration happens in the renderer (ops.test.ts)', async () => {
     expect(((await call(IPC.loadDoc, 'old1')) as { version: number }).version).toBe(1)
   })
