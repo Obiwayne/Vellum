@@ -108,3 +108,13 @@ Lines: `feature` (model/logic). All tasks are pure TypeScript; none touches UI, 
 - That `spec.schema.json` is validated in tests without adding a runtime dependency (`ajv` only if it is already in the tree).
 
 Left out on purpose: any UI, IPC, zip, MCP tool, snapshot in history, and Dev Mode.
+
+## 8. Build notes (changes against the plan above, from the Captain's build instruction F1428)
+
+- **Folder:** `src/renderer/src/handoff/` (not `model/handoff/`): `types`, `paths`, `collect`, `specJson`, `tokens`, `markdown`, `handoffMd`, `index`, plus `fixture.ts` for tests. One build task instead of W1 to W6; the tests follow the W6 list.
+- **In H3 after all:** `fonts.md` and `.handoff.json` (per-frame content hashes). Font source comes from an injected `fontSource(family)`; the default marks generic families `system` and everything else `unknown`, so no editor code is imported.
+- **Default scope:** every visible top-level frame with `dev.ready`, on any page; `options.frames` overrides. Nested, hidden and missing ids are refused with a warning.
+- **Locked layers** are exported as normal layers and the lock state is never written.
+- **spec.json nodes** carry `tokens` as names (values live in `spec.tokens`), so the file does not repeat every token on every layer.
+- **Tailwind file** keeps token values as authored (oklch stays oklch); dark and other modes are plain `[data-mode]` overrides.
+- **Snapshots** are one `toMatchSnapshot` per generated file (`__snapshots__/handoff.test.ts.snap`), which vitest compares with normalised line endings, so Windows checkouts with CRLF do not break them.
