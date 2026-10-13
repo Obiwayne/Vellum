@@ -11,7 +11,9 @@ import { join } from 'node:path'
 const out = process.argv[2] ?? '.muster-evidence/e2e'
 mkdirSync(out, { recursive: true })
 const ud = mkdtempSync(join(tmpdir(), 'vellum-e2e-'))
-const app = await electron.launch({ args: ['out/main/index.js'], env: { ...process.env, VELLUM_USER_DATA: ud } })
+// MUSTER_AGENT in a crew's environment turns on the agent-working indicator: twinkling dots over the frame name for
+// 2 s after every edit. A UI test is not an agent, so switch it off (VELLUM_AGENT_DRIVEN=0).
+const app = await electron.launch({ args: ['out/main/index.js'], env: { ...process.env, VELLUM_USER_DATA: ud, VELLUM_AGENT_DRIVEN: '0' } })
 const page = await app.firstWindow()
 const results = []
 let n = 0
