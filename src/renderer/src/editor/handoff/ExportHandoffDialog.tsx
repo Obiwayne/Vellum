@@ -77,6 +77,19 @@ const rowsOf = (doc: Doc): Row[] =>
 
 const mb = (bytes: number): string => (bytes >= 1048576 ? `${(bytes / 1048576).toFixed(1)} MB` : `${Math.max(1, Math.round(bytes / 1024))} KB`)
 
+/** "Since v3: 1 changed, 1 added, 18 unchanged. Rebuild: Checkout." (what CHANGES.md will say) */
+export function changesLine(c: NonNullable<Preview['changes']>): string {
+  const parts = [
+    c.counts.changed ? `${c.counts.changed} changed` : '',
+    c.counts.added ? `${c.counts.added} added` : '',
+    c.counts.removed ? `${c.counts.removed} removed` : '',
+    `${c.counts.unchanged} unchanged`
+  ].filter(Boolean)
+  const extra = [c.tokens ? `${c.tokens} token change${c.tokens === 1 ? '' : 's'}` : '', c.assets ? `${c.assets} asset change${c.assets === 1 ? '' : 's'}` : ''].filter(Boolean)
+  const rebuild = c.rebuild.length ? ` Rebuild: ${c.rebuild.slice(0, 4).join(', ')}${c.rebuild.length > 4 ? ` and ${c.rebuild.length - 4} more` : ''}.` : ' Nothing to rebuild.'
+  return `Since v${c.previous}: ${[...parts, ...extra].join(', ')}.${rebuild}`
+}
+
 export function ExportHandoffDialog(): JSX.Element | null {
   const docId = useExportHandoff((s) => s.docId)
   const close = useExportHandoff((s) => s.close)
@@ -354,6 +367,11 @@ export function ExportHandoffDialog(): JSX.Element | null {
                 <p key={c}>{c}</p>
               ))}
             </div>
+          )}
+          {preview?.changes && (
+            <p className="eh-changes" data-testid="eh-changes">
+              {changesLine(preview.changes)}
+            </p>
           )}
           {preview && <pre className="eh-tree">{treeLines(preview.files, preview.folderName).join('\n')}</pre>}
         </div>

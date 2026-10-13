@@ -1,5 +1,6 @@
 // Types of the handoff bundle writer (T62 / H3). The writer is one pure function: Doc + options -> file map.
 // See docs/factory/T58-plan.md sections 3, 5, 8 to 11 and docs/factory/T62-plan.md.
+import type { ChangeSet } from './diff'
 import type { BreakpointDelta } from './deltas'
 import type { PropDef, StylePatch } from '../model/types'
 import type { Measure, NodeSpec, TokenUse } from '../model/devSpec'
@@ -71,6 +72,8 @@ export interface HandoffOptions {
   assets?: AssetRecord[]
   /** extra warnings to list in HANDOFF.md (the assets pipeline adds its own) */
   warnings?: string[]
+  /** what changed since the previous hand-off: writes CHANGES.md and `spec.changes` (the caller computes it with diffSpecs) */
+  changes?: ChangeSet
   /** where a font family comes from; default: generic and system keywords are `system`, the rest `unknown` */
   fontSource?: (family: string) => FontSource
 }
@@ -194,6 +197,8 @@ export interface TextStyleSpec {
 }
 
 export interface HandoffSpec {
+  /** what changed since the previous hand-off (absent on a first export), see diff.ts */
+  changes?: ChangeSet
   schema: typeof SCHEMA_ID
   handoff: { version: number; exportedAt: string; vellum: string; fileId: string; fileName: string }
   units: { length: 'px'; remBase: number; precision: number }
