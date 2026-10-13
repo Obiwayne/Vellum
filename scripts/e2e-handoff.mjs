@@ -36,6 +36,14 @@ const files = (dir) => {
 }
 let app
 let ud
+/** pixels of the promo's amber background (#FEF3C7) in a PNG (Electron bitmaps are BGRA) */
+const countAmber = (b64) =>
+  app.evaluate(({ nativeImage }, data) => {
+    const bm = nativeImage.createFromBuffer(Buffer.from(data, 'base64')).toBitmap()
+    let n = 0
+    for (let i = 0; i + 3 < bm.length; i += 4) if (bm[i] === 0xc7 && bm[i + 1] === 0xf3 && bm[i + 2] === 0xfe) n++
+    return n
+  }, b64)
 try {
   ;({ app, page, ud } = await launchApp(out))
 
@@ -49,6 +57,10 @@ try {
   await shot('three-frames-pasted')
   // a second screen that stays untouched when the first is edited (the "unchanged" side of CHANGES.md)
   if (withReceipt) await pasteHtml(app, page, RECEIPT_HTML)
+
+  // control for the picture check below: the detector does see the promo while it is visible
+  const visible = await countAmber((await page.screenshot()).toString('base64'))
+  check(visible > 100, `control: the promo's amber background is visible on the canvas before it is hidden (${visible} px)`)
 
   // hide the promo layer (it must not reach the bundle, the PNGs or the markdown)
   check(await hidePromo(page), 'the promo layer was found in the Layers panel and hidden')
@@ -71,7 +83,6 @@ try {
   }
   await shot('tagged')
   const insp = await page.evaluate(() => document.querySelector('.insp-scroll')?.innerText.slice(0, 400) ?? '')
-  check(/Checkout/.test(insp) || true, 'screen name entered')
   results.push(`inspector: ${insp.replace(/\n+/g, ' | ').slice(0, 200)}`)
 
   // mark both ready (not the third)
@@ -88,7 +99,7 @@ try {
   results.push(`tree: ${tree.join(', ')}`)
   const has = (p) => tree.includes(p)
   for (const p of ['HANDOFF.md', 'CLAUDE.md', 'spec.json', 'spec.schema.json', '.handoff.json', 'fonts.md']) check(has(p), `file: ${p}`)
-  check(tree.some((p) => /^tokens\//.test(p)) || true, 'tokens folder present when tokens are used (none in this sample)')
+  for (const p of ['tokens/tokens.css', 'tokens/tokens.json', 'tokens/tailwind.css']) check(has(p), `file: ${p}`)
   const pngs = tree.filter((p) => /^screens\/.+\.png$/.test(p))
   check(pngs.length >= 2, `a PNG reference per breakpoint (${pngs.join(', ')})`)
   const spec = JSON.parse(readFileSync(join(target, 'spec.json'), 'utf8'))
@@ -101,6 +112,12 @@ try {
   for (const p of pngs) {
     const head = readFileSync(join(target, p)).subarray(0, 8)
     check(head[0] === 0x89 && head.toString('latin1', 1, 4) === 'PNG', `${p} is a real PNG`)
+  }
+
+  // the hidden promo's amber background (#FEF3C7) is not in any reference picture either (BGRA bitmap)
+  for (const p of pngs) {
+    const hits = await countAmber(readFileSync(join(target, p)).toString('base64'))
+    check(hits === 0, `${p}: the hidden promo is not drawn (${hits} amber pixels)`)
   }
 
   // nothing hidden, unready or foreign anywhere in the text files
