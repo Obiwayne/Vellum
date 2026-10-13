@@ -63,3 +63,11 @@ Code: `src/renderer/src/editor/inspector/`. Every edit goes through store action
 - **Export:** PNG, JPG and WebP go through `canvasApi.renderHtml` (the main process's hidden offscreen window), so the whole node renders at 1x, 2x or 3x at any zoom, even off screen. A new row is PNG 2x (then 3x, then 1x). JPG is flattened onto the artboard's fill (or the page background when the artboard has none); WebP keeps transparency. PDF goes through `canvasApi.renderPdf` (`webContents.printToPDF`): vector, text stays selectable, and the page is the node's size with no margins. SVG is HTML inside a `<foreignObject>`. HTML is a standalone document that includes the tokens. Files are saved through the browser download (Electron shows a save dialog). Export rows are held for the session only.
 - **Connect modal status:** the status line counts any bridge request seen by the renderer as "connected".
 - **Keyboard shortcuts:** Shift+A and Alt+C are shown as labels only. The shortcuts themselves belong to `editor/shortcuts.ts`.
+
+## Dev sections (notes, states, accessibility)
+
+Shown for a single selected layer in Design mode (Dev Mode shows the same data read-only in the Spec panel). All of it is stored in `CNode.dev` through `setDev` (one undo step per edit, typing in the notes coalesces) and read by the handoff bundle. None of it appears in Copy as HTML / React / CSS.
+
+- **Dev notes**: free text for the developer, plus an open question that HANDOFF.md lists as needs-decision.
+- **States**: drawn states (a `State` / `Status` variant property, compared with the default variant), described rules (`hover`, `pressed`, `focus`, `focus-visible`, `disabled`, ... with a property and a value, colour values use the token picker) and the core states still missing on a component. **Make State property** turns a lone main into a set with `State = default | hover`, or names a set's only variant property `State`. In the bundle each state maps to its CSS pseudo-class or ARIA attribute and lists what it changes.
+- **Accessibility**: role (an inferred one is shown but not stored), label, focus order (0 goes back to reading order), contrast of a text layer per theme mode (WCAG, AA/AAA, large text rules; gradients and images are "not computed") and a warning for images with no alt text (an empty alt is a decision, "Mark decorative").

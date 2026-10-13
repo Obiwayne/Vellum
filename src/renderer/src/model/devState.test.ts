@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import * as ops from './ops'
 import * as comp from './components'
 import * as variants from './variants'
-import { canonicalState, drawnStateDeltas, makeStateProperty, stateProp, stateTarget, styleDelta } from './devState'
+import { canonicalState, drawnStateDeltas, inferRole, makeStateProperty, stateProp, stateTarget, styleDelta } from './devState'
 import type { CNode } from './types'
 
 describe('state vocabulary', () => {
@@ -119,5 +119,25 @@ describe('drawnStateDeltas', () => {
     variants.createVariant(doc, main.id, { [p.id]: 'Hovered' })
     const states = drawnStateDeltas(doc, setId).map((x) => x.state)
     expect(states.filter((s) => s === 'hover')).toHaveLength(1)
+  })
+})
+
+describe('inferRole', () => {
+  it('guesses from component, layer and text style names, and says nothing otherwise', () => {
+    const { doc, root, main, label } = setup()
+    expect(inferRole(doc, main.id)).toBe('button')
+    expect(inferRole(doc, label.id)).toBeUndefined()
+    const inst = comp.createInstance(doc, main.id, root)
+    expect(inferRole(doc, inst)).toBe('button')
+    const img = ops.makeNode(doc, { type: 'image', name: 'Photo' }, false)
+    ops.insertNode(doc, img, root)
+    expect(inferRole(doc, img.id)).toBe('img')
+    const h = ops.makeNode(doc, { type: 'text', name: 'Page title', text: 'x' }, false)
+    ops.insertNode(doc, h, root)
+    expect(inferRole(doc, h.id)).toBe('heading')
+    const plain = ops.makeNode(doc, { type: 'frame', name: 'Box' }, false)
+    ops.insertNode(doc, plain, root)
+    expect(inferRole(doc, plain.id)).toBeUndefined()
+    expect(inferRole(doc, 'nope')).toBeUndefined()
   })
 })

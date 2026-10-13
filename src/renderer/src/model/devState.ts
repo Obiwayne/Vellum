@@ -163,3 +163,28 @@ export function makeStateProperty(doc: Doc, mainOrSetId: string): MakeStateResul
   }
   return { ok: true, setId }
 }
+
+/** ARIA roles the Dev section offers (anything else can be typed in the spec by hand). */
+export const ROLES = ['button', 'link', 'textbox', 'checkbox', 'radio', 'switch', 'tab', 'tablist', 'tabpanel', 'menu', 'menuitem', 'listbox', 'option', 'combobox', 'slider', 'dialog', 'alert', 'navigation', 'heading', 'img', 'list', 'listitem', 'table', 'region', 'main', 'banner', 'contentinfo', 'search', 'form', 'status', 'tooltip', 'progressbar', 'presentation'] as const
+
+/** A role guessed from the layer: used as a hint, always labelled "inferred", never written to the file. */
+export function inferRole(doc: Doc, id: string): string | undefined {
+  const n = doc.nodes[id]
+  if (!n) return undefined
+  if (n.type === 'image') return 'img'
+  const comp = n.instance ? doc.nodes[n.instance.of]?.component?.name : n.component?.name
+  const name = `${comp ?? ''} ${n.name}`.toLowerCase()
+  if (/\b(button|btn|cta)\b/.test(name)) return 'button'
+  if (/\blink\b/.test(name)) return 'link'
+  if (/\b(input|field|textbox|text field|search box)\b/.test(name)) return 'textbox'
+  if (/\bcheckbox\b/.test(name)) return 'checkbox'
+  if (/\bradio\b/.test(name)) return 'radio'
+  if (/\b(switch|toggle)\b/.test(name)) return 'switch'
+  if (/\btab\b/.test(name)) return 'tab'
+  if (/\b(nav|navigation|menu bar)\b/.test(name)) return 'navigation'
+  if (n.type === 'text') {
+    const style = n.textStyle ? doc.textStyles?.find((x) => x.id === n.textStyle)?.name.toLowerCase() : ''
+    if (/\b(heading|title|h[1-6])\b/.test(`${style} ${n.name.toLowerCase()}`)) return 'heading'
+  }
+  return undefined
+}
