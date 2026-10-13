@@ -6,7 +6,7 @@ import type { CNode, Doc } from '../model/types'
 import { nodeSpec, tokenUse, varsIn, type NodeSpec, type SpecOptions, type TokenUse } from '../model/devSpec'
 import { modesOf } from '../model/modes'
 import { textContrast } from '../model/contrast'
-import { canonicalState, drawnStateDeltas, stateTarget } from '../model/devState'
+import { canonicalState, drawnStateDeltas, missingCoreStates, stateTarget } from '../model/devState'
 import { isPageRoot, numericSize } from '../model/ops'
 import { variantValues, variantsOf } from '../model/variants'
 import { PathRegistry, slug } from './paths'
@@ -140,7 +140,6 @@ const firstFamily = (stack: string): string => (stack.split(',')[0] ?? '').trim(
 const defaultFontSource = (family: string): FontSource => (GENERIC_FAMILIES.has(family.toLowerCase()) ? 'system' : 'unknown')
 
 const STATE_PROP_RE = /^(state|status)$/i
-const STATE_VOCAB = ['hover', 'pressed', 'focus', 'disabled']
 const INTERACTIVE_RE = /\b(button|btn|link|input|field|textbox|checkbox|radio|switch|toggle|tab|select|dropdown|menu item|chip)\b/i
 
 const isTokenName = (s: string): boolean => /^--[\w-]+$/.test(s)
@@ -312,7 +311,7 @@ export function collect(doc: Doc, options: HandoffOptions): Collected {
     }
     drawn.forEach((s) => add(s, 'drawn'))
     ;[...described].sort().forEach((s) => add(s, 'described'))
-    if (interactive) STATE_VOCAB.filter((s) => !seen.has(s)).forEach((s) => add(s, 'missing'))
+    if (interactive) missingCoreStates(seen).forEach((s) => add(s, 'missing'))
     const base = slug(name, 'component')
     const cSlug = paths.take('components', base, '.md').replace(/^components\//, '').replace(/\.md$/, '')
     compOrder.push(key)

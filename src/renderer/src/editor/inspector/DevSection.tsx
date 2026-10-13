@@ -6,7 +6,7 @@ import { X } from 'lucide-react'
 import { Button, Field, Section, Select } from '../../ui'
 import { useStore, getStore } from '../../model/store'
 import { textContrast } from '../../model/contrast'
-import { CORE_STATES, ROLES, STATE_VOCAB, canonicalState, drawnStateDeltas, inferRole, stateProp, stateTarget } from '../../model/devState'
+import { KNOWN_STATES, ROLES, canonicalState, drawnStateDeltas, inferRole, missingCoreStates, stateProp, stateTarget } from '../../model/devState'
 import type { CNode, Doc, StylePatch } from '../../model/types'
 import { toast } from '../canvas/toast'
 import { ColorInput } from './ColorInput'
@@ -87,7 +87,7 @@ function StatesSection({ docId, node }: { docId: string; node: CNode }): JSX.Ele
   const described = Object.entries(node.dev?.states ?? {})
   const seen = new Set(drawn.map((d) => d.state))
   for (const [k] of described) seen.add(canonicalState(k))
-  const missing = isMain ? CORE_STATES.filter((s) => !seen.has(s)) : []
+  const missing = isMain ? missingCoreStates(seen) : []
   const nothing = !drawn.length && !described.length && !missing.length
 
   const writePatch = (state: string, patch: StylePatch): void => setDev(docId, [node.id], { states: { [state]: patch } })
@@ -159,7 +159,7 @@ function StatesSection({ docId, node }: { docId: string; node: CNode }): JSX.Ele
             <Select<string>
               value={draft.state}
               size="sm"
-              options={[...STATE_VOCAB.filter((s) => s !== 'default').map((s) => ({ value: s as string, label: s }))]}
+              options={[...KNOWN_STATES.filter((s) => s !== 'default').map((s) => ({ value: s as string, label: s }))]}
               onChange={(v) => setDraft({ ...draft, state: v })}
             />
             <Select<string> value={draft.prop} size="sm" options={STATE_PROPS.map((p) => ({ value: p.key, label: p.label }))} onChange={(v) => setDraft({ ...draft, prop: v, value: '' })} />

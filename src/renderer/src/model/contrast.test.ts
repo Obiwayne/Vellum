@@ -136,3 +136,33 @@ describe('textContrast', () => {
     expect(r.ok && r.results[0].ratio).toBeGreaterThan(20)
   })
 })
+
+describe('flags use the exact ratio, not the rounded one', () => {
+  const on = (color: string, size = 16, weight = 400) => {
+    const d = ops.makeDoc('c', 'C')
+    const f = ops.makeNode(d, { type: 'frame', style: { width: 100, height: 100, backgroundColor: '#FFFFFF' } }, false)
+    ops.insertNode(d, f, d.pages[0].rootId)
+    const t = ops.makeNode(d, { type: 'text', text: 'x', style: { color, fontSize: size, fontWeight: weight } }, false)
+    ops.insertNode(d, t, f.id)
+    const r = textContrast(d, t.id)
+    if (!r.ok) throw new Error(r.reason)
+    return r.results[0]
+  }
+  it('4.4989 is shown as 4.5 and fails AA for normal text', () => {
+    const r = on('#168484')
+    expect(r.ratio).toBe(4.5)
+    expect(r.aa).toBe(false)
+  })
+  it('2.9978 is shown as 3 and fails AA for large text', () => {
+    const r = on('#00A6A6', 24)
+    expect(r.large).toBe(true)
+    expect(r.ratio).toBe(3)
+    expect(r.aa).toBe(false)
+  })
+  it('6.9969 is shown as 7 and fails AAA', () => {
+    const r = on('#176363')
+    expect(r.ratio).toBe(7)
+    expect(r.aaa).toBe(false)
+    expect(r.aa).toBe(true)
+  })
+})

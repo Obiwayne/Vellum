@@ -128,8 +128,9 @@ export function textContrast(doc: Doc, id: string): ContrastOutcome {
     }
     for (const l of layers.reverse()) base = composite(l, base)
     const paint = composite(fg, base)
-    const ratio = round2(contrastRatio(paint, base))
-    results.push({ mode: mode ?? 'base', ratio, fg: hex(paint), bg: hex(base), large, ...wcag(ratio, large) })
+    // WCAG: the thresholds apply to the exact ratio; only the displayed value is rounded (4.4989 shows as 4.5 and still fails AA)
+    const raw = contrastRatio(paint, base)
+    results.push({ mode: mode ?? 'base', ratio: round2(raw), fg: hex(paint), bg: hex(base), large, ...wcag(raw, large) })
   }
   return { ok: true, results }
 }

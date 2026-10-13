@@ -6,11 +6,19 @@ import { createVariant, matchTrees, renameVariantOption, renameVariantProp, setO
 import { propDefsOf } from './components'
 
 /** The states the handoff knows how to map. Any other option name passes through as `data-state="…"`. */
-export const STATE_VOCAB = ['default', 'hover', 'pressed', 'focus', 'focus-visible', 'disabled', 'loading', 'selected', 'error'] as const
-export type KnownState = (typeof STATE_VOCAB)[number]
+export const KNOWN_STATES = ['default', 'hover', 'pressed', 'focus', 'focus-visible', 'disabled', 'loading', 'selected', 'error'] as const
+export type KnownState = (typeof KNOWN_STATES)[number]
 
-/** States an interactive component should say something about. */
-export const CORE_STATES = ['hover', 'pressed', 'focus-visible', 'disabled'] as const
+/**
+ * States an interactive component should say something about: the one list the inspector and the bundle share.
+ * `focus-visible` counts as `focus` (see `missingCoreStates`).
+ */
+export const CORE_STATES = ['hover', 'pressed', 'focus', 'disabled'] as const
+
+/** The core states not yet covered by `seen` (canonical names). A `focus-visible` rule covers `focus`. */
+export function missingCoreStates(seen: ReadonlySet<string>): string[] {
+  return CORE_STATES.filter((s) => !seen.has(s) && !(s === 'focus' && seen.has('focus-visible')))
+}
 
 /** Names for the same state: `active` is `pressed`, `focused` is `focus`, `rest` is `default`. */
 export function canonicalState(name: string): string {

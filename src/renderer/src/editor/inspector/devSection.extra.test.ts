@@ -10,6 +10,7 @@ vi.mock('../canvas/toast', () => ({ toast: vi.fn() }))
 import { getStore, useStore } from '../../model/store'
 import { codeFor } from '../canvas/codegen'
 import { textContrast } from '../../model/contrast'
+import { buildHandoff } from '../../handoff'
 import { DevSections } from './DevSection'
 
 ;(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
@@ -121,5 +122,48 @@ describe('instances and code', () => {
     S().updateStyles(id, [f], { backgroundColor: 'var(--missing)' })
     const bad = textContrast(S().docs[id], t)
     expect(typeof bad.ok).toBe('boolean')
+  })
+})
+
+describe('one list of core states for the inspector and the bundle', () => {
+  function button() {
+    const rootId = S().docs[id].pages[0].rootId
+    const main = S().createNode(id, { type: 'frame', name: 'Button', style: { width: 100, height: 40 } }, rootId)
+    S().createComponent(id, [main])
+    const screen = S().createNode(id, { type: 'frame', name: 'Home', style: { width: 300, height: 200 } }, rootId)
+    S().createInstance(id, main, screen)
+    S().setReady(id, [screen], 1)
+    return main
+  }
+  const missingInInspector = (): string => [...host.querySelectorAll('[data-badge="missing"]')].map((r) => r.textContent ?? '').join(' ')
+  /** the bundle's state table rows: `| state | how |` */
+  const stateRows = (): Record<string, string> => {
+    const r = buildHandoff(S().docs[id], { version: 1, exportedAt: 'x', vellum: '1', projectLabel: 'A' })
+    const out: Record<string, string> = {}
+    for (const line of r.files['components/button.md'].split('\n')) {
+      const m = /^\| ([a-z-]+) \| (.*)\|?$/.exec(line)
+      if (m) out[m[1]] = m[2]
+    }
+    return out
+  }
+
+  it('lists hover, pressed, focus and disabled as missing in both places', () => {
+    const main = button()
+    mount(main)
+    const rows = missingInInspector()
+    for (const s of ['hover', 'pressed', 'focus', 'disabled']) expect(rows, s).toContain(s)
+    expect(rows).not.toContain('focus-visible')
+    const table = stateRows()
+    for (const s of ['hover', 'pressed', 'focus', 'disabled']) expect(table[s], s).toMatch(/missing/)
+  })
+
+  it.each(['focus', 'focus-visible', 'Focused'])('a described "%s" rule is not reported missing, in the inspector or the bundle', (name) => {
+    const main = button()
+    S().setDev(id, [main], { states: { [name]: { outline: '2px solid #2563EB' } } })
+    mount(main)
+    expect(missingInInspector()).not.toMatch(/\bfocus\b/)
+    const table = stateRows()
+    expect(table.focus ?? '').not.toMatch(/missing/)
+    expect(table.hover).toMatch(/missing/)
   })
 })
