@@ -2,6 +2,8 @@
 
 Discovery: there is no separate `T58-discovery.md`. The discover findings (what a developer gets today, the gaps, prior art) are section 1 of `docs/factory/T58-plan.md`, written first. This document replaces the plan's concept and design sections as the decision record.
 
+> **Revision (Captain message F1313):** the task text only reached me as a title. Obi's case is Andy building another project's UI with his own Claude Code from an exported spec, files separate from the repo, possibly no Vellum. That makes **option C (handoff export bundle) the lead**, with option B's Spec panel as the companion/review surface (B is also what C's data model feeds). Recommendation below is superseded by `T58-plan.md` section 2: **bundle first, plus Dev Mode read-only, MCP for same-machine use.**
+
 ## Goal
 Let a developer (a person, or an agent over MCP) build a screen from a Vellum design to the pixel: read exact resolved numbers, tokens, typography, assets and code for any layer, without risk of editing the design and without leaving Vellum.
 
