@@ -1,9 +1,10 @@
 import { useRef, useState } from 'react'
-import { ChevronDown, Code, FileDown } from 'lucide-react'
+import { ChevronDown, Code, FileDown, PackageOpen } from 'lucide-react'
 import { Button, Menu, Popover, Segmented, type MenuEntry } from '../../ui'
 import { activePage, getStore, useStore } from '../../model/store'
 import { nodeToHtml } from '../../model/html'
 import { Avatar } from '../../profile/parts'
+import { openExportHandoff } from '../handoff/exportDialog'
 import { useCurrentProfile } from '../../profile/profile'
 import * as A from '../canvas/actions'
 import { zoomIn, zoomOut, zoomTo100, zoomToFit, zoomToSelection } from './zoom'
@@ -140,6 +141,16 @@ export function TopBar({ docId }: { docId: string }): JSX.Element {
           </Button>
           <Button full icon={<Code size={14} />} onClick={() => void copyHtml()}>
             {copied ? 'Copied' : 'Copy HTML'}
+          </Button>
+          <Button
+            full
+            icon={<PackageOpen size={14} />}
+            onClick={() => {
+              setShareOpen(false)
+              openExportHandoff(docId)
+            }}
+          >
+            Export handoff…
           </Button>
         </div>
       </Popover>
