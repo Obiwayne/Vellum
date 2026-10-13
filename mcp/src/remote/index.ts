@@ -74,6 +74,11 @@ async function main(): Promise<void> {
 }
 
 main().catch((err) => {
-  console.error('[vellum-remote] fatal:', err)
+  // one line: the Vellum app shows the last line of the output in Settings
+  const e = err as NodeJS.ErrnoException
+  const port = (e as { port?: number }).port
+  console.error(
+    e?.code === 'EADDRINUSE' ? `Port ${port ?? ''} is already in use: is the connector already running (VellumRemote.cmd)?` : `Could not start: ${e instanceof Error ? e.message : String(err)}`
+  )
   process.exit(1)
 })
