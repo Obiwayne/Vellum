@@ -14,6 +14,7 @@ const ADMIN_PORT = Number(process.env.VELLUM_REMOTE_ADMIN_PORT) || 29181
 
 let child: ChildProcess | null = null
 let lastError: string | null = null
+let starting = false
 
 const dir = (): string => join(app.getPath('userData'), 'remote')
 const configFile = (): string => join(dir(), 'config.json')
@@ -105,6 +106,8 @@ async function state(): Promise<RemoteState> {
       audit: s.audit
     }
   } catch {
+    // switched on (here or in config.json) but nothing answers and nothing is starting: start it
+    if (base.enabled && !child && !starting) void start()
     return base
   }
 }
@@ -119,6 +122,16 @@ async function answering(): Promise<boolean> {
 }
 
 async function start(): Promise<void> {
+  if (starting) return
+  starting = true
+  try {
+    await startOnce()
+  } finally {
+    starting = false
+  }
+}
+
+async function startOnce(): Promise<void> {
   if (child || (await answering())) return
   const entry = script()
   if (!existsSync(entry)) {
