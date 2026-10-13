@@ -50,7 +50,10 @@ export function realClientIp(req: IncomingMessage, tunnel: Tunnel | null, viaTun
   return { ip: socket, ipFrom: tunnel ? `socket (no ${tunnel} header)` : 'socket (tunnel type not set)' }
 }
 
-/** "https://Obi.Example.ts.net:8443/mcp/" → "obi.example.ts.net:8443"; "" → null. Throws on anything else. */
+/**
+ * "https://Obi.Example.ts.net:8443/mcp/" → "obi.example.ts.net:8443"; "" → null. Throws on anything else. A path is kept
+ * ("name.ts.net/vellum") for a tunnel that mounts the connector under a path on a port another app serves (Funnel --set-path).
+ */
 export function normalizeHost(v: string | null | undefined): string | null {
   const host = (v ?? '')
     .trim()
@@ -59,8 +62,8 @@ export function normalizeHost(v: string | null | undefined): string | null {
     .replace(/\/mcp\/?$/, '')
     .replace(/\/+$/, '')
   if (!host) return null
-  if (!/^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+(:\d{1,5})?$/.test(host)) throw new HttpError(400, `"${v}" is not a hostname`)
-  return host.replace(/:443$/, '')
+  if (!/^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+(:\d{1,5})?(\/[a-z0-9._-]+)*$/.test(host)) throw new HttpError(400, `"${v}" is not a hostname`)
+  return host.replace(/:443(?=\/|$)/, '')
 }
 
 function readJson(req: IncomingMessage): Promise<unknown> {
@@ -135,7 +138,8 @@ export async function startConnector(opts: ConnectorOptions): Promise<Connector>
     }
   }
   const hostOf = (req: IncomingMessage) => String(req.headers.host ?? '').toLowerCase().replace(/:443$/, '')
-  const viaTunnel = (req: IncomingMessage) => publicHost !== null && hostOf(req) === publicHost
+  // publicHost may carry a path prefix the tunnel strips: match the Host header against the host part only
+  const viaTunnel = (req: IncomingMessage) => publicHost !== null && hostOf(req) === publicHost.split('/')[0]
   const ipOf = (req: IncomingMessage) => realClientIp(req, tunnelKind, viaTunnel(req))
   const auth = new RemoteAuth({ dir: opts.dir, pcName: opts.pcName ?? 'this PC', now, audit, ipOf, onAppWaiting: opts.onAppWaiting, fetchMetadata: opts.fetchMetadata })
 

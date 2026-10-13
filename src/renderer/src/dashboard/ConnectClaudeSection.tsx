@@ -11,6 +11,18 @@ const TUNNELS = [
   { value: 'cloudflare' as const, label: 'Cloudflare Tunnel' }
 ]
 
+/** Funnel commands for the address: its own port (name.ts.net:8443), or a path on 443 shared with another app (name.ts.net/vellum). */
+function funnelCommands(host: string, port: number): string[] {
+  const prefix = /\/[^/].*$/.exec(host.trim().replace(/^https?:\/\//, '').replace(/\/mcp\/?$/, '').replace(/\/+$/, ''))?.[0]
+  if (!prefix) return [`tailscale funnel --bg --https=${/:(\d+)$/.exec(host.trim())?.[1] ?? 8443} ${port}`]
+  const to = `http://127.0.0.1:${port}`
+  return [
+    `tailscale funnel --bg --set-path=${prefix} ${to}`,
+    `tailscale funnel --bg --set-path=/.well-known/oauth-protected-resource${prefix} ${to}/.well-known/oauth-protected-resource`,
+    `tailscale funnel --bg --set-path=/.well-known/oauth-authorization-server${prefix} ${to}/.well-known/oauth-authorization-server`
+  ]
+}
+
 const time = (iso?: string | null): string => (iso ? new Date(iso).toLocaleString() : '—')
 const clock = (iso: string): string => new Date(iso).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
 
@@ -216,7 +228,7 @@ export function ConnectClaudeSection(): JSX.Element {
 
           <div className="db-remote__block">
             <div className="db-settings__label">Public address</div>
-            <div className="db-settings__hint">The host your tunnel serves, for example name.tailnet.ts.net:8443. Tunnel only port {st.port ?? 29180}.</div>
+            <div className="db-settings__hint">The host your tunnel serves, for example name.tailnet.ts.net:8443, or name.tailnet.ts.net/vellum to share port 443 with another app (claude.ai may not reach other ports). Tunnel only port {st.port ?? 29180}.</div>
             <div className="db-remote__line">
               <input
                 className="db-input db-remote__host"
@@ -234,7 +246,7 @@ export function ConnectClaudeSection(): JSX.Element {
                 Save
               </Button>
             </div>
-            {tunnel === 'tailscale' && <CopyLine text={`tailscale funnel --bg --https=8443 ${st.port ?? 29180}`} />}
+            {tunnel === 'tailscale' && funnelCommands(host, st.port ?? 29180).map((c) => <CopyLine key={c} text={c} />)}
           </div>
         </div>
       )}

@@ -21,7 +21,8 @@ interface Config {
 
 const readConfig = (file: string): Config => {
   try {
-    return JSON.parse(readFileSync(file, 'utf8')) as Config
+    // a BOM (Notepad, PowerShell Set-Content) would make JSON.parse fail and lose the address
+    return JSON.parse(readFileSync(file, 'utf8').replace(/^﻿/, '')) as Config
   } catch {
     return {}
   }

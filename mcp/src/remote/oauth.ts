@@ -382,7 +382,8 @@ export class RemoteAuth {
       json(res, 200, { resource, authorization_servers: [base], scopes_supported: SCOPES, bearer_methods_supported: ['header'], resource_name: 'Vellum' })
       return true
     }
-    if (path === '/.well-known/oauth-authorization-server') {
+    // the OpenID path too: under a path prefix (name.ts.net/vellum) clients fall back to <issuer>/.well-known/openid-configuration
+    if (path === '/.well-known/oauth-authorization-server' || path === '/.well-known/openid-configuration') {
       json(res, 200, {
         issuer: base,
         authorization_endpoint: `${base}/authorize`,
@@ -405,7 +406,7 @@ export class RemoteAuth {
     }
     if (path === '/authorize/wait') {
       if (method !== 'GET') throw new OAuthError(405, 'invalid_request', 'GET only')
-      this.authorizeWait(req, res, new URL(req.url ?? '/', base).searchParams.get('r') ?? '')
+      this.authorizeWait(req, res, new URL(req.url ?? '/', base).searchParams.get('r') ?? '', base)
       return true
     }
     if (path === '/authorize') {
@@ -535,7 +536,7 @@ export class RemoteAuth {
       <p><b>${esc(client.name)}</b> wants to connect to Vellum on <b>${esc(this.opts.pcName)}</b>. It will be able to read and edit your designs while Vellum is open.</p>
       <p>On the PC, open <b>http://127.0.0.1:29181</b> (Vellum remote access) and press <b>New code</b>. Codes work once and last 2 minutes.</p>
       ${error ? `<p class="err">${esc(error)}</p>` : ''}
-      <form method="post" action="/authorize">${hidden}
+      <form method="post" action="${esc(resource.replace(/\/mcp$/, ''))}/authorize">${hidden}
         <input name="code" autocomplete="one-time-code" autocapitalize="characters" spellcheck="false" placeholder="K7M-4QX" maxlength="9" ${locked ? 'disabled' : 'autofocus'} required>
         <div class="row"><button type="submit" name="decision" value="allow" ${locked ? 'disabled' : ''}>Connect</button><button type="submit" name="decision" value="deny" class="ghost" formnovalidate>Cancel</button></div>
       </form>`
@@ -609,7 +610,7 @@ export class RemoteAuth {
     const r = b64url(randomBytes(18))
     this.waiting.set(r, { ...signIn, appId: app.id, ...(f.state ? { state: f.state } : {}), expiresAt: this.t() + APP_WAIT_MS })
     this.opts.audit({ event: 'login_failed', reason: 'not_approved', client: checked.client.name, ...ip })
-    this.waitPage(res, r, app.name)
+    this.waitPage(res, r, app.name, resource.replace(/\/mcp$/, ''))
   }
 
   /** An authorization code for a sign-in that passed (code right, app approved). */
@@ -636,7 +637,7 @@ export class RemoteAuth {
   }
 
   /** The consent page while the app waits: refreshes itself until you Approve or Deny it on the admin page. */
-  private authorizeWait(req: IncomingMessage, res: ServerResponse, r: string): void {
+  private authorizeWait(req: IncomingMessage, res: ServerResponse, r: string, base: string): void {
     for (const [k, v] of this.waiting) if (v.expiresAt <= this.t()) this.waiting.delete(k)
     const w = this.waiting.get(r)
     if (!w)
@@ -656,7 +657,7 @@ export class RemoteAuth {
       res.end()
     }
     if (!app) return back({ error: 'access_denied' }) // denied (removed from the list) on the desktop
-    if (app.status !== 'approved') return this.waitPage(res, r, app.name)
+    if (app.status !== 'approved') return this.waitPage(res, r, app.name, base)
     this.opts.audit({ event: 'login_ok', client: w.clientName, ...this.where(req) })
     back({
       code: this.authCode({
@@ -670,7 +671,7 @@ export class RemoteAuth {
     })
   }
 
-  private waitPage(res: ServerResponse, r: string, name: string): void {
+  private waitPage(res: ServerResponse, r: string, name: string, base: string): void {
     this.page(
       res,
       202,
@@ -678,7 +679,7 @@ export class RemoteAuth {
       `<p>The code was right. <b>${esc(name)}</b> isn't on Vellum's list of approved apps yet.</p>
       <p>On <b>${esc(this.opts.pcName)}</b>, open <b>http://127.0.0.1:29181</b> and press <b>Approve</b> next to ${esc(name)}. This page carries on by itself.</p>
       <p class="muted">Waiting… (gives up after 10 minutes)</p>`,
-      `<meta http-equiv="refresh" content="${WAIT_REFRESH_S};url=/authorize/wait?r=${encodeURIComponent(r)}">`
+      `<meta http-equiv="refresh" content="${WAIT_REFRESH_S};url=${esc(base)}/authorize/wait?r=${encodeURIComponent(r)}">`
     )
   }
 

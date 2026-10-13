@@ -13,9 +13,14 @@ import { startAdmin } from '../dist/remote/admin.js'
 import { bridge } from '../dist/server.js'
 
 /** fetch() drops a custom Host header, so the rebinding checks use http.request. */
-const withHost = (url, host) =>
+const withHost = (url, host) => withHostRes(url, host, 'POST').then((r) => r.status)
+const withHostRes = (url, host, method = 'GET') =>
   new Promise((ok, fail) => {
-    const req = request(url, { method: 'POST', headers: { host } }, (res) => (res.resume(), ok(res.statusCode)))
+    const req = request(url, { method, headers: { host } }, (res) => {
+      let body = ''
+      res.on('data', (c) => (body += c))
+      res.on('end', () => ok({ status: res.statusCode, headers: res.headers, body }))
+    })
     req.on('error', fail)
     req.end()
   })
@@ -100,6 +105,17 @@ try {
   const after = await fetch(`${base}/mcp`, { method: 'POST', headers: { authorization: `Bearer ${tok.access_token}`, 'content-type': 'application/json', accept: 'application/json, text/event-stream' }, body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'tools/list' }) })
   check(after.status === 401, 'revoked token refused')
   check(connector.recentAudit(50).some((e) => e.tool === 'list_files'), 'tool calls are in the audit log')
+
+  // public address under a path (Funnel --set-path=/vellum strips the prefix): every URL handed out carries it
+  connector.setPublic('https://Obi.Example.ts.net/vellum/mcp', 'tailscale')
+  const pub = 'https://obi.example.ts.net/vellum'
+  const u401 = await withHostRes(`${base}/mcp`, 'obi.example.ts.net', 'POST')
+  check(u401.status === 401 && u401.headers['www-authenticate']?.includes(`${pub}/.well-known/oauth-protected-resource/mcp`), 'path prefix: 401 points at the prefixed metadata')
+  const pprm = JSON.parse((await withHostRes(`${base}/.well-known/oauth-protected-resource/mcp`, 'obi.example.ts.net')).body)
+  const pas = JSON.parse((await withHostRes(`${base}/.well-known/oauth-authorization-server`, 'obi.example.ts.net')).body)
+  check(pprm.resource === `${pub}/mcp` && pprm.authorization_servers[0] === pub && pas.issuer === pub && pas.authorization_endpoint === `${pub}/authorize`, 'path prefix: metadata URLs carry it')
+  const pconsent = await withHostRes(`${base}/authorize?${new URLSearchParams({ ...params, resource: `${pub}/mcp` })}`, 'obi.example.ts.net')
+  check(pconsent.body.includes(`action="${pub}/authorize"`), 'path prefix: consent form posts to the prefixed URL')
 } finally {
   bridge.close()
   await connector.close()

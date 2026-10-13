@@ -16,10 +16,19 @@ claude.ai ──https──▶ tunnel (Tailscale Funnel / Cloudflare) ──▶ 
    Without the app UI: run `VellumRemote.cmd` (or `cd mcp && npm run build && npm run remote`) and keep its window open;
    Settings then shows it as started outside the app.
 2. Fill in **Public address** in Settings (or on the admin page, http://127.0.0.1:29181). For Tailscale that's
-   `name.tailnet.ts.net:8443`.
+   `name.tailnet.ts.net:8443`, or `name.tailnet.ts.net/vellum` to share port 443 (step 3).
 3. Start the tunnel, forwarding **only** port 29180:
    - Tailscale Funnel: `tailscale funnel --bg --https=8443 29180` (off: `tailscale funnel --https=8443 off`).
-     Port 443 can be used by something else; Funnel also offers 8443 and 10000.
+     Port 443 can be used by something else; Funnel also offers 8443 and 10000. claude.ai may not reach those other
+     ports (no request ever arrives), so when 443 is taken, share it under a path: public address `name.tailnet.ts.net/vellum`
+     and three path routes, which Tailscale strips before forwarding (Settings shows them to copy):
+     ```
+     tailscale funnel --bg --set-path=/vellum http://127.0.0.1:29180
+     tailscale funnel --bg --set-path=/.well-known/oauth-protected-resource/vellum http://127.0.0.1:29180/.well-known/oauth-protected-resource
+     tailscale funnel --bg --set-path=/.well-known/oauth-authorization-server/vellum http://127.0.0.1:29180/.well-known/oauth-authorization-server
+     ```
+     The two `.well-known` routes are where OAuth clients look for a server under a path (RFC 9728, RFC 8414); the
+     connector also answers `<prefix>/.well-known/openid-configuration`. Off: `tailscale funnel --set-path=<path> off` for each.
    - Cloudflare Tunnel: point a hostname at `http://127.0.0.1:29180`.
 4. In claude.ai: Settings → Connectors → Add custom connector, URL `https://<public address>/mcp`.
 5. Claude opens a sign-in page. In Settings (or on the admin page) press **New code** and type the code there.

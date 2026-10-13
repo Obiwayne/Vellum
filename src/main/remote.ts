@@ -21,7 +21,7 @@ const configFile = (): string => join(dir(), 'config.json')
 
 function readConfig(): Record<string, unknown> {
   try {
-    return JSON.parse(readFileSync(configFile(), 'utf8')) as Record<string, unknown>
+    return JSON.parse(readFileSync(configFile(), 'utf8').replace(/^﻿/, '')) as Record<string, unknown>
   } catch {
     return {}
   }
