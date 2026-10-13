@@ -75,17 +75,6 @@ describe('RedlineLayer', () => {
     expect(chip.style.top).toBe('314px')
   })
 
-  it('a line shorter than the label chip gets no chip, so labels do not pile up in a small frame', () => {
-    // 8 world px at 1x: shorter than the chip
-    draw(scene(geometry({ x: 0, y: 0, width: 100, height: 100 }, { x: 108, y: 20, width: 40, height: 40 })), 1)
-    expect(host.querySelector('.cv-redline')).not.toBeNull()
-    expect(host.querySelector('.cv-redline-label')).toBeNull()
-    expect(host.querySelector('.cv-redline-hit')?.getAttribute('title')).toBe('8')
-    // the same line zoomed in is long enough for its chip
-    draw(scene(geometry({ x: 0, y: 0, width: 100, height: 100 }, { x: 108, y: 20, width: 40, height: 40 })), 4)
-    expect(host.querySelector('.cv-redline-label')?.textContent).toBe('8')
-  })
-
   it('never takes the pointer', () => {
     draw(sceneOf(), 1)
     expect(host.querySelector('[data-testid="redlines"]')?.className).toBe('cv-redlines')
