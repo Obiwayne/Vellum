@@ -309,3 +309,15 @@ describe('relaunch check decision (update test)', () => {
     expect(read('scripts/test-update.mjs')).toContain('relaunchVerdict({ started: installedProcs()')
   })
 })
+
+// A global ~/.npmrc with legacy-peer-deps=true makes `npm install` drop electron-builder's optional peers from the
+// lockfile, and then `npm ci` fails in CI. The project .npmrc pins it off for both lockfiles.
+describe('.npmrc', () => {
+  it.each(['.npmrc', 'mcp/.npmrc'])('%s turns legacy-peer-deps off, so a local npm install writes the same lockfile CI reads', (f) => {
+    expect(read(f)).toMatch(/^legacy-peer-deps=false$/m)
+  })
+
+  it('the lockfile has the electron-builder optional peers (electron-builder-squirrel-windows)', () => {
+    expect(read('package-lock.json')).toContain('"node_modules/electron-builder-squirrel-windows"')
+  })
+})
