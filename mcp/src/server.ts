@@ -780,6 +780,46 @@ export function createVellumServer(opts: ServerOptions = {}): McpServer {
   )
 
   server.registerTool(
+    'get_dev_spec',
+    {
+      description: `Developer-handoff spec of one or more layers: the measured box (size and position, parent- and artboard-relative), the layout intent first (flex / grid, Fixed / Fit / Fill, min and max, constraints, gap, padding), authored and resolved style, colours with token and per-mode values, text metrics, effects, and the component reference with variant and props. Values are measured and kept to 2 decimals. Prefer this over screenshots when you need numbers. Read-only; works in Dev Mode.
+  - nodeId or nodeIds (up to 50). Hidden layers are refused.
+  - depth: how many levels of children to include (default: all; 0 = the layer only).
+  - mode: theme mode to resolve token values in (default: the mode in effect at each layer).
+  Dev notes, accessibility hints and state rules are part of the bundle that export_handoff returns.`,
+      inputSchema: {
+        fileId,
+        nodeId: z.string().optional().describe('The layer to describe'),
+        nodeIds: z.array(z.string()).max(50).optional().describe('Several layers'),
+        depth: z.number().int().min(0).max(50).optional().describe('Levels of children to include; 0 = the layer only'),
+        mode: z.string().optional().describe('Theme mode name for resolved token values')
+      }
+    },
+    (args) => forward('get_dev_spec', args)
+  )
+
+  server.registerTool(
+    'export_handoff',
+    {
+      description: `Build the developer hand-off bundle for the frames marked ready for dev (or the frames you list) and return it inline as a file map: { files: { path: text }, summary, warnings, omitted, skippedBinary }. The files are the ones the app's Export handoff action writes: HANDOFF.md / CLAUDE.md (read first), tokens/ (css, DTCG json, tailwind), components/*.md, screens/*.md, fonts.md, spec.json with spec.schema.json, .handoff.json. This tool writes nothing to disk: save the files where you want them, or use Export handoff in the app for the bundle with images and PNG references.
+  - frames: top-level frame ids. Default: every frame marked ready for dev.
+  - version: handoff number printed in the bundle (default 1). projectLabel replaces the file name. rem adds rem beside px.
+  - maxBytes: size cap for the inline files (default 1,000,000, at most 8,000,000). Files past the cap are listed in "omitted" and in warnings; image and PNG paths are listed in "skippedBinary", never returned.
+  Hidden layers, comments and other pages are never included. Read-only; works in Dev Mode.`,
+      inputSchema: {
+        fileId,
+        frames: z.array(z.string()).max(200).optional().describe('Top-level frame ids to export; default: frames marked ready for dev'),
+        version: z.number().int().min(1).max(100000).optional(),
+        projectLabel: z.string().max(200).optional(),
+        rem: z.boolean().optional(),
+        mode: z.string().optional(),
+        maxBytes: z.number().int().min(1000).max(8000000).optional()
+      }
+    },
+    (args) => forward('export_handoff', args)
+  )
+
+  server.registerTool(
     'get_computed_styles',
     {
       description: 'Get the computed CSS styles for one or more nodes. Returns a map of nodeId to CSSProperties object. Supports batch requests.',

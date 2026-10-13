@@ -86,3 +86,10 @@ Lines: `feature` (logic) for all three. Each is one branch and one review.
 - The three-task order A, B, C.
 
 Left out on purpose: the history snapshot and `.handoff.json` diffing (H6), PNG and asset bytes (H4), any dialog or UI (H5), a tool that returns the bundle contents inline, and any network upload.
+
+## 8. Amendment (Captain F1513 / F1563): inline file map, no folder writing
+
+- `export_handoff` returns `{ files, summary, warnings, inlineBytes, omitted, skippedBinary }` from the renderer handler directly. The MCP process only forwards it; there is no folder writing, no `resolveExportDir`, no version scan and no `REMOTE_SKIP` entry (T65 owns writing to disk, so the app keeps one writer). Section 2's `_build_handoff` and the MCP-side writer are dropped; tasks A and B collapse into one build (`bridge/tools-dev.ts` + the two registrations in `mcp/src/server.ts`), task C (docs, guide, tests) stays in the same branch.
+- **Size cap:** `maxBytes` (default 1,000,000; at most 8,000,000). Files are returned most useful first (HANDOFF.md, tokens, components, screens, fonts.md, spec.json, schema, .handoff.json, then the identical CLAUDE.md copy); files past the cap are listed in `omitted` and a warning points to Export handoff in the app.
+- **Binary:** PNG references and assets are planned paths, never bytes: they are listed in `skippedBinary` with a warning.
+- **Version:** `version` defaults to 1 (no history counter before H6).

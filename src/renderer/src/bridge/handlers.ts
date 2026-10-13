@@ -11,6 +11,7 @@ import './tools-write'
 import './tools-components'
 import './tools-styles'
 import './tools-render'
+import './tools-dev'
 
 export { registerHandler, resolveDocId, handlers } from './registry'
 export type { BridgeHandler } from './registry'
