@@ -68,6 +68,7 @@ const DESIGN_EDITS: Record<string, (c: Seed) => void> = {
   applyTextStyle: (c) => S().applyTextStyle(id, [c.text], c.style),
   detachTextStyle: (c) => S().detachTextStyle(id, [c.text]),
   setDev: (c) => S().setDev(id, [c.frame], { notes: 'n' }),
+  makeStateProperty: (c) => void S().makeStateProperty(id, c.main),
   setScreen: (c) => void S().setScreen(id, c.frame, { name: 'Home', bp: 'Desktop' }),
   setReady: (c) => S().setReady(id, [c.frame], 1),
   mutate: (c) =>

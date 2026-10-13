@@ -13,6 +13,7 @@ import * as props from './properties'
 import * as tstyle from './textStyles'
 import * as dev from './dev'
 import type { DevPatch } from './dev'
+import { makeStateProperty as makeStateProp, type MakeStateResult } from './devState'
 import { htmlToNodes } from './html'
 import { MODE_ATTR, MODE_NAME_RE } from './modes'
 
@@ -141,6 +142,8 @@ export interface Store {
   // dev info (undoable; see model/dev.ts). Not part of instance overrides.
   /** merge a dev patch into each node (null clears a field). Same `coalesce` key within 1s merges (typing notes). */
   setDev(docId: string, ids: string[], patch: DevPatch, opts?: MutateOptions): void
+  /** set a component up for drawn states: a lone main becomes a set with State = default | hover, a set's only variant property is named State */
+  makeStateProperty(docId: string, id: string): MakeStateResult
   /** tag a top-level frame as a screen at a breakpoint (null clears); false when the node cannot be a screen */
   setScreen(docId: string, id: string, screen: { name: string; bp: string } | null): boolean
   /** mark frames ready for dev in handoff version `at` (null clears) */
@@ -786,6 +789,14 @@ export const useStore = create<Store>()((set, get) => {
       mutate(docId, 'Edit dev info', (d) => {
         for (const id of ids) dev.setDev(d, id, patch)
       }, { derived: true, ...opts })
+    },
+
+    makeStateProperty(docId, id) {
+      let result: MakeStateResult = { ok: false, reason: 'Layer not found' }
+      mutate(docId, 'Make State property', (d) => {
+        result = makeStateProp(d, id)
+      }, { derived: true })
+      return result
     },
 
     setScreen(docId, id, screen) {

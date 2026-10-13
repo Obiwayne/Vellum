@@ -28,6 +28,7 @@ import { StrokeSection, TextSection, UnderlineSection } from './TextSection'
 import { SelectionColorsSection } from './SelectionColorsSection'
 import { OtherStylesSection } from './OtherStylesSection'
 import { SpecPanel } from '../dev/SpecPanel'
+import { DevSections } from './DevSection'
 import './inspector.css'
 
 const EMPTY: string[] = []
@@ -79,6 +80,7 @@ function SelectionInspector({ docId, ids }: { docId: string; ids: string[] }): J
         <FiltersSection ctx={ctx} />
         <SelectionColorsSection ctx={ctx} />
         <OtherStylesSection ctx={ctx} />
+        {ids.length === 1 && <DevSections docId={docId} id={ids[0]} />}
         <ExportSection ctx={ctx} />
       </div>
     )
@@ -103,6 +105,7 @@ function SelectionInspector({ docId, ids }: { docId: string; ids: string[] }): J
       {ctx.nodes.every((n) => n.type === 'frame' || n.type === 'rect') && <BackgroundBlurSection ctx={ctx} />}
       <SelectionColorsSection ctx={ctx} />
       <OtherStylesSection ctx={ctx} />
+      {ids.length === 1 && <DevSections docId={docId} id={ids[0]} />}
       <PlaceholderSection title="Guides" />
       <PlaceholderSection title="Video" />
       <ExportSection ctx={ctx} />
