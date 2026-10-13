@@ -85,7 +85,7 @@ export const SPEC_SCHEMA: S = {
         variants: arr(obj({ ref: str, name: str, values: map(str), root: ref('Node') }, ['ref', 'name', 'values', 'root'])),
         usedBy: arr(str),
         notes: arr(str),
-        states: arr(obj({ state: str, badge: { enum: ['drawn', 'described', 'missing'] } }, ['state', 'badge'])),
+        states: arr(obj({ state: str, badge: { enum: ['drawn', 'described', 'missing'] }, target: str, changes: arr(str) }, ['state', 'badge'])),
         interactive: bool
       },
       ['ref', 'name', 'slug', 'isSet', 'props', 'variants', 'usedBy', 'notes', 'states', 'interactive']
@@ -224,6 +224,8 @@ export const SPEC_SCHEMA: S = {
         image: obj({ alt: str, objectFit: str }, []),
         notes: arr(str),
         a11y: obj({ role: str, label: str, tab: int }, []),
+        contrast: arr(obj({ mode: str, ratio: num, fg: str, bg: str, large: bool, aa: bool, aaa: bool }, ['mode', 'ratio', 'fg', 'bg', 'large', 'aa', 'aaa'])),
+        contrastNote: str,
         states: map({ type: 'object' }),
         needsDecision: str,
         children: arr(ref('Node'))
