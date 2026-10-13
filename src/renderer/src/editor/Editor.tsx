@@ -4,6 +4,7 @@ import { Toolbar } from './toolbar/Toolbar'
 import { CanvasView } from './canvas/CanvasView'
 import { Inspector } from './inspector/Inspector'
 import { onEditRefused, useStore } from '../model/store'
+import { refusalGate } from './dev/refuse'
 import { leftWidth } from './left/LeftPanel'
 import { CYCLE_MSG, STRUCTURE_MSG } from '../model/components'
 import { toast } from './canvas/toast'
@@ -25,7 +26,10 @@ export function Editor({ docId }: { docId: string }): JSX.Element {
     return () => window.removeEventListener('error', onError)
   }, [])
   // Dev Mode is read-only: every refused edit says so (D06)
-  useEffect(() => onEditRefused((id) => id === docId && toast('Dev Mode is read-only. Switch to Design to edit.')), [docId])
+  useEffect(() => {
+    const gate = refusalGate()
+    return onEditRefused((id) => id === docId && gate(id) && toast('Dev Mode is read-only. Switch to Design to edit.'))
+  }, [docId])
   return (
     <div className="ed" style={{ '--left-w': `${width}px` } as React.CSSProperties}>
       <aside className="ed-left">
