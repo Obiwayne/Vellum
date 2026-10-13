@@ -22,8 +22,10 @@ function clean(key: keyof DevInfo, v: unknown): unknown {
     case 'tab':
       return typeof v === 'number' && Number.isInteger(v) && v > 0 ? v : undefined
     case 'ready': {
-      const at = (v as { at?: unknown } | null)?.at
-      return typeof at === 'number' && Number.isInteger(at) && at >= 0 ? { at } : undefined
+      const r = v as { at?: unknown; hash?: unknown } | null
+      const at = r?.at
+      if (!(typeof at === 'number' && Number.isInteger(at) && at >= 0)) return undefined
+      return typeof r?.hash === 'string' && /^[0-9a-f]{8,64}$/.test(r.hash) ? { at, hash: r.hash } : { at }
     }
     case 'screen': {
       const s = v as { name?: unknown; bp?: unknown } | null
@@ -99,12 +101,12 @@ export function setScreen(doc: Doc, id: string, screen: { name: string; bp: stri
   return setDev(doc, id, { screen })
 }
 
-/** Mark frames ready for dev in handoff version `at` (null clears). Frames only. */
-export function setReady(doc: Doc, ids: string[], at: number | null): number {
+/** Mark frames ready for dev in handoff version `at` (null clears). Frames only. `hashes` = content hash per frame id. */
+export function setReady(doc: Doc, ids: string[], at: number | null, hashes: Record<string, string> = {}): number {
   let n = 0
   for (const id of ids) {
     if (doc.nodes[id]?.type !== 'frame') continue
-    if (setDev(doc, id, { ready: at === null ? null : { at } })) n++
+    if (setDev(doc, id, { ready: at === null ? null : { at, ...(hashes[id] ? { hash: hashes[id] } : {}) } })) n++
   }
   return n
 }

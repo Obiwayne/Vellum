@@ -222,11 +222,29 @@ export interface CanvasApi {
   }): Promise<{ base64: string; width: number; height: number }>
   // print a standalone HTML document to PDF offscreen: one page per `.__vellum_page` element, sized to it
   renderPdf(args: { html: string }): Promise<{ base64: string; pages: { width: number; height: number }[] }>
+  /** write a hand-off bundle (folder or zip) where the user chooses; nothing is uploaded */
+  handoffExport(args: HandoffExportArgs): Promise<HandoffExportResult>
+  /** reveal a file or folder in the file manager */
+  showInFolder(path: string): Promise<void>
   // bridge (MCP)
   onBridgeRequest(cb: (req: BridgeRequest) => void): () => void
   bridgeRespond(res: BridgeResponse): void
   bridgePort(): Promise<number>
 }
+
+/** Export handoff (src/main/handoffExport.ts): the renderer builds the file map, main asks where and writes it. */
+export interface HandoffExportArgs {
+  /** bundle-relative POSIX path -> text or bytes */
+  files: Record<string, string | Uint8Array>
+  /** suggested folder or archive name (without extension) */
+  name: string
+  kind: 'folder' | 'zip'
+}
+
+export type HandoffExportResult =
+  | { ok: true; path: string; files: number; bytes: number; kind: 'folder' | 'zip' }
+  | { ok: false; canceled: true }
+  | { ok: false; error: string; canceled?: undefined }
 
 export interface ClipboardMedia {
   /** PNG data URL of a bitmap on the clipboard */
@@ -263,6 +281,8 @@ export const IPC = {
   capturePage: 'win:capturePage',
   renderHtml: 'win:renderHtml',
   renderPdf: 'win:renderPdf',
+  handoffExport: 'handoff:export',
+  showInFolder: 'handoff:showInFolder',
   readClipboardMedia: 'clip:readMedia',
   bridgeRequest: 'bridge:request',
   bridgeRespond: 'bridge:respond',

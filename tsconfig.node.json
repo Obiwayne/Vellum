@@ -18,5 +18,5 @@
     "paths": { "@shared/*": ["src/shared/*"] }
   },
   "include": ["electron.vite.config.ts", "src/main/**/*", "src/preload/**/*", "src/shared/**/*"],
-  "exclude": ["src/main/v010-roundtrip.test.ts"]
+  "exclude": ["src/main/v010-roundtrip.test.ts", "src/main/handoffExport.integration.test.ts"]
 }
