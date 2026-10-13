@@ -1901,6 +1901,75 @@ exports[`snapshots of every file for the fixture > spec.schema.json 1`] = `
         },
         "layerName": {
           "type": "string"
+        },
+        "mime": {
+          "type": "string"
+        },
+        "bytes": {
+          "type": "integer"
+        },
+        "width": {
+          "type": "integer"
+        },
+        "height": {
+          "type": "integer"
+        },
+        "maxDensity": {
+          "type": "number"
+        },
+        "variants": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "path": {
+                "type": "string"
+              },
+              "density": {
+                "type": "number"
+              },
+              "width": {
+                "type": "integer"
+              },
+              "height": {
+                "type": "integer"
+              }
+            },
+            "required": [
+              "path",
+              "density",
+              "width",
+              "height"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "source": {
+          "enum": [
+            "data",
+            "external"
+          ]
+        },
+        "url": {
+          "type": "string"
+        },
+        "sha256": {
+          "type": "string"
+        },
+        "recoloured": {
+          "type": "boolean"
+        },
+        "was": {
+          "type": "string"
+        },
+        "multiColour": {
+          "type": "boolean"
+        },
+        "animated": {
+          "type": "boolean"
+        },
+        "missing": {
+          "type": "boolean"
         }
       },
       "required": [

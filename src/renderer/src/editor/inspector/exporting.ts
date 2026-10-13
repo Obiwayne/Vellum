@@ -115,6 +115,12 @@ async function captureImage(doc: Doc, id: string, scale: number, format: 'png' |
   return base64Blob(res.base64, format === 'jpg' ? 'image/jpeg' : `image/${format}`)
 }
 
+/** The node rendered as PNG bytes through the main process's offscreen renderer (the handoff bundle's screen references). */
+export async function renderNodePng(doc: Doc, id: string, scale = 1): Promise<Uint8Array | null> {
+  const blob = await captureImage(doc, id, scale, 'png')
+  return blob ? new Uint8Array(await blob.arrayBuffer()) : null
+}
+
 /** PDF (vector, text stays text) with one page per node, each page the size of its node. */
 async function capturePdf(doc: Doc, ids: string[]): Promise<Blob | null> {
   const api = window.canvasApi

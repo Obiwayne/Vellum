@@ -16,7 +16,33 @@ export interface AssetRecord {
   nodeIds: string[]
   /** layer name, so a human can find it */
   layerName?: string
+  // ---- filled in by the assets pipeline (H4); all optional so H3 alone still works
+  mime?: string
+  /** size of the file at `path`, in bytes */
+  bytes?: number
+  /** pixels of the original (images) */
+  width?: number
+  height?: number
+  /** natural pixels per layout pixel; below 1 the image is smaller than its box */
+  maxDensity?: number
+  /** the same image at other densities (`path` is the original, 1x) */
+  variants?: Array<{ path: string; density: number; width: number; height: number }>
+  /** `data`: bytes come from the file; `external`: a link that is listed but never fetched */
+  source?: 'data' | 'external'
+  url?: string
+  sha256?: string
+  /** icons: a single colour was replaced by currentColor / more than one colour left as drawn */
+  recoloured?: boolean
+  was?: string
+  multiColour?: boolean
+  /** images: animated, exported as is */
+  animated?: boolean
+  /** the bytes could not be produced (see warnings) */
+  missing?: boolean
 }
+
+/** Files of a bundle: the text H3 writes and the bytes H4 produces. The export writer merges them. */
+export type BundleFiles = Record<string, string | Uint8Array>
 
 export type FontSource = 'google' | 'local' | 'system' | 'unknown'
 
@@ -42,6 +68,8 @@ export interface HandoffOptions {
   mode?: string | null
   /** assets planned by H4; listed in spec.json and the markdown, never read here */
   assets?: AssetRecord[]
+  /** extra warnings to list in HANDOFF.md (the assets pipeline adds its own) */
+  warnings?: string[]
   /** where a font family comes from; default: generic and system keywords are `system`, the rest `unknown` */
   fontSource?: (family: string) => FontSource
 }

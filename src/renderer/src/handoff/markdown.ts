@@ -125,10 +125,24 @@ function nodeLines(n: DevNodeSpec, depth: number, ctx: MarkdownContext, out: str
   for (const c of n.children) nodeLines(c, depth + 1, ctx, out)
 }
 
+function assetLine(a: AssetRecord): string {
+  const extra: string[] = []
+  if (a.layerName) extra.push(`layer "${inline(a.layerName)}"`)
+  if (a.variants?.length) extra.push(`also ${a.variants.map((v) => `${pathText(v.path)} (${formatNumber(v.density)}x)`).join(', ')}`)
+  if (a.width && a.height) extra.push(`${a.width} × ${a.height} px`)
+  if (a.maxDensity !== undefined && a.maxDensity < 1) extra.push(`only ${formatNumber(a.maxDensity)}x of its box: do not scale it up`)
+  if (a.recoloured) extra.push('single colour: uses currentColor')
+  if (a.multiColour) extra.push('multi-colour: keep as drawn')
+  if (a.animated) extra.push('animated')
+  if (a.source === 'external') extra.push(`linked image, not bundled: ${inline(a.url ?? '')}`)
+  if (a.missing) extra.push('could not be exported')
+  return `${pathText(a.path)}${extra.length ? ` (${extra.join('; ')})` : ''}`
+}
+
 function assetLines(ids: Set<string>, ctx: MarkdownContext): string[] {
   const used = ctx.assets.filter((a) => a.nodeIds.some((id) => ids.has(id)))
   if (!used.length) return []
-  return ['', '### Assets', '', ...used.map((a) => `- ${a.path}${a.layerName ? ` (layer "${inline(a.layerName)}")` : ''}`)]
+  return ['', '### Assets', '', ...used.map((a) => `- ${assetLine(a)}`)]
 }
 
 /** Layers of a screen whose measured size is fractional (build with the rule, not the number). */
