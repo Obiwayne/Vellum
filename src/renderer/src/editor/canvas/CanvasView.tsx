@@ -16,6 +16,7 @@ import { Overlay, SHADER_COLOR, SHADER_IMAGE, type Guide, type Handle, type Tran
 import { clampZoom, registerViewport } from './camera'
 import { clientToWorld, contains, intersects, measure, rectFromPoints, registerWorld, union } from './geometry'
 import { containerAt, drillNode, hoverPick, nodeIdFromTarget, pickNode } from './selection'
+import { reevaluateHoverOnKey } from './hoverKeys'
 import * as A from './actions'
 import { COMPONENT_DRAG_TYPE, dropComponent } from './componentActions'
 import { canvasMenu, layersMenu, nodeMenu } from './menus'
@@ -222,6 +223,8 @@ export function CanvasView({ docId }: { docId: string }): JSX.Element | null {
   const [space, setSpace] = useState(false)
   const [panning, setPanning] = useState(false)
   const spaceRef = useRef(false)
+  /** last pointer position over the canvas (client coordinates), for Alt key presses without a pointer move */
+  const lastPointer = useRef<{ x: number; y: number } | null>(null)
   const ctx = useContextMenu()
   // stable window listeners that forward to the latest render's handlers
   const live = useRef<{ onMove: (e: PointerEvent) => void; onUp: (e: PointerEvent) => void; onCancel: () => void }>({
@@ -351,6 +354,7 @@ export function CanvasView({ docId }: { docId: string }): JSX.Element | null {
       el instanceof HTMLElement && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.isContentEditable)
     const down = (e: KeyboardEvent): void => {
       if (isText(e.target)) return
+      if (e.key === 'Alt') reevaluateHoverOnKey(docId, e, true, lastPointer.current, (x, y) => document.elementFromPoint(x, y), Boolean(gesture.current || pen.current))
       if (e.key === ' ' && !e.ctrlKey && !e.metaKey) {
         e.preventDefault()
         if (!spaceRef.current) {
@@ -372,6 +376,7 @@ export function CanvasView({ docId }: { docId: string }): JSX.Element | null {
       }
     }
     const up = (e: KeyboardEvent): void => {
+      if (e.key === 'Alt') reevaluateHoverOnKey(docId, e, false, lastPointer.current, (x, y) => document.elementFromPoint(x, y), Boolean(gesture.current || pen.current))
       if (e.key === ' ') {
         spaceRef.current = false
         setSpace(false)
@@ -1222,6 +1227,7 @@ export function CanvasView({ docId }: { docId: string }): JSX.Element | null {
 
   // ---------------------------------------------------------------- hover / dblclick / context menu
   function onPointerMoveHover(e: React.PointerEvent): void {
+    lastPointer.current = { x: e.clientX, y: e.clientY }
     if (gesture.current) return
     const s = getStore()
     const ed = s.editors[docId]
