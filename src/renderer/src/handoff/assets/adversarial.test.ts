@@ -65,6 +65,81 @@ describe('icons: colours that are not written down', () => {
   })
 })
 
+describe('more icon colours', () => {
+  const svg = (inner: string, root = ''): string => `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" ${root}>${inner}</svg>`
+
+  it('a root fill is inherited: one colour on the root and plain children recolours', () => {
+    const r = optimiseSvg(svg('<path d="M0 0h10v10z"/><circle cx="5" cy="5" r="2"/>', 'fill="#123456"'))!
+    expect(r.recoloured).toBe(true)
+    expect(r.was).toBe('#123456')
+  })
+
+  it('a group fill is inherited by its children; a sibling outside it is black by default', () => {
+    const r = optimiseSvg(svg('<g fill="#f00"><path d="M0 0h5v5z"/></g><path d="M10 10h5v5z"/>'))!
+    expect(r.recoloured).toBe(false)
+    expect(r.multiColour).toBe(true)
+  })
+
+  it('shapes inside defs or clipPath are not painted where they are written', () => {
+    const r = optimiseSvg(svg('<defs><clipPath id="c"><rect width="9" height="9"/></clipPath></defs><path clip-path="url(#c)" fill="#0a0" d="M0 0h20v20z"/>'))!
+    expect(r.multiColour).toBe(false)
+  })
+
+  it('a <use> is not guessed at', () => {
+    const r = optimiseSvg(svg('<defs><path id="p" fill="#f00" d="M0 0h5v5z"/></defs><use href="#p"/>'))!
+    expect(r.recoloured).toBe(false)
+  })
+
+  it('inline style paints count like attributes', () => {
+    const r = optimiseSvg(svg('<path style="fill:#f00" d="M0 0h5v5z"/><path style="fill:#00f" d="M9 9h5v5z"/>'))!
+    expect(r.multiColour).toBe(true)
+  })
+
+  it('an unpainted-only icon stays as it is and is not called multi-colour', () => {
+    const r = optimiseSvg(svg('<path d="M0 0h5v5z"/>'))!
+    expect(r.recoloured).toBe(false)
+    expect(r.multiColour).toBe(false)
+  })
+})
+
+describe('safe SVG image layers', () => {
+  it('keep their colours (no currentColor), lose scripts, and de-dup by the written bytes', async () => {
+    const { doc, screen, add } = fixture()
+    const body = (extra: string): string => `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 20 20">${extra}<rect width="20" height="20" fill="#336698"/></svg>`
+    add({ type: 'image', name: 'A', attrs: { src: dataUrl(enc(body('')), 'image/svg+xml') }, style: { width: 20, height: 20 } }, screen.id)
+    add({ type: 'image', name: 'B', attrs: { src: dataUrl(enc(body('<script>alert(1)</script>')), 'image/svg+xml') }, style: { width: 20, height: 20 } }, screen.id)
+    const plan = await planAssets(doc)
+    const files = Object.entries(plan.files)
+    expect(files).toHaveLength(1) // the script was removed, so both are the same file
+    expect(text(files[0][1])).toContain('#336698')
+    expect(text(files[0][1])).not.toContain('currentColor')
+    expect(unsafeSvg(text(files[0][1]))).toBeNull()
+    expect(plan.records[0].nodeIds).toHaveLength(2)
+  })
+
+  it('an SVG with an external reference is skipped with a warning, not written', async () => {
+    const { doc, screen, add } = fixture()
+    const evil = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10"><image href="https://evil.example/x.png" width="10" height="10"/></svg>'
+    add({ type: 'image', name: 'Tracker', attrs: { src: dataUrl(enc(evil), 'image/svg+xml') }, style: { width: 10, height: 10 } }, screen.id)
+    const plan = await planAssets(doc)
+    expect(plan.files).toEqual({})
+    expect(plan.records).toEqual([])
+    expect(plan.warnings.join(' ')).toMatch(/Tracker.*SVG/)
+  })
+})
+
+describe('external records', () => {
+  it('the same URL used twice is one record with both layers, and the markdown shows it as a link', async () => {
+    const { doc, screen, add } = fixture()
+    for (const name of ['One', 'Two']) add({ type: 'image', name, attrs: { src: 'https://example.com/a.png' }, style: { width: 10, height: 10 } }, screen.id)
+    const plan = await planAssets(doc)
+    expect(plan.records).toHaveLength(1)
+    expect(plan.records[0].nodeIds).toHaveLength(2)
+    const r = buildHandoff(doc, { frames: [screen.id], version: 1, exportedAt: '2026-01-01T00:00:00.000Z', vellum: '1.0.0', assets: plan.records, warnings: plan.warnings })
+    expect(JSON.stringify(r.files)).toContain('linked image, not bundled')
+  })
+})
+
 describe('accounting and limits', () => {
   it('resampled files count against the file limit and never push the plan over it', async () => {
     const { doc, screen, add } = fixture()
@@ -107,7 +182,9 @@ describe('no network', () => {
     add({ type: 'rect', name: 'Bg', style: { width: 10, height: 10, backgroundImage: 'url(https://example.com/c.png)' } }, screen.id)
     const plan = await planAssets(doc)
     expect(fetchSpy).not.toHaveBeenCalled()
-    expect(plan.records).toEqual([])
+    expect(plan.records.every((r) => r.source === 'external')).toBe(true)
+    expect(plan.records.map((r) => r.url).sort()).toEqual(['//example.com/b.png', 'https://example.com/a.png', 'https://example.com/c.png'])
+    expect(plan.files).toEqual({})
     expect(plan.warnings.length).toBeGreaterThanOrEqual(2)
     vi.unstubAllGlobals()
   })

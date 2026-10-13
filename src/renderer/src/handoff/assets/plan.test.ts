@@ -109,11 +109,15 @@ describe('images: densities and files', () => {
     expect(plan.records[0].variants).toBeUndefined()
   })
 
-  it('a link is listed in the warnings and never fetched or bundled', async () => {
+  it('a link is listed as an external record and in the warnings, never fetched or bundled', async () => {
     const { doc, add, screen } = fixture()
     add({ type: 'image', name: 'Remote', attrs: { src: 'https://example.com/a.png' }, style: { width: 10, height: 10 } }, screen.id)
     const plan = await planAssets(doc)
-    expect(plan.records).toEqual([])
+    expect(plan.records).toHaveLength(1)
+    expect(plan.records[0]).toMatchObject({ kind: 'image', source: 'external', url: 'https://example.com/a.png', layerName: 'Remote' })
+    expect(plan.records[0].sha256).toBeUndefined()
+    expect(plan.files).toEqual({})
+    expect(plan.jobs).toEqual([])
     expect(plan.warnings[0]).toMatch(/is a link/)
   })
 

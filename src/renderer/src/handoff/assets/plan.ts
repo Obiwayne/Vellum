@@ -59,6 +59,8 @@ interface Pending {
   bytes?: Uint8Array
   text?: string
   icon?: { recoloured: boolean; was?: string; multiColour: boolean }
+  /** a linked image: listed with its URL, no bytes */
+  external?: string
   uses: Use[]
 }
 
@@ -84,7 +86,17 @@ export async function planAssets(doc: Doc, options: PlanOptions = {}): Promise<A
   const addImage = async (src: string, n: CNode, frameSlug: string): Promise<void> => {
     const size = sizeOf(n, options.measure)
     if (/^(https?:)?\/\//i.test(src.trim())) {
-      warnings.push(`Image "${n.name}" is a link (${src.trim().slice(0, 120)}), not bundled: ask for the file.`)
+      // listed, never fetched: the record has no file behind it
+      const url = src.trim()
+      warnings.push(`Image "${n.name}" is a link (${url.slice(0, 120)}), not bundled: ask for the file.`)
+      const key = `external:${url}`
+      let q = pending.get(key)
+      if (!q) {
+        q = { hash: await sha256Hex(url), kind: 'image', external: url, uses: [] }
+        pending.set(key, q)
+        order.push(key)
+      }
+      q.uses.push({ node: n, frameSlug, ...size })
       return
     }
     const parsed = dataUrlToBytes(src)
@@ -98,11 +110,22 @@ export async function planAssets(doc: Doc, options: PlanOptions = {}): Promise<A
       return
     }
     if (parsed.mime && parsed.mime !== s.mime && parsed.mime !== 'image/jpg') warnings.push(`Image "${n.name}" says ${parsed.mime} but is ${s.mime}; the real type is used.`)
-    const hash = await sha256Hex(parsed.bytes)
+    let bytes = parsed.bytes
+    if (s.ext === 'svg') {
+      // an SVG file is code: no script, handler or external reference may reach the bundle (same path as icons,
+      // without recolouring: an illustration keeps its colours)
+      const safe = optimiseSvg(new TextDecoder().decode(bytes), { recolour: false })
+      if (!safe) {
+        warnings.push(`Image "${n.name}" is an SVG with scripts or external references and was skipped.`)
+        return
+      }
+      bytes = new TextEncoder().encode(safe.svg)
+    }
+    const hash = await sha256Hex(bytes)
     const key = `image:${hash}`
     let p = pending.get(key)
     if (!p) {
-      p = { hash, kind: 'image', sniffed: s, bytes: parsed.bytes, uses: [] }
+      p = { hash, kind: 'image', sniffed: s, bytes, uses: [] }
       pending.set(key, p)
       order.push(key)
     }
@@ -186,6 +209,19 @@ export async function planAssets(doc: Doc, options: PlanOptions = {}): Promise<A
       continue
     }
 
+    if (p.external) {
+      const base = `${first.frameSlug}-${layerSlug(first.node)}`
+      records.push({
+        id: `external-${p.hash.slice(0, 12)}`,
+        path: reg.take('assets/external', base, '.link'),
+        kind: 'image',
+        nodeIds: p.uses.map((u) => u.node.id),
+        layerName: names[0],
+        source: 'external',
+        url: p.external
+      })
+      continue
+    }
     const s = p.sniffed as Sniffed
     const bytes = p.bytes as Uint8Array
     if (over(bytes.length)) {
