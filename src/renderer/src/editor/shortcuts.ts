@@ -149,7 +149,7 @@ export function installCanvasShortcuts(docId: string): () => void {
   return () => window.removeEventListener('keydown', onKey, true)
 }
 
-type DevKeyEvent = Pick<KeyboardEvent, 'ctrlKey' | 'metaKey' | 'shiftKey' | 'altKey' | 'code' | 'key'>
+type DevKeyEvent = Pick<KeyboardEvent, 'ctrlKey' | 'metaKey' | 'shiftKey' | 'altKey' | 'code' | 'key'> & { repeat?: boolean }
 
 const TOOL_EDIT_CODES = new Set(['KeyF', 'KeyR', 'KeyP', 'KeyT', 'KeyS'])
 
@@ -180,7 +180,8 @@ export function isEditKey(e: DevKeyEvent, hasSelection: boolean): boolean {
 export function devModeKey(docId: string, e: DevKeyEvent): boolean {
   const handled = devModeNavKey(docId, e)
   // a key that would edit in Design mode says so instead of doing nothing
-  if (!handled && isEditKey(e, (getStore().editors[docId]?.selection.length ?? 0) > 0)) notifyEditRefused(docId)
+  // a held key (auto-repeat) is the same attempt: it does not toast again
+  if (!handled && !e.repeat && isEditKey(e, (getStore().editors[docId]?.selection.length ?? 0) > 0)) notifyEditRefused(docId)
   return handled
 }
 

@@ -26,3 +26,15 @@ export function refuseOnDrag(docId: string, e: { clientX: number; clientY: numbe
   window.addEventListener('pointerup', stop, true)
   window.addEventListener('pointercancel', stop, true)
 }
+
+/** At most one read-only toast per second per document, however many keys or drags are refused. */
+export function refusalGate(intervalMs = 1000, now: () => number = Date.now): (docId: string) => boolean {
+  const last = new Map<string, number>()
+  return (docId) => {
+    const t = now()
+    const prev = last.get(docId)
+    if (prev !== undefined && t - prev < intervalMs) return false
+    last.set(docId, t)
+    return true
+  }
+}

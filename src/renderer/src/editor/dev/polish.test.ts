@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 // T66: Dev Mode polish. A selected main component says so (badge and Component rows), and edit keys and drags
 // say "read-only" instead of doing nothing silently.
-import { beforeEach, describe, expect, it, vi, type Mock } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi, type Mock } from 'vitest'
 import { createElement } from 'react'
 import { createRoot } from 'react-dom/client'
 import { act } from 'react-dom/test-utils'
@@ -11,7 +11,7 @@ vi.mock('../canvas/toast', () => ({ toast: vi.fn() }))
 import { getStore, onEditRefused, useStore } from '../../model/store'
 import { nodeSpec } from '../../model/devSpec'
 import { devModeKey, isEditKey } from '../shortcuts'
-import { DRAG_SLOP, refuseOnDrag } from './refuse'
+import { DRAG_SLOP, refusalGate, refuseOnDrag } from './refuse'
 import { SpecPanel } from './SpecPanel'
 import { mainInfo, specSections } from './specView'
 
@@ -63,7 +63,7 @@ describe('main component rows', () => {
     const rows = specSections(nodeSpec(doc, f, { depth: 0 })!, info).find((s) => s.id === 'component')!.rows
     expect(rows).toEqual([
       { label: 'Component', value: 'Card' },
-      { label: 'Kind', value: 'Main component' }
+      { label: 'Kind', value: 'Component' }
     ])
   })
 
@@ -75,7 +75,7 @@ describe('main component rows', () => {
     expect(info.props).toEqual([{ name: 'Label', type: 'text', default: 'Buy' }])
     expect(info.variants[0].options.length).toBeGreaterThan(1)
     const rows = specSections(nodeSpec(doc, variant, { depth: 0 })!, info).find((s) => s.id === 'component')!.rows
-    expect(rows.find((r) => r.label === 'Kind')?.value).toBe('Main component (variant of Button)')
+    expect(rows.find((r) => r.label === 'Kind')?.value).toBe('Component (variant of Button)')
     expect(rows.find((r) => r.label === 'Label')?.value).toBe('Buy (text property)')
   })
 
@@ -89,7 +89,7 @@ describe('main component rows', () => {
     expect(mainInfo(S().docs[id], inst)).toBeNull()
   })
 
-  it('the panel header says Main component for a main and Instance for an instance', () => {
+  it('the panel header says Component for a main, Component set for a set and Instance for an instance', () => {
     const { main } = button()
     const root = S().docs[id].pages[0].rootId
     const stage = S().createNode(id, { type: 'frame', name: 'Stage', style: { width: 400, height: 300 } }, root)
@@ -103,11 +103,40 @@ describe('main component rows', () => {
       act(() => r.render(createElement(SpecPanel, { docId: id })))
       return host.querySelector('.dev-head__type')?.textContent ?? ''
     }
-    expect(html(main)).toBe('Main component')
+    expect(html(main)).toBe('Component')
+    const setId = S().docs[id].nodes[main].component!.set!
+    expect(html(setId)).toBe('Component set')
     expect(html(inst)).toBe('Instance')
     expect(html(stage)).toBe('frame')
-    expect(host.innerHTML).not.toContain('Main component')
+    expect(host.innerHTML).not.toContain('Component set')
     act(() => r.unmount())
+  })
+})
+
+describe('component set rows', () => {
+  it('a set frame lists its variant property with options, other properties, and its variants', () => {
+    const { set } = button()
+    const doc = S().docs[id]
+    const info = mainInfo(doc, set)!
+    expect(info.kind).toBe('set')
+    expect(info.name).toBe('Button')
+    expect(info.variants[0].options.length).toBeGreaterThan(1)
+    expect(info.members).toHaveLength(2)
+    expect(info.members?.map((m) => m.name)).toContain('Big')
+    const rows = specSections(nodeSpec(doc, set, { depth: 0 })!, info).find((s) => s.id === 'component')!.rows
+    expect(rows.find((r) => r.label === 'Kind')?.value).toBe('Component set (2 variants)')
+    expect(rows.filter((r) => r.label === 'Variant')).toHaveLength(2)
+    expect(rows.some((r) => /variant property/.test(r.label))).toBe(true)
+    expect(rows.find((r) => r.label === 'Label')?.value).toBe('Buy (text property)')
+  })
+
+  it('a single main stays Component and its set is not mentioned', () => {
+    const root = S().docs[id].pages[0].rootId
+    const f = S().createNode(id, { type: 'frame', name: 'Chip', style: { width: 10, height: 10 } }, root)
+    S().createComponent(id, [f])
+    const info = mainInfo(S().docs[id], f)!
+    expect(info.kind).toBe('component')
+    expect(info.members).toBeUndefined()
   })
 })
 
@@ -157,6 +186,17 @@ describe('edit keys in Dev Mode say it is read-only', () => {
     expect(isEditKey(ev('KeyF'), false)).toBe(true)
   })
 
+  it('a held key (auto-repeat) is one attempt: only the first press tells the editor', () => {
+    const root = S().docs[id].pages[0].rootId
+    const f = S().createNode(id, { type: 'frame', name: 'F', style: { width: 10, height: 10 } }, root)
+    S().select(id, [f])
+    S().setDevMode(id, true)
+    devModeKey(id, ev('Delete', { key: 'Delete' }))
+    for (let i = 0; i < 20; i++) devModeKey(id, ev('Delete', { key: 'Delete', repeat: true }))
+    expect(refused).toHaveBeenCalledTimes(1)
+    off()
+  })
+
   it('devModeKey tells the editor once per refused key, never for navigation, and changes nothing', () => {
     const root = S().docs[id].pages[0].rootId
     const f = S().createNode(id, { type: 'frame', name: 'F', style: { width: 10, height: 10 } }, root)
@@ -196,5 +236,44 @@ describe('drags in Dev Mode say it is read-only', () => {
     expect(refused).toHaveBeenCalledTimes(1)
     expect(refused).toHaveBeenCalledWith(id)
     off()
+  })
+})
+
+describe('toast throttle', () => {
+  afterEach(() => vi.useRealTimers())
+
+  it('lets one refusal through per second per document', () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(0)
+    const gate = refusalGate()
+    const shown: number[] = []
+    for (let t = 0; t <= 2500; t += 100) {
+      vi.setSystemTime(t)
+      if (gate('a')) shown.push(t)
+    }
+    expect(shown).toEqual([0, 1000, 2000])
+  })
+
+  it('documents are throttled independently', () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(0)
+    const gate = refusalGate()
+    expect(gate('a')).toBe(true)
+    expect(gate('b')).toBe(true)
+    expect(gate('a')).toBe(false)
+    vi.setSystemTime(999)
+    expect(gate('a')).toBe(false)
+    vi.setSystemTime(1000)
+    expect(gate('a')).toBe(true)
+  })
+
+  it('the interval and clock can be injected', () => {
+    let now = 0
+    const gate = refusalGate(50, () => now)
+    expect(gate('x')).toBe(true)
+    now = 49
+    expect(gate('x')).toBe(false)
+    now = 50
+    expect(gate('x')).toBe(true)
   })
 })

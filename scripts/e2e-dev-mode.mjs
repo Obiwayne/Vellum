@@ -92,7 +92,7 @@ try {
   await shot('dev-mode-frame-selected')
   let p = await panel()
   check(/Layout/.test(p) && /Box/.test(p) && /Width/.test(p), 'frame: Spec panel shows Box and Layout')
-  check(/Main component/.test(p) && /Kind/.test(p), 'main component: header badge and Component section say Main component')
+  check(/Component/.test(p) && /Kind/.test(p), 'main component: header badge and Component section say Component')
   await shot('dev-mode-main-component-selected-detail')
   // text inside the main
   await sel(texts[0].r, 6, 6)
@@ -122,6 +122,10 @@ try {
   check(!(await toastShown()), 'toast fades away')
   await page.keyboard.press('Delete')
   await page.waitForTimeout(250)
+  // held key: many repeats, one toast, and a burst of attempts does not re-show it within a second
+  await page.keyboard.down('Delete')
+  for (let i = 0; i < 10; i++) await page.keyboard.press('ArrowLeft')
+  await page.keyboard.up('Delete')
   check((await toastShown()).includes('Dev Mode is read-only'), 'Delete in Dev Mode shows the read-only toast')
   await shot('dev-mode-delete-toast')
   await page.keyboard.press('ArrowRight')

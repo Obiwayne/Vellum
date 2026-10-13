@@ -9,7 +9,7 @@ import { writeText } from '../canvas/actions'
 import { CODE_LABEL, codeFor, type CodeFormat } from '../canvas/codegen'
 import { measure } from '../canvas/geometry'
 import { pageSummary } from './pageSummary'
-import { mainInfo, specSections, type SpecRow } from './specView'
+import { mainBadge, mainInfo, specSections, type SpecRow } from './specView'
 import './dev.css'
 
 const EMPTY: string[] = []
@@ -128,7 +128,7 @@ export function SpecPanel({ docId }: { docId: string }): JSX.Element {
     <div className="dev-panel" data-testid="dev-spec">
       <header className="dev-head">
         <span className="dev-head__name">{spec.name}</span>
-        <span className="dev-head__type">{spec.component ? 'Instance' : main ? 'Main component' : spec.type}</span>
+        <span className="dev-head__type">{spec.component ? 'Instance' : main ? mainBadge(main) : spec.type}</span>
       </header>
       {selection.length > 1 && <p className="dev-muted dev-pad">{selection.length} layers selected; showing the first.</p>}
       {sections.map((s) => (

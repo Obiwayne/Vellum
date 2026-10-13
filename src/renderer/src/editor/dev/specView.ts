@@ -88,25 +88,49 @@ function effectRow(e: EffectSpec): SpecRow {
   return { label: e.kind === 'inner-shadow' ? 'Inner shadow' : 'Shadow', value: `${parts.join(' ')} ${c}`.trim(), swatch: e.color?.hex8 ?? undefined }
 }
 
-/** What a main component (or one variant of a set) defines, for its Component section. */
+/** What a main component, one variant of a set, or a component set itself defines, for the Component section. */
 export interface MainInfo {
+  /** `component`: a single main; `variant`: one main of a set; `set`: the set frame */
+  kind: 'component' | 'variant' | 'set'
   name: string
-  /** the set it belongs to, when it is a variant */
+  /** the set a variant belongs to */
   setName?: string
-  /** variant property -> this main's value and the options of the set */
+  /** variant property -> this main's value (the default, for a set) and the options of the set */
   variants: Array<{ prop: string; value: string; options: string[] }>
   /** boolean / text / swap properties with their defaults */
   props: Array<{ name: string; type: string; default: string }>
+  /** a set: its variant mains and the values each one has */
+  members?: Array<{ name: string; values: string }>
 }
 
-/** Main-component facts of a node, or null when it is not a main. */
+/** Header badge text of a selected main, variant or set. */
+export const mainBadge = (m: MainInfo): string => (m.kind === 'set' ? 'Component set' : 'Component')
+
+/** Component facts of a node, or null when it is neither a main component nor a component set. */
 export function mainInfo(doc: Doc, id: string): MainInfo | null {
   const n = doc.nodes[id]
-  if (!n?.component) return null
+  if (!n) return null
+  if (n.componentSet) {
+    const members: NonNullable<MainInfo['members']> = []
+    const info: MainInfo = { kind: 'set', name: n.componentSet.name, variants: [], props: [], members }
+    for (const d of n.componentSet.props) {
+      if (d.type === 'variant') info.variants.push({ prop: d.name, value: String(d.default), options: d.options ?? [] })
+      else info.props.push({ name: d.name, type: d.type, default: String(d.default) })
+    }
+    const names = new Map(n.componentSet.props.map((d) => [d.id, d.name]))
+    for (const c of n.children) {
+      const m = doc.nodes[c]
+      if (!m?.component) continue
+      const vals = variantValues(doc, c)
+      members.push({ name: m.name, values: Object.entries(vals).map(([k, v]) => `${names.get(k) ?? k}=${v}`).join(', ') })
+    }
+    return info
+  }
+  if (!n.component) return null
   const defs = propDefsOf(doc, id)
   const values = variantValues(doc, id)
   const set = n.component.set ? doc.nodes[n.component.set] : undefined
-  const info: MainInfo = { name: n.component.name, variants: [], props: [] }
+  const info: MainInfo = { kind: set?.componentSet ? 'variant' : 'component', name: n.component.name, variants: [], props: [] }
   if (set?.componentSet) info.setName = set.componentSet.name
   for (const d of defs) {
     if (d.type === 'variant') info.variants.push({ prop: d.name, value: values[d.id] ?? String(d.default), options: d.options ?? [] })
@@ -188,12 +212,19 @@ export function specSections(spec: NodeSpec, main?: MainInfo | null): SpecSectio
   }
 
   if (main && !spec.component) {
+    const kind =
+      main.kind === 'set' ? `Component set (${main.members?.length ?? 0} variant${main.members?.length === 1 ? '' : 's'})` : main.setName ? `Component (variant of ${main.setName})` : 'Component'
     const rows: SpecRow[] = [
       { label: 'Component', value: main.name },
-      { label: 'Kind', value: main.setName ? `Main component (variant of ${main.setName})` : 'Main component' }
+      { label: 'Kind', value: kind }
     ]
-    for (const v of main.variants) rows.push({ label: v.prop, value: v.options.length > 1 ? `${v.value} (of ${v.options.join(', ')})` : v.value, copy: v.value })
+    for (const v of main.variants) {
+      const label = main.kind === 'set' ? `${v.prop} (variant property)` : v.prop
+      const value = main.kind === 'set' ? v.options.join(', ') || v.value : v.options.length > 1 ? `${v.value} (of ${v.options.join(', ')})` : v.value
+      rows.push({ label, value, copy: v.value })
+    }
     for (const p of main.props) rows.push({ label: p.name, value: `${p.default} (${p.type} property)`, copy: p.default })
+    for (const m of main.members ?? []) rows.push({ label: 'Variant', value: m.values ? `${m.name} · ${m.values}` : m.name, copy: m.name })
     out.push({ id: 'component', title: 'Component', rows })
   }
 
