@@ -15,7 +15,7 @@ You MUST load the full guide before other Vellum tools: get_guide({ topic: "vell
 - When done creating or editing, you MUST call finish_working_on_nodes.
 - Comments: the user pins change requests to layers with the Comment tool. When they say "address my comments" (or get_basic_info shows openComments > 0 and they ask you to work on the file), call list_comment_threads, make each change on the thread's node, then reply_to_comment_thread with what you did and resolve: true.
 - Never show raw node IDs to the user.
-- Export to the user's codebase: use get_jsx and get_computed_styles for exact values — never read sizes or colors from screenshots.
+- Export to the user's codebase: use get_jsx and get_computed_styles for exact values — never read sizes or colors from screenshots. For a layout rule with its numbers (Fixed / Fit / Fill, min and max, gap, padding, tokens per mode) use get_dev_spec; for a whole hand-off of the frames marked ready for dev use export_handoff (it returns the files inline and writes nothing).
 - If a tool says the Vellum app is not running, ask the user to start Vellum (Vellum.cmd or the Vellum shortcut, or npm run dev in the Vellum folder).`
 
 const MAIN_GUIDE = `# Vellum MCP — working guide
@@ -67,6 +67,7 @@ Unless the user gave a detailed design system, post a short brief in chat BEFORE
 4. **Structure**: get_tree_summary for a cheap indented overview; get_children / get_node_info for details; find_nodes to search by name, text, type or style.
 5. **Visuals**: get_screenshot renders a node to PNG (scale 1 is enough for layout; use 2 to read small text).
 6. **Code**: get_jsx (tailwind or inline-styles) and get_computed_styles give exact values. Never read values from screenshots.
+7. **Hand-off**: get_dev_spec returns a layer's measured box with its layout intent, tokens per mode and component reference. export_handoff returns the hand-off bundle of the ready frames (HANDOFF.md first) as a file map; save the files where the developer wants them. Both are read-only and work in Dev Mode.
 
 ### Writing new designs
 1. Post the brief.
