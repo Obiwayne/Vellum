@@ -10,6 +10,8 @@ import { CANARY, DESKTOP_HTML, MOBILE_HTML, RECEIPT_HTML, UNREADY_HTML, exportFo
 const out = process.argv[2] ?? '.muster-evidence/e2e'
 mkdirSync(out, { recursive: true })
 const exportRoot = mkdtempSync(join(tmpdir(), 'vellum-handoff-out-'))
+// HANDOFF_SAMPLE=1 (with HANDOFF_KEEP=docs/handoff-sample) regenerates the checked-in sample: the Checkout screen alone, one export
+const withReceipt = !process.env.HANDOFF_SAMPLE
 const target = join(exportRoot, 'checkout-handoff')
 const target2 = join(exportRoot, 'checkout-handoff-v2')
 const results = []
@@ -46,7 +48,7 @@ try {
   check(rows.length === 3, `three top-level frames pasted (${rows.length})`)
   await shot('three-frames-pasted')
   // a second screen that stays untouched when the first is edited (the "unchanged" side of CHANGES.md)
-  await pasteHtml(app, page, RECEIPT_HTML)
+  if (withReceipt) await pasteHtml(app, page, RECEIPT_HTML)
 
   // hide the promo layer (it must not reach the bundle, the PNGs or the markdown)
   check(await hidePromo(page), 'the promo layer was found in the Layers panel and hidden')
@@ -61,19 +63,21 @@ try {
     await tagScreen(page, 'Checkout', null)
   }
   rows = (await layerRows(page)).filter((r) => r.pad < 16)
-  check(rows.length === 4, `four top-level frames with the receipt (${rows.length})`)
-  await page.mouse.click(110, rows[3].y + 10)
-  await page.waitForTimeout(400)
-  await tagScreen(page, 'Receipt', null)
+  check(rows.length === (withReceipt ? 4 : 3), `${withReceipt ? 'four' : 'three'} top-level frames (${rows.length})`)
+  if (withReceipt) {
+    await page.mouse.click(110, rows[3].y + 10)
+    await page.waitForTimeout(400)
+    await tagScreen(page, 'Receipt', null)
+  }
   await shot('tagged')
   const insp = await page.evaluate(() => document.querySelector('.insp-scroll')?.innerText.slice(0, 400) ?? '')
   check(/Checkout/.test(insp) || true, 'screen name entered')
   results.push(`inspector: ${insp.replace(/\n+/g, ' | ').slice(0, 200)}`)
 
   // mark both ready (not the third)
-  for (const i of [0, 1, 3]) await markReady(page, rows[i].y)
+  for (const i of withReceipt ? [0, 1, 3] : [0, 1]) await markReady(page, rows[i].y)
   const dots = await page.evaluate(() => [...document.querySelectorAll('.lp-layer__ready')].map((e) => e.getAttribute('data-ready')))
-  check(dots.length === 3 && dots.every((d) => d === 'ready'), `three frames are ready, the unready one is not (${JSON.stringify(dots)})`)
+  check(dots.length === (withReceipt ? 3 : 2) && dots.every((d) => d === 'ready'), `the chosen frames are ready, the unready one is not (${JSON.stringify(dots)})`)
   await shot('two-ready')
 
   // export
@@ -89,7 +93,7 @@ try {
   check(pngs.length >= 2, `a PNG reference per breakpoint (${pngs.join(', ')})`)
   const spec = JSON.parse(readFileSync(join(target, 'spec.json'), 'utf8'))
   const checkout = spec.screens.find((s) => s.name === 'Checkout')
-  check(spec.screens.length === 2 && Boolean(checkout) && spec.screens.some((s) => s.name === 'Receipt'), `two screens in spec.json (${spec.screens.map((s) => s.name).join(', ')})`)
+  check(spec.screens.length === (withReceipt ? 2 : 1) && Boolean(checkout) && (!withReceipt || spec.screens.some((s) => s.name === 'Receipt')), `screens in spec.json (${spec.screens.map((s) => s.name).join(', ')})`)
   check(checkout?.breakpoints.length === 2, `two breakpoints (${checkout?.breakpoints.map((b) => b.bp).join(', ')})`)
   check(checkout?.breakpoints.some((b) => b.delta), 'the narrow breakpoint carries a delta against the wide one')
   check(!tree.includes('CHANGES.md') && spec.changes === undefined, 'a first export has no CHANGES.md and no spec.changes')
@@ -121,6 +125,7 @@ try {
   check(/Pay \$105\.00/.test(md) && /Wireless keyboard/.test(md), 'the screen markdown carries the real text of the design')
 
   // ---- edit a layer inside a ready frame, export again: v2 carries CHANGES.md against v1
+  if (withReceipt) {
   await page.keyboard.press('Escape')
   await page.waitForTimeout(300)
   await page.keyboard.press('Shift+1') // zoom to fit
@@ -172,6 +177,8 @@ try {
     for (const [k, v] of Object.entries(CANARY)) check(!all2.includes(v), `v2: no "${k}" canary anywhere in the bundle`)
     check(!/[A-Za-z]:\\|\/Users\//.test(all2) && !/Tester/.test(all2), 'v2: no absolute path and no profile name')
     check(readdirSync(exportRoot).length === 2, 'two bundles and no temporary folder in the export folder')
+  }
+
   }
 
   if (process.env.HANDOFF_KEEP) {

@@ -5,7 +5,7 @@
 > 2. Tell Claude Code: "build screens/checkout.md from this handoff".
 > 3. Verify the result against the PNGs in screens/. Handoff v1, 1 screen.
 
-Exported 2026-10-13T19:02:33.061Z from Vellum 1.0.0. Schema `vellum.handoff/1`.
+Exported 2026-10-13T19:17:38.313Z from Vellum 1.0.0. Schema `vellum.handoff/1`.
 
 ## What is in here
 
