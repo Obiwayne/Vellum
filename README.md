@@ -94,8 +94,8 @@ its design system, component sheets and every screen and dialog (85 artboards), 
   notes, state rules and accessibility info, then **Export handoff…** (next to Share) writes a folder or zip a
   developer's own Claude Code can build from: layout rules first, tokens per mode, components with states, assets,
   fonts, a PNG reference per breakpoint, a delta table between breakpoints and, from the second export on, a
-  `CHANGES.md` that says what to rebuild. **Dev Mode** (`D`) is a read-only
-  inspector with a Spec panel, copy-as-code and **redlines**. Nothing hidden leaks and nothing is uploaded. See
+  `CHANGES.md` that says what to rebuild. **Dev Mode** (`D`, or **Open in Dev Mode** in a file's
+  dashboard menu) is a read-only inspector with a Spec panel, copy-as-code and **redlines**. Nothing hidden leaks and nothing is uploaded. See
   `docs/HANDOFF.md` (a sample bundle is in `docs/handoff-sample/`).
 - **MCP server** — 49 tools (`write_html`, `update_styles`, `get_screenshot`, `get_jsx` (instances export as
   component usage plus definitions), components, variants and properties, text styles, tokens and theme
@@ -239,6 +239,8 @@ See [`docs/MCP.md`](docs/MCP.md) for the full tool list and troubleshooting.
 | Bold · Italic · Underline | `Ctrl+B` · `Ctrl+I` · `Ctrl+U` |
 | Font size · weight · letter spacing · line height | `Ctrl+Shift+.`/`,` · `Ctrl+Alt+.`/`,` · `Alt+.`/`,` · `Alt+Shift+.`/`,` |
 | Copy as React · Tailwind | `Alt+R` · `Alt+T` |
+| Dev Mode (read-only inspect) on / off | `D` |
+| In Dev Mode: copy as CSS · measure to any layer | `Ctrl+C` · hold `Alt` while hovering |
 | Crop an image | hold `Ctrl` while resizing |
 | Layers under the pointer | `Ctrl`+right-click |
 | Zoom to 100% · fit · selection | `Shift+0` · `Shift+1` · `Shift+2` |
